@@ -22,10 +22,22 @@ function messageFor(e: unknown): MessageKey {
   return 'login.err.generic';
 }
 
+/** development stub: the seeded buyer, when the server runs with DEMO_MODE (no email code then) */
+const demoEmail = ref<string | null>(null);
+onMounted(async () => {
+  const d = await wallet.api.demoInfo();
+  if (d.enabled && d.email) demoEmail.value = d.email;
+});
+
 async function sendCode() {
   busy.value = true;
   error.value = null;
   try {
+    if (demoEmail.value && email.value.trim().toLowerCase() === demoEmail.value) {
+      await wallet.demoLogin(demoEmail.value);
+      emit('done');
+      return;
+    }
     await wallet.api.emailStart(email.value.trim());
     step.value = 'code';
     sentTo.value = email.value.trim();
@@ -67,7 +79,8 @@ async function verify() {
           data-testid="login-email"
         />
       </div>
-      <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-send">{{ t('login.sendCode') }}</Button>
+      <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-send">{{ demoEmail && email.trim().toLowerCase() === demoEmail ? t('login.signIn') : t('login.sendCode') }}</Button>
+      <Button v-if="demoEmail" type="button" size="lg" variant="secondary" class="w-full" :disabled="busy" data-testid="login-fill-demo" @click="email = demoEmail ?? ''">{{ t('login.fillDemo') }}</Button>
     </form>
     <form v-else class="space-y-4" @submit.prevent="verify">
       <p class="text-sm text-text-secondary" data-testid="login-info">{{ sentTo === null ? '' : t('login.codeSent', { email: sentTo }) }}</p>

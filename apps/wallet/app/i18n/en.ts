@@ -123,6 +123,8 @@ export const en: Record<MessageKey, string> = {
   'login.title': 'Log in',
   'login.body': 'Enter your email address. You will get a 6-digit code; no password needed.',
   'login.email': 'Email address',
+  'login.signIn': 'Sign in',
+  'login.fillDemo': 'Fill in the demo account',
   'login.sendCode': 'Send me a code',
   'login.codeSent': 'We sent a 6-digit code to {email}.',
   'login.code': 'Code',

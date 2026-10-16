@@ -104,6 +104,13 @@ export async function createWallet(opts: WalletOptions) {
       await sessionStore.save(next);
       session.value = next;
     },
+    /** Demo only: signs in as the seeded buyer without an email code (the server answers 404 when demo mode is off). */
+    async demoLogin(email: string): Promise<void> {
+      const res = await api.demoLogin();
+      const next = { token: res.token, userId: res.userId, email };
+      await sessionStore.save(next);
+      session.value = next;
+    },
     /** Explicit logout: also wipes cached receipts and pending claims so the next person on this phone sees nothing. */
     async logout(): Promise<void> {
       try {

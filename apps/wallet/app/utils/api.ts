@@ -69,6 +69,14 @@ export function createApi(opts: ApiOptions) {
       await send('/v1/auth/email/start', { method: 'POST', auth: false, body: { email } });
     },
     emailVerify: (email: string, code: string) => json(s.sessionResult, '/v1/auth/email/verify', { method: 'POST', auth: false, body: { email, code } }),
+    demoInfo: async (): Promise<{ enabled: boolean; email?: string }> => {
+      try {
+        return (await (await send('/v1/auth/demo', { auth: false })).json()) as { enabled: boolean; email?: string };
+      } catch {
+        return { enabled: false };
+      }
+    },
+    demoLogin: () => json(s.sessionResult, '/v1/auth/demo', { method: 'POST', auth: false }),
     logout: async () => {
       await send('/v1/auth/logout', { method: 'POST' });
     },

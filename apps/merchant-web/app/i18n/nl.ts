@@ -72,6 +72,8 @@ export const nl: Record<MessageKey, string> = {
   'login.email': 'E-mail',
   'login.password': 'Wachtwoord',
   'login.continue': 'Doorgaan',
+  'login.signIn': 'Inloggen',
+  'login.fillDemo': 'Demo-account invullen',
   'login.enrolIntro': 'Eerste keer inloggen: stel een authenticator-app in (Google Authenticator, 1Password en vergelijkbare apps). Scan de code of voer de geheime sleutel in en typ daarna de 6-cijferige code die de app toont.',
   'login.secret': 'Geheime sleutel:',
   'login.uri': 'URI:',

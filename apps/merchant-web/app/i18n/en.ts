@@ -75,6 +75,8 @@ export const en = {
   'login.email': 'Email',
   'login.password': 'Password',
   'login.continue': 'Continue',
+  'login.signIn': 'Sign in',
+  'login.fillDemo': 'Fill in the demo account',
   'login.enrolIntro': 'First sign-in: set up an authenticator app (Google Authenticator, 1Password and similar). Scan the code or enter the secret, then type the 6-digit code it shows.',
   'login.secret': 'Secret:',
   'login.uri': 'URI:',

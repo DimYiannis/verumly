@@ -85,6 +85,17 @@ export function authRoutes(deps: AppDeps) {
       return { token, userId };
     });
 
+    // demo sign-in: only answers when the server was started with a demo user
+    r.get('/v1/auth/demo', async () => (deps.demoUserEmail ? { enabled: true, email: deps.demoUserEmail } : { enabled: false }));
+    r.post('/v1/auth/demo', async (_req, reply) => {
+      if (!deps.demoUserEmail) return reply.code(404).send({ error: 'not_found' });
+      const [user] = await deps.db.select().from(tables.users).where(and(eq(tables.users.email, deps.demoUserEmail), isNull(tables.users.deletedAt)));
+      if (!user) return reply.code(404).send({ error: 'demo_user_missing' });
+      const { token, hash } = generateToken();
+      await deps.db.insert(tables.sessions).values({ tokenHash: hash, userId: user.id, expiresAt: new Date(Date.now() + SESSION_TTL_MS) });
+      return { token, userId: user.id };
+    });
+
     r.post('/v1/auth/logout', { preHandler: requireSession(deps) }, async (req, reply) => {
       const m = /^Bearer (\S+)$/.exec(req.headers.authorization ?? '');
       if (m) await deps.db.delete(tables.sessions).where(eq(tables.sessions.tokenHash, sha256Hex(m[1]!)));

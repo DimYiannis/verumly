@@ -122,6 +122,8 @@ export const nl = {
   'login.body': 'Vul je e-mailadres in. Je krijgt een code van 6 cijfers; een wachtwoord is niet nodig.',
   'login.email': 'E-mailadres',
   'login.sendCode': 'Stuur me een code',
+  'login.signIn': 'Inloggen',
+  'login.fillDemo': 'Demo-account invullen',
   'login.codeSent': 'We hebben een code van 6 cijfers gestuurd naar {email}.',
   'login.code': 'Code',
   'login.verify': 'Inloggen',

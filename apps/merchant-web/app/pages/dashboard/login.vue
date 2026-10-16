@@ -14,6 +14,8 @@ const error = ref('');
 const busy = ref(false);
 const enrol = ref<{ secret: string; uri: string; enrolToken: string } | null>(null);
 const qrSvg = ref('');
+/** development stub: set when the server runs with DEMO_MODE; no second factor then */
+const demo = ref<{ email: string; password: string } | null>(null);
 
 async function beginEnrol() {
   const r = await attempt(error, () => $fetch<{ secret: string; uri: string; enrolToken: string }>('/api/dashboard/totp/begin', { method: 'POST' }));
@@ -29,15 +31,33 @@ async function goto(next: Step) {
   if (next === 'enrol') await beginEnrol();
 }
 
+function fillDemo() {
+  if (!demo.value) return;
+  email.value = demo.value.email;
+  password.value = demo.value.password;
+}
+
 onMounted(async () => {
   const s = await refreshSession();
   if (s.state === 'ready') return navigateTo('/dashboard');
+  const d = await $fetch<{ enabled: boolean; email?: string; password?: string }>('/api/dashboard/demo').catch(() => ({ enabled: false }) as { enabled: boolean; email?: string; password?: string });
+  if (d.enabled && d.email && d.password) demo.value = { email: d.email, password: d.password };
   if (s.state === 'mfa_enrol') await goto('enrol');
   if (s.state === 'mfa_verify') await goto('verify');
 });
 
 async function submitCredentials() {
   busy.value = true;
+  if (demo.value) {
+    const ok = await attempt(error, () => $fetch<unknown>('/api/dashboard/demo-login', { method: 'POST', body: { email: email.value, password: password.value } }));
+    busy.value = false;
+    password.value = '';
+    if (ok) {
+      await refreshSession();
+      await navigateTo('/dashboard');
+    }
+    return;
+  }
   const r = await attempt(error, () => $fetch<{ next: 'enrol' | 'verify' }>('/api/dashboard/login', { method: 'POST', body: { email: email.value, password: password.value } }));
   busy.value = false;
   password.value = '';
@@ -84,7 +104,8 @@ async function submitCode() {
             <Label for="login-password">{{ t('login.password') }}</Label>
             <Input id="login-password" v-model="password" type="password" autocomplete="current-password" required data-testid="login-password" />
           </div>
-          <Button class="w-full" :disabled="busy" data-testid="login-submit">{{ t('login.continue') }}</Button>
+          <Button class="w-full" :disabled="busy" data-testid="login-submit">{{ demo ? t('login.signIn') : t('login.continue') }}</Button>
+          <Button v-if="demo" type="button" variant="secondary" class="w-full" :disabled="busy" data-testid="login-fill-demo" @click="fillDemo">{{ t('login.fillDemo') }}</Button>
         </form>
 
         <form v-else class="space-y-6" @submit.prevent="submitCode">
