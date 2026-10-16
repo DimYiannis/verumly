@@ -1,0 +1,16 @@
+{
+  "name": "@lr/dashboard-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "build": "tsc -p .", "typecheck": "tsc -p .", "test": "vitest run --passWithNoTests" },
+  "dependencies": {
+    "@lr/config": "workspace:*",
+    "@lr/crypto": "workspace:*",
+    "@lr/db": "workspace:*",
+    "@lr/receipt-nl": "workspace:*",
+    "@lr/schema": "workspace:*",
+    "drizzle-orm": "^0.45.4"
+  }
+}

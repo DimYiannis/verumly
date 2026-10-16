@@ -1,0 +1,25 @@
+{
+  "name": "@lr/merchant-api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/main.ts",
+    "start": "node src/main.ts",
+    "build": "tsc -p .",
+    "typecheck": "tsc -p .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@fastify/helmet": "^13.0.0",
+    "@lr/config": "workspace:*",
+    "@lr/crypto": "workspace:*",
+    "@lr/db": "workspace:*",
+    "@lr/receipt-nl": "workspace:*",
+    "@lr/schema": "workspace:*",
+    "drizzle-orm": "^0.45.4",
+    "fastify": "^5.0.0",
+    "fastify-type-provider-zod": "^7.0.0",
+    "zod": "^4.0.0"
+  }
+}

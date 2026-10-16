@@ -1,0 +1,43 @@
+{
+  "name": "less-receipts",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.14.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "eslint .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:journey": "node scripts/journey.ts",
+    "eval:extraction": "node scripts/eval-extraction.ts",
+    "leads:report": "node scripts/leads-report.ts",
+    "db:migrate": "pnpm --filter @lr/db migrate",
+    "db:seed": "pnpm --filter @lr/db seed"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.0",
+    "eslint": "^10.13.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "^8.71.2",
+    "turbo": "^2.11.8",
+    "vitest": "^5.0.5",
+    "@types/node": "^22.0.0",
+    "@lr/config": "workspace:*",
+    "@lr/crypto": "workspace:*",
+    "@lr/db": "workspace:*",
+    "@lr/receipt-nl": "workspace:*",
+    "@lr/schema": "workspace:*",
+    "@lr/terminal-sdk": "workspace:*",
+    "@lr/dashboard-core": "workspace:*",
+    "@lr/merchant-api": "workspace:*",
+    "@lr/buyer-api": "workspace:*",
+    "pg": "^8.13.0",
+    "drizzle-orm": "^0.45.4",
+    "fastify": "^5.0.0",
+    "@types/pg": "^8.11.0"
+  }
+}

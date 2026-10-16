@@ -1,0 +1,12 @@
+node_modules
+dist
+.nuxt
+.output
+.turbo
+.env
+*.log
+.data
+playwright-report
+test-results
+coverage
+*.sqlite

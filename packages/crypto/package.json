@@ -1,0 +1,9 @@
+{
+  "name": "@lr/crypto",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "build": "tsc -p .", "typecheck": "tsc -p .", "test": "vitest run --passWithNoTests" },
+  "dependencies": { "@noble/ed25519": "^3.2.0", "@noble/hashes": "^2.4.0", "canonicalize": "^5.1.0", "uuidv7": "^1.2.1" }
+}
