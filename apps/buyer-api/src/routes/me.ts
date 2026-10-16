@@ -143,7 +143,7 @@ export function meRoutes(deps: AppDeps) {
       if (owner !== req.session!.userId) return reply.code(404).send({ error: 'not_found' });
       const receipt = await loadReceipt(deps.db, req.params.id);
       if (!receipt) return reply.code(404).send({ error: 'not_found' });
-      return { receipt: receipt.crf, final: isFinal(receipt), versions: await loadVersions(deps.db, receipt.id) };
+      return { receipt: receipt.crf, final: isFinal(receipt), template: receipt.template, versions: await loadVersions(deps.db, receipt.id) };
     });
   };
 }

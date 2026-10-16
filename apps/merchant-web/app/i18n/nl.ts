@@ -1,7 +1,12 @@
 import type { MessageKey } from './en';
+import { designNl } from './design.nl';
+import { setupNl } from './setup.nl';
 
 /** Dutch dictionary. Typed against the English key set: a missing or extra key fails typecheck. */
 export const nl: Record<MessageKey, string> = {
+  ...setupNl,
+  ...designNl,
+  'nav.template': 'Bonontwerp',
   'locale.label': 'Taal',
   'locale.en': 'English',
   'locale.nl': 'Nederlands',

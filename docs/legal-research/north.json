@@ -1,0 +1,270 @@
+{
+  "countries": {
+    "SE": {
+      "name": "Sweden",
+      "currency": "SEK",
+      "receiptObligation": "Verified (skatteverket.se): every business that takes cash or card payments (incl. Swish) must register sales in a kassaregister and, for every sale, produce and OFFER the customer a kassakvitto, on paper or digitally, regardless of payment method. A card-terminal slip alone is not a kassakvitto. Returns need a returkvitto. Exemptions (verified): sales (cash+card) <= 4 price base amounts incl. VAT per 12-month year (SEK 236,800 for 2026); income-tax-exempt bodies, taxi, distance/home sales, unattended/vending/automated stores, licensed lottery/betting agents, public-transport ticket sales, bingo/gaming; invoiced sales (cash invoice instead); individual exemption by application. Legal basis: Skatteforfarandelagen (2011:1244) ch. 39 (section numbers unverified).",
+      "digitalReceipt": "Verified: Skatteverket position (4 Dec 2024, dnr 8-3188477) says no requirement for a paper receipt; the merchant may offer paper, electronic, or both; form requirements are technology-neutral. Older commentary: an electronic receipt must be sent from the cash register itself (not just shown on screen). No customer opt-in condition found in Skatteverket sources (unverified whether any consent rule exists beyond GDPR). The register must still be able to print per SKVFS 2009:1 24 par. (a sale cannot be registered unless a receipt is produced at the same time) - how this interacts with digital-only receipts: unverified, confirm with adviser/register supplier.",
+      "mandatoryFields": "Verified (SKVFS 2009:1 28 par., still the consolidated text referenced by Skatteverket; SKVFS 2014:9 is the current register regulation - exact current wording to be confirmed): company name; organisation number (or personal ID number); address where the sale takes place; date and time; receipt number from an unbroken ascending series; register designation (kassabeteckning); names and quantities of goods / number of services; sales amount; VAT amount; VAT split per rate; payment method(s); control unit's serial/manufacturing number (kontrollenhetens tillverkningsnummer). VAT items not required if the seller's sale is not VAT-liable. Amounts in SEK. Returkvitto has same requirements. Copies must be marked 'KOPI' (at least twice the size of the amount text), max one copy per receipt.",
+      "fiscalSystem": "Verified: certified-system model. Kassaregister (manufacturer-declared, tillverkardeklaration) must be connected to a certified kontrollenhet (control unit/control system; SKVFS 2009:2, SKVFS 2014:8 for control systems). The control unit receives receipt data from the register and generates a unique kontrollkod per receipt; the register may not register sales unless the control unit is working. Applies to ALL merchants taking cash/card payments unless exempt (see receiptObligation). Registration: the business must notify Skatteverket of the register (and each registration unit). Changes: from 1 Oct 2025 (verified) ID plates on registration units/control units are no longer required, and customers' own registration units (e.g. phones) need not be reported if an equivalent unit with the same control unit/system/program is already reported. From 1 Jan 2027 (verified, skatteverket.se) registers must meet SKVFS 2021:17; registers with journalminne must be able to produce XML records. March 2026: Skatteverket proposed a broad government review of the cash register rules (proposal only, not law).",
+      "realTimeReporting": "None found. Sweden has no real-time transmission of sales data to Skatteverket; control unit stores data and Skatteverket audits on site / on request (unverified whether any periodic reporting exists: none found).",
+      "receiptIdentifiers": "Sequential receipt number (unbroken ascending series), register designation, control unit serial number (verified in 28 par.). Control code (kontrollkod) is generated per receipt by the control unit; whether it must be PRINTED on the customer receipt and any QR format: unverified in sources reached (SKVFS 2014:9 PDF could not be parsed). No QR requirement found.",
+      "retentionYears": "7 years from end of the calendar year in which the fiscal year ended (Bokforingslagen 7 kap 2 par.) - from general knowledge, NOT verified in this session; register journal/control data follows the same bookkeeping retention. Electronic storage allowed.",
+      "vat": {
+        "standard": "25%",
+        "reduced": "12% restaurant and catering services (verified via secondary sources citing Skatteverket), hotels/accommodation 12%; food 6% from 1 Apr 2026 to 31 Dec 2027 (temporary, reverts to 12% on 1 Jan 2028; secondary sources); 6% books/newspapers/passenger transport/culture; 0%/exempt categories exist. Eat-in restaurant 12% vs takeaway food 6% in the same business (secondary sources).",
+        "currency": "SEK",
+        "changesToWatch": "2026-04-01 food 6%; 2028-01-01 food back to 12% (unless extended)."
+      },
+      "other": {
+        "tips": "unverified",
+        "cashRounding": "Cash totals are rounded to whole kronor (ore removed 2010) - from general knowledge, unverified in sources; card payments exact. Rounding line should appear on receipt (unverified).",
+        "language": "Not found; Swedish is normal practice. unverified.",
+        "idFormats": {
+          "orgNumber": "^[0-9]{6}-?[0-9]{4}$ (10 digits, Luhn check on last digit; sole traders use personnummer)",
+          "vatId": "^SE[0-9]{10}01$"
+        },
+        "extra": "Restaurants/hairdressers etc. also have the personalliggare (staff register) duty - not receipt related, unverified in this session."
+      },
+      "settingsNeeded": [
+        {"key": "legalName", "label": "Registered company name", "type": "text", "required": true, "validation": "non-empty", "help": "Printed on receipt."},
+        {"key": "orgNumber", "label": "Organisation number", "type": "text", "required": true, "validation": "^[0-9]{6}-?[0-9]{4}$ + Luhn", "help": "Required on kassakvitto."},
+        {"key": "vatNumber", "label": "VAT number", "type": "text", "required": false, "validation": "^SE[0-9]{10}01$", "help": "Derived from org number; required if VAT-registered and invoicing business customers."},
+        {"key": "saleAddress", "label": "Address of the point of sale", "type": "text", "required": true, "validation": "non-empty", "help": "Address where the sale takes place must be on receipt."},
+        {"key": "registerDesignation", "label": "Cash register designation (kassabeteckning)", "type": "text", "required": true, "validation": "non-empty, unique per business", "help": "Identifies the register; required on receipt."},
+        {"key": "controlUnitId", "label": "Control unit (kontrollenhet) manufacturing number", "type": "text", "required": true, "validation": "unverified format; non-empty", "help": "Printed on receipt; certified control unit is mandatory unless exempt."},
+        {"key": "skatteverketRegistered", "label": "Register notified to Skatteverket", "type": "boolean", "required": true, "validation": "must be true unless exempt", "help": "Legal duty to notify the register."},
+        {"key": "exemptionReason", "label": "Exemption from cash register duty", "type": "select", "required": false, "validation": "none|low_sales_4_pba|invoiced_only|vending|distance|other_approved", "help": "If exempt, fiscal fields are optional."},
+        {"key": "vatRates", "label": "VAT rates in use", "type": "select", "required": true, "validation": "multi: 25,12,6,0", "help": "Receipt must split VAT per rate."},
+        {"key": "receiptDelivery", "label": "Receipt delivery mode", "type": "select", "required": true, "validation": "paper|digital|both", "help": "Digital-only allowed per Skatteverket 2024 position; register must still be able to produce receipt."},
+        {"key": "cashRounding", "label": "Round cash to whole SEK", "type": "boolean", "required": false, "validation": "", "help": "Show rounding line on receipt."}
+      ],
+      "confidence": "medium",
+      "adviserMustVerify": "Current wording of SKVFS 2014:9/2021:17 receipt field list and whether kontrollkod/QR must be printed; effect of 1 Jan 2027 SKVFS 2021:17; digital-only receipts vs print capability; 7-year retention; food/restaurant VAT after 2027; cash rounding; tips handling.",
+      "sources": [
+        "https://www.skatteverket.se/foretag/drivaforetag/kassaregister.4.121b82f011a74172e5880005263.html",
+        "https://www.skatteverket.se/foretag/drivaforetag/kassaregister/undantagfrankravpakassaregister.4.6efe6285127ab4f1d2580005105.html",
+        "https://www.skatteverket.se/foretag/drivaforetag/kassaregister/saharanvanderdukassaregister.4.69ef368911e1304a625800013725.html",
+        "https://www.skatteverket.se/rattsinformation/reglerochstallningstaganden/foreskrifter/konsoliderade/09/skvfs20091.5.5a4c883511f42795f7c8000651.html",
+        "https://www.skatteverket.se/download/18.3aa8c78a1466c5845874ba/1708608280801/SKVFS2014-09.pdf",
+        "https://www.skatteverket.se/omoss/pressochmedia/nyheter/2025/nyheter/tvaforenklingaravreglernaforkassaregister.5.4e10387a1997767288d5ea.html",
+        "https://www.faronline.se/nyheter/2024/december/skv-inget-krav-pa-kvitto-i-pappersform/",
+        "https://skatteverket.se/download/18.70685bee19c85dd5dd02aeb/1773751310702/utredning-om-en-oversyn-av-reglerna-om-kassaregister.pdf",
+        "https://lookuptax.com/tax-changes/sweden/food-vat-6pc-2026"
+      ],
+      "lastChecked": "2026-10-17"
+    },
+    "DK": {
+      "name": "Denmark",
+      "currency": "DKK",
+      "receiptObligation": "Verified (info.skat.dk A.B.3.3.1.6): retailers selling mainly/only to private consumers may choose between issuing simplified invoices or using a sales registration system and giving a till receipt (kassebon). A full invoice is required on request of a business buyer, BoligJob services, private-person services >= DKK 5,000 incl. VAT, and certain EU distance sales. Where a receipt/simplified invoice is not technically possible, a simplified invoice must be issued for sales above DKK 1,000 incl. VAT. Whether a consumer can refuse a receipt: unverified.",
+      "digitalReceipt": "Verified (skat.dk): in the digital sales registration (digital salgsregistrering) regime, receipts may be sent electronically to a system the customer has accepted IN ADVANCE; a printer is required only if the merchant cannot send electronically to such a system. So customer pre-acceptance (opt-in) is a condition. Receipts from training/test mode must be clearly labelled invalid (e.g. 'Test not valid').",
+      "mandatoryFields": "Verified (info.skat.dk): Till receipt (kassebon) replacing a simplified invoice must show company name OR registration (CVR) number, issue date, nature of the supply (may be summarised), VAT amount (may be stated as 20% of price incl. VAT); no sequential number needed. Simplified invoice (sales < DKK 3,000) shows: company name and address, CVR/SE number, sequential invoice number, date, quantity and type of goods/services, total amount and VAT amount. Under the digital sales registration regime the electronic journal also holds CVR, unique consecutive transaction number, start/end time, payment method and system serial number. Section numbering in the VAT Order (momsbekendtgorelsen par. 63/64/66) differs across sources - verify on retsinformation.dk.",
+      "fiscalSystem": "Verified: Denmark has NO certified fiscal device. Since 1 Jan 2024 businesses with turnover < DKK 10m in listed sectors (cafes/bars/nightclubs, pizzerias/fast food/ice cream, grocers and 24h kiosks, restaurants; judged on actual operation; SKAT can order other businesses to use one; supermarkets/webshops/door-to-door partly excluded) must use a digital salgsregistreringssystem meeting momsbekendtgorelsen par. 64: electronic journal logging all actions, transaction data digitally signed with OCES (or eIDAS) certificate, no ability to add/edit/delete, SAF-T export, X and Z reports, cash must be accepted and recorded, online/portal sales recorded, system clock changes logged. Skattestyrelsen does NOT approve/certify systems; supplier may document with ISAE 3402 declaration; responsibility lies with the merchant. No registration with the tax authority found. Fines DKK 10,000 / 20,000 / 30,000 per control visit plus daily fines of min DKK 1,000 (skat.dk).",
+      "realTimeReporting": "None found. Data delivered as signed SAF-T on request; no continuous reporting (verified absence in skat.dk page, not proven by a statement).",
+      "receiptIdentifiers": "Transaction numbers are unique and consecutive in the electronic journal; digital signature (OCES) on journal data, not printed. No QR/control code on receipts found. Receipt sequential number not required for kassebon.",
+      "retentionYears": "5 years from end of the financial year the material relates to (Bogforingsloven par. 12, verified via Erhvervsstyrelsen); digital sales-registration data min 5 years from end of relevant financial year (skat.dk). Sales/purchase documents must be stored digitally in a digital bookkeeping system.",
+      "vat": {
+        "standard": "25%",
+        "reduced": "None for food or hospitality (Denmark has a single 25% rate; some exemptions e.g. passenger transport, healthcare). Verified from general knowledge, not rechecked.",
+        "currency": "DKK",
+        "changesToWatch": "Bogforingsloven digital bookkeeping duty phased in; financial companies from 1 Jan 2026 (Erhvervsstyrelsen). Nothing receipt-specific for 2026-27 found."
+      },
+      "other": {
+        "tips": "unverified",
+        "cashRounding": "Practice (not statute, secondary source): cash rounded to whole krone or nearest 50 ore (25-ore coin withdrawn 2008; 50 ore lowest coin); card exact; rounding difference shown on receipt. Legal basis unverified.",
+        "language": "unverified (Danish normal).",
+        "idFormats": {
+          "orgNumber": "CVR ^[0-9]{8}$",
+          "vatId": "^DK[0-9]{8}$"
+        },
+        "extra": "Merchants are legally required to accept cash (per Skattestyrelsen FAQ) - exact exemptions unverified."
+      },
+      "settingsNeeded": [
+        {"key": "legalName", "label": "Company name", "type": "text", "required": true, "validation": "non-empty", "help": "Name or CVR must be on receipt."},
+        {"key": "cvr", "label": "CVR number", "type": "text", "required": true, "validation": "^[0-9]{8}$", "help": "Printed on receipt and in journal."},
+        {"key": "address", "label": "Business address", "type": "text", "required": true, "validation": "non-empty", "help": "Required on simplified invoices."},
+        {"key": "receiptMode", "label": "Receipt type", "type": "select", "required": true, "validation": "kassebon|simplified_invoice", "help": "Kassebon needs sales registration system; simplified invoice needs sequential number."},
+        {"key": "inDigitalRegScope", "label": "Required to use digital sales registration (listed sector, turnover < DKK 10m)", "type": "boolean", "required": true, "validation": "", "help": "If true, OCES-signed journal, SAF-T, X/Z reports apply."},
+        {"key": "ocesCertificateRef", "label": "OCES/eIDAS certificate reference", "type": "text", "required": false, "validation": "required if inDigitalRegScope", "help": "Used to sign journal data."},
+        {"key": "customerEReceiptOptIn", "label": "Customer must accept e-receipt channel in advance", "type": "boolean", "required": true, "validation": "must be true for digital-only", "help": "Print fallback required otherwise."},
+        {"key": "vatRate", "label": "VAT rate", "type": "select", "required": true, "validation": "25,0", "help": "25% for nearly all goods."},
+        {"key": "cashRounding", "label": "Cash rounding", "type": "select", "required": false, "validation": "none|nearest_1|nearest_0.5", "help": "Practice, not law."}
+      ],
+      "confidence": "medium",
+      "adviserMustVerify": "Current paragraph numbers/wording of momsbekendtgorelsen (par. 63/64/66) on retsinformation.dk; whether a consumer receipt must always be handed out; cash-rounding legal basis; whether the merchant's sector falls under the digital-registration duty; tips.",
+      "sources": [
+        "https://skat.dk/en-us/businesses/new-requirements-for-electronic-sales-registration-systems-for-certain-sectors-in-2024",
+        "https://info.skat.dk/data.aspx?oid=2068791",
+        "https://skat.dk/media/iomgswrz/2025-07-21-faq-erhvervsdrivende.pdf",
+        "https://erhvervsstyrelsen.dk/vejledning-bogfoeringsloven",
+        "https://www.retsinformation.dk/eli/lta/2022/700"
+      ],
+      "lastChecked": "2026-10-17"
+    },
+    "FI": {
+      "name": "Finland",
+      "currency": "EUR",
+      "receiptObligation": "Verified (vero.fi): the seller must offer a receipt for cash and equivalent payments (cash or card, presented as 'kuitintarjoamisvelvollisuus'); buyer may always request one in a cash sale. Applies to businesses and sole traders with fiscal-year turnover > EUR 10,000 and to associations with business activity above the same threshold. Exempt: automatic vending, lottery-law activities, outdoor market/street trading (except alcohol retail/serving), non-profit/hobby activity under the threshold, farming/forestry, e-commerce and payments the buyer makes independently without the seller present. Indoor sales and outdoor alcohol serving always need a receipt. Late-payment penalty EUR 300-1,000 (vero.fi).",
+      "digitalReceipt": "Verified (vero.fi): the receipt can be printed, handwritten or electronic; the seller chooses the form; the customer may decline a receipt (no printing needed). No explicit consent/opt-in rule found other than GDPR.",
+      "mandatoryFields": "Verified (vero.fi): business name, contact details and business ID (y-tunnus); issue date; sequential identification number; quantity and type of goods / type of services; amount paid including VAT and VAT rates. If several sellers share a receipt, the selling business must be identifiable.",
+      "fiscalSystem": "No certified/fiscal cash register or control-unit regime found in force in Finland (a cash register is not mandatory; other devices or handwritten receipts are accepted per vero.fi). A 2018 fiscal-cash-register discussion existed (industry statements) but I found no enacted law - treat as 'none in force, unverified for 2026-27'. Cash sales must be recorded in daily order; register sales reports (or receipt copies) are attached as vouchers.",
+      "realTimeReporting": "None for POS sales found. Finland runs a Real-Time Economy programme (e-receipts/e-invoices; State Treasury) and a Ministry of Finance draft amends the Tax Procedure Act (digital reporting, mostly from 1 Jan 2028, comments due 2 Oct 2026) - not confirmed to cover POS receipts.",
+      "receiptIdentifiers": "Sequential identification number only. No QR/control code requirement found.",
+      "retentionYears": "Vouchers/receipts and business correspondence: min 6 years after end of the fiscal year (Kirjanpitolaki 2:10; verified via secondary sources); ledgers, financial statements 10 years. Electronic storage allowed.",
+      "vat": {
+        "standard": "25.5% (since 1 Sep 2024)",
+        "reduced": "14% restaurant/catering and some others; food planned 13.5% from 1 Jan 2026 (sources conflict on whether the 13.5% applies to food only or also restaurants - verify at vero.fi); 10% books, newspapers, culture, accommodation, passenger transport; 0%/exempt categories.",
+        "currency": "EUR",
+        "changesToWatch": "Food reduced rate 14% -> 13.5% from 1 Jan 2026 (confirm)."
+      },
+      "other": {
+        "tips": "unverified (note: a doorman's cash tips mentioned by vero.fi as needing a receipt if turnover > EUR 10,000)",
+        "cashRounding": "Cash totals rounded to nearest 5 cents (1 and 2 cent coins not used; euro-area practice, Act on rounding) - from general knowledge, unverified in this session.",
+        "language": "unverified (Finnish/Swedish normal).",
+        "idFormats": {
+          "orgNumber": "Y-tunnus ^[0-9]{7}-[0-9]$",
+          "vatId": "^FI[0-9]{8}$"
+        },
+        "extra": ""
+      },
+      "settingsNeeded": [
+        {"key": "legalName", "label": "Business name", "type": "text", "required": true, "validation": "non-empty", "help": "On receipt."},
+        {"key": "businessId", "label": "Business ID (Y-tunnus)", "type": "text", "required": true, "validation": "^[0-9]{7}-[0-9]$ (+ mod 11 check)", "help": "On receipt."},
+        {"key": "vatNumber", "label": "VAT number", "type": "text", "required": false, "validation": "^FI[0-9]{8}$", "help": "Derived from Y-tunnus."},
+        {"key": "contactDetails", "label": "Contact details (address, phone/email)", "type": "text", "required": true, "validation": "non-empty", "help": "Contact details are required on the receipt."},
+        {"key": "turnoverAbove10k", "label": "Annual turnover above EUR 10,000", "type": "boolean", "required": true, "validation": "", "help": "Determines the duty to offer receipts."},
+        {"key": "vatRates", "label": "VAT rates in use", "type": "select", "required": true, "validation": "multi: 25.5,14,13.5,10,0", "help": "Check current rate for category."},
+        {"key": "receiptNumberSeries", "label": "Receipt number series prefix", "type": "text", "required": false, "validation": "", "help": "Sequential id required."},
+        {"key": "receiptDelivery", "label": "Receipt delivery", "type": "select", "required": true, "validation": "paper|electronic|both", "help": "Electronic allowed."}
+      ],
+      "confidence": "medium",
+      "adviserMustVerify": "Absence of a certified-register requirement in 2026-27; current VAT rate for food vs restaurants; official statute citation for receipt content (Arvonlisaverolaki/Verotusmenettelylaki sections); cash rounding; tips; retention start date.",
+      "sources": [
+        "https://vero.fi/yritykset-ja-yhteisot/yhteistyo-ja-palvelut/verotarkastus-ja-harmaa-talous/kuitinantovelvollisuus-harmaan-talouden-torjunnassa/pelaa-reilusti-muista-kuitti/",
+        "https://vero.fi/muistakuitti",
+        "https://www.minilex.fi/a/kirjanpitolaki-ja-tositteiden-säilytys",
+        "https://stm.fi/en/web/vm/value-added-tax",
+        "https://valtiokonttori.fi/en/uutinen/the-digitalisation-of-receipts-to-boost-the-move-to-real-time-economy"
+      ],
+      "lastChecked": "2026-10-17"
+    },
+    "NO": {
+      "name": "Norway",
+      "currency": "NOK",
+      "receiptObligation": "Verified (Skatteetaten): bookkeeping-obligated businesses must record and document cash sales (incl. card payments settled on delivery; online sales are not cash sales) in a kassasystem with product declaration (Bokforingsloven par. 10a, since 1 Jan 2019); a sale cannot be completed without a sales receipt being produced (printed or electronically sent). Exemptions: cash sales <= NOK 50,000 excl. VAT per accounting year; mobile/occasional sales <= 3x national insurance basic amount (G); alternative: kontantfaktura with customer name/address on every sale.",
+      "digitalReceipt": "Verified (Skatteetaten): system must be able to print on paper, but receipt may instead be sent electronically (email, Digipost, to phone); electronic receipts must be headed 'Elektronisk salgskvittering'; if both sent and printed, one must be marked 'KOPI'; sending to an address the customer cannot receive from does not comply; customer can give email verbally (no formal consent format).",
+      "mandatoryFields": "Verified (Skatteetaten, kassasystemforskriften + bokforingsforskriften par. 5-3-2a/ch. 5-1): word 'Salgskvittering' at the top (Norwegian heading; 'Returkvittering' for returns); seller name, organisation number followed by 'MVA' if VAT-registered; date and time; POS/cash point ID; payment method; integrated payment terminal -> transaction ID; item description/quantity, price, VAT rate and amount, total (general sales-document content in bokforingsforskriften ch. 5-1; exact list unverified here). Copies marked 'KOPI', max one copy.",
+      "fiscalSystem": "Verified: Kassasystemloven + kassasystemforskriften. Cash register systems must have a product declaration (produkterklaering) submitted by the supplier via Altinn (no government approval/certificate, a supplier self-declaration), electronic journal, SAF-T Cash Register XML export, X and Z reports, return/delivery receipts. Applies to all bookkeeping-obligated businesses with cash sales above exemption. The merchant keeps the system description and electronic journal. No hardware control unit.",
+      "realTimeReporting": "None found. SAF-T export delivered on request/audit (verified that SAF-T exists; absence of real-time reporting is not explicitly confirmed).",
+      "receiptIdentifiers": "Heading 'Salgskvittering'/'Elektronisk salgskvittering'/'KOPI'; POS ID, transaction ID (integrated terminal). No QR/control-code requirement found (unverified).",
+      "retentionYears": "5 years (Bokforingsloven par. 13; general rule; cash-system documentation/electronic journal also 5 years per a secondary source; electronic journal must be kept for the full period, SAF-T alone insufficient). Verify at Lovdata.",
+      "vat": {
+        "standard": "25%",
+        "reduced": "15% food and non-alcoholic beverages (shop sales); 12% passenger transport, accommodation, cinema, culture/sports admissions; 11.11% wild marine resources (from 1 Jan 2025); 0% books/newspapers. Restaurant/serving rate: UNVERIFIED (secondary sources conflict between 25%, 15% and 12%); confirm at skatteetaten.no (the vat-rates page was not reachable).",
+        "currency": "NOK",
+        "changesToWatch": "Water/sewage 15% from 1 Jul 2025."
+      },
+      "other": {
+        "tips": "unverified",
+        "cashRounding": "Cash rounded to whole kroner (ore abolished 2012) - general knowledge, unverified in sources; card exact.",
+        "language": "Receipt heading must be Norwegian even if the rest of the text is in another language (Skatteetaten, verified).",
+        "idFormats": {
+          "orgNumber": "^[0-9]{9}$ (mod 11 check), printed as '123 456 789'",
+          "vatId": "^[0-9]{9}MVA$ (written 'NO 123456789 MVA')"
+        },
+        "extra": "Tokens/byttelapper allowed if not mistakable for a receipt."
+      },
+      "settingsNeeded": [
+        {"key": "legalName", "label": "Business name", "type": "text", "required": true, "validation": "non-empty", "help": "On receipt."},
+        {"key": "orgNumber", "label": "Organisation number", "type": "text", "required": true, "validation": "^[0-9]{9}$ + mod 11", "help": "On receipt."},
+        {"key": "vatRegistered", "label": "VAT-registered (MVA)", "type": "boolean", "required": true, "validation": "", "help": "If true print 'MVA' after org number."},
+        {"key": "posId", "label": "Cash point (POS) ID", "type": "text", "required": true, "validation": "non-empty, unique per till", "help": "Required on receipt."},
+        {"key": "productDeclarationRef", "label": "Product declaration reference (supplier)", "type": "text", "required": true, "validation": "unverified format", "help": "Cash register system must be declared in Altinn by supplier."},
+        {"key": "cashSalesExempt", "label": "Cash sales below NOK 50,000 exemption", "type": "boolean", "required": true, "validation": "", "help": "Exempt from kassasystem."},
+        {"key": "vatRates", "label": "VAT rates in use", "type": "select", "required": true, "validation": "multi: 25,15,12,11.11,0", "help": "Split per rate on receipt."},
+        {"key": "receiptDelivery", "label": "Receipt delivery", "type": "select", "required": true, "validation": "paper|electronic|both", "help": "Print capability still required; electronic receipts labelled."},
+        {"key": "cashRounding", "label": "Round cash to whole NOK", "type": "boolean", "required": false, "validation": "", "help": "Practice."}
+      ],
+      "confidence": "medium",
+      "adviserMustVerify": "Full current receipt content list in bokforingsforskriften; restaurant VAT rate; whether QR/other identifiers required; retention period for the electronic journal; any 2026-27 amendments to kassasystemforskriften (sources dated 2015-2019).",
+      "sources": [
+        "https://www.skatteetaten.no/nn/bedrift-og-organisasjon/starte-og-drive/rutiner-regnskap-og-kassasystem/kassasystem/sporsmal-og-svar-om-nye-kassasystemer/",
+        "https://www.skatteetaten.no/en/rettskilder/emne/bokforing-og-regnskap/bokforing/salgsdokumentasjon/kontantsalg/",
+        "https://www.skatteetaten.no/nn/rettskjelder/emne/bokforing-og-regnskap/kassasystemer/",
+        "https://www.revregn.no/asset/pdf/2020/05/2020-05_48.pdf"
+      ],
+      "lastChecked": "2026-10-17"
+    },
+    "IS": {
+      "name": "Iceland",
+      "currency": "ISK",
+      "receiptObligation": "Verified (skatturinn.is): VAT-registered retailers/service providers selling mainly to final consumers may use a cash register (sjodvel) instead of sales invoices; a receipt must be given with each sale; the register/display must be visible to the customer. Business customers can request an invoice (register receipt can serve if it meets invoice content, has a sequential number and electronic-journal marking). Customers under ISK 6,000 need not have name/kennitala recorded. Exemptions: unverified.",
+      "digitalReceipt": "Partly verified: electronic (paperless) sales invoices allowed if all conditions are met. Whether a cash-register receipt may be delivered electronically instead of paper, and consent conditions: unverified.",
+      "mandatoryFields": "Verified (skatturinn.is) for sales invoices: seller name, kennitala, VAT number; date; buyer name and kennitala (exceptions for consumer cash sales/small sales); type of sale and description; quantity, unit price, total; whether VAT included; VAT amount (for consumer sales stating the VAT share suffices: 19.35% of total at 24%, 9.91% at 11%); taxable and exempt sales and rates separated; sequential numbering (pre-printed, separate sequence per VAT number; electronic invoices follow other rules). Cash register outer receipt must show the breakdown by VAT rate and date. 11% goods must be clearly marked.",
+      "fiscalSystem": "Verified: no certified control unit found. Regulation 50/1993 on bookkeeping and income recording sets minimum cash register requirements: outer (customer) receipt, inner strip or electronic journal, daily sales counter by rate, grand-total counter, daily Z report (settlement at least daily). Registration with the tax authority: not found. Regulatory overhaul of bookkeeping law in consultation (Aug-Sep 2026, S-151/2026; draft) - not in force.",
+      "realTimeReporting": "None found (unverified).",
+      "receiptIdentifiers": "Sequential number (if register receipt serves as invoice), Z report counters, electronic-journal marking. No QR/control code found.",
+      "retentionYears": "Unverified in this session (general knowledge: 7 years under Log um bokhald nr. 145/1994). Register inner strips/electronic journals must be kept complete and unbroken like other accounting records.",
+      "vat": {
+        "standard": "24%",
+        "reduced": "11% (food, books, hotel/accommodation historically - verify current scope of accommodation and restaurants); 0% exports etc. 24%/11% confirmed by skatturinn.is text; categories unverified.",
+        "currency": "ISK",
+        "changesToWatch": "New comprehensive bookkeeping legislation in draft 2026; any VAT scope changes unverified."
+      },
+      "other": {
+        "tips": "unverified",
+        "cashRounding": "ISK has no subunit; cash rounded to whole krona (practice, unverified).",
+        "language": "unverified (Icelandic normal).",
+        "idFormats": {
+          "orgNumber": "Kennitala ^[0-9]{6}-?[0-9]{4}$ (10 digits)",
+          "vatId": "VSK-numer ^[0-9]{5,6}$ (Iceland VAT numbers are 5-6 digits, 'IS' prefix in EU contexts)"
+        },
+        "extra": "Gift cards: receipt must state recipient and that it is a gift card; unknown rate use 24% (skatturinn.is)."
+      },
+      "settingsNeeded": [
+        {"key": "legalName", "label": "Company name", "type": "text", "required": true, "validation": "non-empty", "help": "On invoice/receipt."},
+        {"key": "kennitala", "label": "Kennitala", "type": "text", "required": true, "validation": "^[0-9]{6}-?[0-9]{4}$", "help": "Business ID."},
+        {"key": "vskNumber", "label": "VAT number (VSK-numer)", "type": "text", "required": true, "validation": "^[0-9]{5,6}$", "help": "Required for VAT-registered sellers."},
+        {"key": "vatRates", "label": "VAT rates in use", "type": "select", "required": true, "validation": "multi: 24,11,0", "help": "Separate sales by rate."},
+        {"key": "registerMode", "label": "Sales documentation method", "type": "select", "required": true, "validation": "cash_register|sales_invoices", "help": "Register for consumer sales; invoices otherwise."},
+        {"key": "receiptNumberSeries", "label": "Receipt/invoice number series", "type": "text", "required": true, "validation": "sequential, separate per VAT number", "help": "Needed if register receipt serves as invoice."},
+        {"key": "receiptDelivery", "label": "Receipt delivery", "type": "select", "required": true, "validation": "paper|electronic|both", "help": "Electronic acceptance for register receipts unverified."}
+      ],
+      "confidence": "low",
+      "adviserMustVerify": "Whether electronic receipts are accepted for register sales; retention years; current scope of 24%/11%; current text of regulation 50/1993 and any electronic cash register/journal requirements; exemptions; tips; EEA-incorporated EU acts.",
+      "sources": [
+        "https://www.skatturinn.is/atvinnurekstur/bokhald-og-tekjuskraning/tekjuskraning/",
+        "https://www.skatturinn.is/atvinnurekstur/virdisaukaskattur/skraning-tekna/",
+        "https://www.skatturinn.is/atvinnurekstur/bokhald-og-tekjuskraning/bokhald/",
+        "https://island.is/samradsgatt/mal/4298"
+      ],
+      "lastChecked": "2026-10-17"
+    },
+    "EU": {
+      "name": "European Union baseline",
+      "vatDirectiveInvoices": "Directive 2006/112/EC (consolidated). Art. 220: invoice mandatory for supplies to other taxable persons/legal persons, distance sales/intra-EU supplies etc.; B2C domestic retail supplies are not required to get an invoice at EU level. Art. 226: list of mandatory fields on full invoices (date, sequential number, supplier and customer VAT ID/name/address, quantity and nature of goods/services, date of supply, taxable amount per rate, rate, VAT amount, exemption reference etc.). Art. 226b: simplified invoice content - date of issue, supplier identity, type of goods/services, VAT amount or data to calculate it, reference to original in case of credit note (reduced content list; confirm exact wording at EUR-Lex). Art. 238: Member States MAY allow simplified invoices where the amount does not exceed EUR 100 (or equivalent), or for credit notes, or where commercial/administrative practice makes full invoice difficult; Art. 238(1) cap from memory, verify. Art. 232-233: e-invoices subject to recipient acceptance and authenticity/integrity guarantees (modified by ViDA).",
+      "receiptsHarmonised": "Consumer POS receipts are NOT EU-harmonised: whether and what receipt must be issued is national (confirmed pattern across SE/DK/FI/NO/IS above). EU level only defines invoices/simplified invoices (VAT Directive). No EU-wide fiscal register or e-receipt standard exists.",
+      "vida": "Directive (EU) 2025/516 (ViDA) adopted 11 Mar 2025, OJ 25 Mar 2025, in force 14 Apr 2025 (secondary source lookuptax). Key dates: from 14 Apr 2025 Member States may mandate domestic e-invoicing without a derogation; from 1 Jul 2030 mandatory structured e-invoicing (EN 16931) and digital reporting for intra-EU B2B supplies; 2035 further alignment for Member States with existing national DRR systems. B2C is outside the mandatory EU regime (Member States may optionally extend digital reporting to domestic B2C) - not directly affecting retail receipts. Norway/Iceland (EEA, not EU VAT) are not bound by ViDA; Nordic EU states (SE, DK, FI) are.",
+      "euLevelEReceiptDiscussions": "No Commission legislative proposal for mandatory or optional e-receipts found in this session; only national measures (France no automatic paper receipts since 2023, Belgium optional paper, Austria digital receipts from Oct 2026, Germany draft law digital receipts default from 2028 - news/blog sources, not verified against official texts; Finland Real-Time Economy / eKuitti). EU-level work is limited to e-invoicing standards (EN 16931, Peppol). Treat 'EU e-receipt initiative' as unverified.",
+      "gdpr": "Regulation (EU) 2016/679, applicable also in Norway and Iceland via EEA. Points: data minimisation and purpose limitation (Art. 5(1)(b),(c)) - do not require name/email for basic receipt unless legally needed; storage limitation (Art. 5(1)(e)); retention of accounting records is a legal obligation (Art. 6(1)(c)) and justifies refusing erasure of the fiscal part (Art. 17(3)(b)) while personal identifiers (email, wallet link) can be erased/pseudonymised once not needed; transparency (Art. 13); marketing via receipt email/app needs separate consent under ePrivacy rules (Directive 2002/58/EC Art. 13) - receipts must not be bundled with marketing consent; wallet apps that link purchase history are profiling risk (DPIA likely). Confirm with DPO.",
+      "eaa": "European Accessibility Act, Directive (EU) 2019/882: applies from 28 Jun 2025 to e-commerce services, consumer banking, e-books, consumer-facing terminals etc.; micro-enterprises (<10 staff and <=EUR 2m turnover) providing services are exempt (Art. 4(5)). A buyer-facing receipts/wallet app is likely in scope when part of an e-commerce service or offered by a non-micro provider; self-service payment terminals are in scope. National transposition: SE, DK, FI, NO, IS laws not individually verified. Seek legal assessment of applicability to the platform and to merchants' receipt screens. Practical: WCAG 2.1 AA (EN 301 549) for the wallet app and email/web receipts.",
+      "settingsNeeded": [
+        {"key": "countryOfEstablishment", "label": "Country of establishment", "type": "select", "required": true, "validation": "SE|DK|FI|NO|IS", "help": "Drives all country rules."},
+        {"key": "gdprRetentionDays", "label": "Customer-identifying data retention (wallet link/email)", "type": "text", "required": false, "validation": "integer days", "help": "Separate from bookkeeping retention."},
+        {"key": "marketingConsentSeparate", "label": "Marketing consent collected separately from receipt", "type": "boolean", "required": true, "validation": "", "help": "ePrivacy/GDPR."}
+      ],
+      "confidence": "medium",
+      "adviserMustVerify": "Exact wording of Art. 226b and Art. 238 thresholds on EUR-Lex; ViDA dates; EAA applicability to the platform and national transposition per country; any new Commission e-receipt proposal.",
+      "sources": [
+        "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02006L0112-20240101",
+        "https://eur-lex.europa.eu/eli/dir/2025/516/oj",
+        "https://eur-lex.europa.eu/eli/dir/2019/882/oj",
+        "https://eur-lex.europa.eu/eli/reg/2016/679/oj",
+        "https://lookuptax.com/docs/explainers/vida",
+        "https://www.fiskaly.com/blog/electronic-receipts-europe-regulations-timelines-compliance"
+      ],
+      "lastChecked": "2026-10-17"
+    }
+  }
+}

@@ -1,6 +1,6 @@
 /** Response shapes of buyer-api as the wallet consumes them. Parsed at the boundary, so no casts downstream. */
 import { z } from 'zod';
-import { crf, parsedLine, receiptPreview, UPLOAD_STATUSES, type CreateUploadBody } from '@lr/schema';
+import { crf, parsedLine, receiptPreview, receiptTemplate, UPLOAD_STATUSES, type CreateUploadBody } from '@lr/schema';
 
 export const receiptVersion = z.object({
   version: z.number().int(),
@@ -10,12 +10,12 @@ export const receiptVersion = z.object({
 });
 export type ReceiptVersion = z.infer<typeof receiptVersion>;
 
-export const receiptDetail = z.object({ receipt: crf, final: z.boolean(), versions: z.array(receiptVersion) });
+export const receiptDetail = z.object({ receipt: crf, final: z.boolean(), template: receiptTemplate.nullable().default(null), versions: z.array(receiptVersion) });
 export type ReceiptDetail = z.infer<typeof receiptDetail>;
 
 export const resolveView = z.discriminatedUnion('status', [
   z.object({ status: z.literal('pending') }),
-  z.object({ status: z.literal('ok'), preview: receiptPreview, receipt: crf, final: z.boolean(), versions: z.array(receiptVersion) }),
+  z.object({ status: z.literal('ok'), preview: receiptPreview, receipt: crf, final: z.boolean(), template: receiptTemplate.nullable().default(null), versions: z.array(receiptVersion) }),
 ]);
 export type ResolveView = z.infer<typeof resolveView>;
 

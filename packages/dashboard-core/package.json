@@ -12,6 +12,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@lr/compliance": "workspace:*",
     "@lr/config": "workspace:*",
     "@lr/crypto": "workspace:*",
     "@lr/db": "workspace:*",

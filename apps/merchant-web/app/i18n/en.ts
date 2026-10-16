@@ -1,6 +1,12 @@
+import { designEn } from './design.en';
+import { setupEn } from './setup.en';
+
 /** English dictionary: the source of truth for the key set. `nl.ts` is typed against it. */
 export const en = {
+  ...setupEn,
+  ...designEn,
   // locale switch
+  'nav.template': 'Receipt design',
   'locale.label': 'Language',
   'locale.en': 'English',
   'locale.nl': 'Nederlands',

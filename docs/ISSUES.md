@@ -150,3 +150,10 @@ Big issues found in the code review (2026-10-16) and still open. Tick an item wh
 - bill splitting
 - data products
 - ERP connectors
+
+## Multi-country (added with the legal setup and receipt designer)
+
+- **P1: the receipt format is Netherlands-only.** `crf` in `packages/schema` hard-codes EUR, VAT rates 21/9/0, KvK (8 digits) and BTW-id (`NL..B..`) formats; `receipt-nl` and the terminal SDK validate the same way; `receipt_lines.vat_rate` is a `smallint`. An organisation whose country is not NL can complete the business setup but the simulator/terminal cannot sign receipts for it. To do: free-form company id and VAT id per country, decimal VAT rates (5.5, 8.1, 25.5), other currencies, country fiscal fields in `crf.fiscal`, and per-country validation from `@lr/compliance`.
+- **P1: the legal research is unverified.** `packages/compliance` data was compiled from public and mostly secondary sources (first pass thin for LU, EE, CY, GR, SI, CZ, RO, LV, LT; second pass improved MT, LV, LT, SI, GR). No country was reviewed by a tax adviser. Retention years and standard VAT rates in the build script are indicative.
+- **P2: fiscal devices are not integrated.** The setup collects what a country asks for (TSE serial, RT serial, ATCUD, etc.) but nothing prints, signs or reports it (DE TSE, IT RT, ES Verifactu, PT ATCUD/QR, HR/SI/SK/HU/PL real-time reporting, FR NF525).
+- **P2: designer.** Blocks can be reordered only in the Layers list (not by dragging on the canvas). Templates are per organisation, not per location or per language.

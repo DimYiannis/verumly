@@ -37,6 +37,7 @@ export function resolveRoutes(deps: AppDeps) {
         preview: toPreview(res.receipt, claimed),
         receipt: res.receipt.crf,
         final: isFinal(res.receipt),
+        template: res.receipt.template,
         versions: await loadVersions(deps.db, res.receipt.id),
       };
     });
