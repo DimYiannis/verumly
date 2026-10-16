@@ -62,11 +62,9 @@ onBeforeUnmount(() => sim.dispose());
               <div class="flex justify-between text-xl font-medium"><span>{{ t('common.total') }}</span><span class="tabular-nums" data-testid="sim-total">{{ euro(sim.total.value + sim.rounding.value) }}</span></div>
             </div>
             <div class="grid grid-cols-2 gap-3">
-              <Button variant="outline" :disabled="sim.busy.value || !sim.cart.value.length || !sim.editable.value" data-testid="sim-present" @click="sim.present()">{{ t('sim.present') }}</Button>
+              <Button class="col-span-2" :disabled="sim.busy.value || !sim.cart.value.length || !sim.editable.value" data-testid="sim-issue" @click="sim.issue()">{{ t('sim.issue') }}</Button>
               <Button variant="destructive" :disabled="sim.busy.value || !sim.current.value || sim.state.value === 'void'" data-testid="sim-void" @click="sim.voidSale()">{{ t('sim.void') }}</Button>
-              <Button :disabled="sim.busy.value || !sim.cart.value.length || !sim.editable.value" data-testid="sim-pay-card" @click="sim.pay('card')">{{ t('sim.payCard') }}</Button>
-              <Button variant="outline" :disabled="sim.busy.value || !sim.cart.value.length || !sim.editable.value" data-testid="sim-pay-cash" @click="sim.pay('cash')">{{ t('sim.payCash') }}</Button>
-              <Button variant="ghost" class="col-span-2" data-testid="sim-new-sale" @click="sim.newSale()">{{ t('sim.newSale') }}</Button>
+              <Button variant="ghost" data-testid="sim-new-sale" @click="sim.newSale()">{{ t('sim.newSale') }}</Button>
             </div>
             <AppErrorNote v-if="sim.error.value" data-testid="sim-error">{{ sim.error.value }}</AppErrorNote>
           </CardContent>

@@ -48,7 +48,7 @@ function page(delta: number) {
         <div class="space-y-2">
           <Label for="archive-state">{{ t('common.state') }}</Label>
           <AppNativeSelect id="archive-state" v-model="filters.state" data-testid="archive-state">
-            <option value="">{{ t('common.any') }}</option><option v-for="s in ['presented', 'paid', 'void', 'open']" :key="s" :value="s">{{ tx('status', s) }}</option>
+            <option value="">{{ t('common.any') }}</option><option v-for="s in ['void']" :key="s" :value="s">{{ tx('status', s) }}</option>
           </AppNativeSelect>
         </div>
         <div class="space-y-2"><Label for="archive-from">{{ t('common.from') }}</Label><Input id="archive-from" v-model="filters.from" type="date" data-testid="archive-from" /></div>

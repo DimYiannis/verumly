@@ -18,33 +18,33 @@ async function buyerApiToken(email: string): Promise<string> {
   return body.token;
 }
 
-test('buyer journey on a phone: pre-bill, save, pay, exactly one encrypted push', async ({ browser, page }) => {
+test('buyer journey on a phone: issued receipt, save, void, exactly one encrypted push', async ({ browser, page }) => {
   const world = await createWorld();
   const buyerEmail = uniqueEmail('buyer');
 
-  // --- till (desktop): dashboard login, demo terminal, a sale shown as pre-bill ---
+  // --- till (desktop): dashboard login, demo terminal, a sale issued as paid ---
   await openSimulator(page, world);
   await page.getByTestId('sim-add-koffie').click();
   await page.getByTestId('sim-add-koffie').click();
   await page.getByTestId('sim-add-bier').click();
   await expect(page.getByTestId('sim-total')).toHaveText(/10[.,]69/);
-  await page.getByTestId('sim-present').click();
-  await expect(page.getByTestId('sim-state')).toHaveText('presented');
+  await page.getByTestId('sim-issue').click();
+  await expect(page.getByTestId('sim-state')).toHaveText('issued');
   await expect(page.getByTestId('sim-qr').locator('svg')).toBeVisible();
   const qr = await qrUrlOf(page);
-  await expectServerHas(page, qr.receiptId, 1, 'presented');
+  await expectServerHas(page, qr.receiptId, 1, 'paid');
   await shot(page, 'qr-on-simulator');
 
   // --- phone: iPhone 13 descriptor opens the URL taken from the QR ---
   const phone = await newPhone(browser);
   const m = await phone.newPage();
   await m.goto(qr.url);
-  await expect(m.getByTestId('presented-banner')).toContainText('Not a final receipt');
+  await expect(m.getByTestId('presented-banner'), 'no pre-bill: an issued receipt is paid').toHaveCount(0);
   await expect(m.getByTestId('receipt-line')).toHaveCount(2);
   await expect(m.getByTestId('confirm-sheet'), 'logged-out visitors get no sheet').toHaveCount(0);
   expect(m.url(), 'the secret is stripped from the address bar').not.toContain('#');
   expect(await m.evaluate(() => location.hash)).toBe('');
-  await shot(m, 'prebill-banner-phone');
+  await shot(m, 'receipt-on-phone');
 
   // log in with the code Mailpit received, come back to the receipt, confirm "Save this receipt?"
   await m.getByTestId('save-to-wallet').click();
@@ -61,10 +61,9 @@ test('buyer journey on a phone: pre-bill, save, pay, exactly one encrypted push'
   await m.goto(`${URLS.wallet}/`);
   const item = m.locator(`[data-testid="receipt-item"][data-receipt-id="${qr.receiptId}"]`);
   await expect(item).toBeVisible();
-  await expect(item).toHaveAttribute('data-state', 'presented');
+  await expect(item).toHaveAttribute('data-state', 'paid');
   await shot(m, 'wallet-with-receipt');
   await item.click();
-  await expect(m.getByTestId('presented-banner')).toBeVisible();
   await expect(m.getByTestId('receipt-view')).toHaveAttribute('data-version', '1');
 
   // --- a push subscription with real keys, registered the way the wallet does it ---
@@ -78,19 +77,18 @@ test('buyer journey on a phone: pre-bill, save, pay, exactly one encrypted push'
     });
     expect(subscribed.status).toBe(201);
 
-    // --- the till pays: version 2, final in NL ---
-    await page.getByTestId('sim-pay-card').click();
-    await expect(page.getByTestId('sim-state')).toHaveText('paid');
+    // --- the till voids the receipt: version 2 ---
+    await page.getByTestId('sim-void').click();
+    await expect(page.getByTestId('sim-state')).toHaveText('cancelled');
     await expect(page.getByTestId('sim-version')).toHaveText('2');
-    await expectServerHas(page, qr.receiptId, 2, 'paid');
+    await expectServerHas(page, qr.receiptId, 2, 'void');
 
     await m.reload();
-    await expect(m.getByTestId('final-badge')).toBeVisible();
-    await expect(m.getByTestId('receipt-view')).toHaveAttribute('data-state', 'paid');
+    await expect(m.getByTestId('void-banner')).toBeVisible();
+    await expect(m.getByTestId('receipt-view')).toHaveAttribute('data-state', 'void');
     await expect(m.getByTestId('receipt-view')).toHaveAttribute('data-version', '2');
-    await expect(m.getByTestId('presented-banner')).toHaveCount(0);
     await expect(m.getByTestId('receipt-total')).toContainText('10.69');
-    await shot(m, 'final-version-after-paying');
+    await shot(m, 'voided-receipt');
 
     // --- push: exactly one, encrypted, for version 2 ---
     await expect.poll(() => sub.received.length, { timeout: 45_000, message: 'worker delivers the push' }).toBeGreaterThanOrEqual(1);
@@ -105,7 +103,7 @@ test('buyer journey on a phone: pre-bill, save, pay, exactly one encrypted push'
       expect(push.body.includes(Buffer.from(plain, 'utf8')), `ciphertext must not contain "${plain}" as UTF-8`).toBe(false);
     }
     const payload = sub.decrypt(push);
-    expect(payload).toMatchObject({ receiptId: qr.receiptId, version: 2, final: true });
+    expect(payload).toMatchObject({ receiptId: qr.receiptId, version: 2 });
     expect(Object.keys(payload).sort()).toEqual(['body', 'final', 'receiptId', 'title', 'version']);
   } finally {
     await sub.close();

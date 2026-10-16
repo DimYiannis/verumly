@@ -20,8 +20,8 @@ test('buyer offline: link opens as Arriving, claim completes online, saved recei
     store: new MemoryStore(),
   });
   const lines = [{ sku: 'koffie', description: 'Koffie', unitPrice: 340, vatRate: 9 as const, qty: 1 }];
-  const saved = await sdk.createReceipt({ state: 'presented', lines });
-  const arriving = await sdk.createReceipt({ state: 'presented', lines: [{ sku: 'bier', description: 'Bier', unitPrice: 389, vatRate: 21 as const, qty: 2 }] });
+  const saved = await sdk.createReceipt({ state: 'paid', lines });
+  const arriving = await sdk.createReceipt({ state: 'paid', lines: [{ sku: 'bier', description: 'Bier', unitPrice: 389, vatRate: 21 as const, qty: 2 }] });
   expect(await sdk.flush()).toMatchObject({ sent: 2, rejected: 0, retry: false });
 
   const phone = await newPhone(browser);
