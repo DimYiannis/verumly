@@ -22,7 +22,7 @@ const newestFirst = computed(() => [...(detail.value?.versions ?? [])].reverse()
     <NuxtLink to="/dashboard/archive" class="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"><ArrowLeftIcon class="size-4" />{{ t('archive.back') }}</NuxtLink>
     <h1 class="mt-2 text-2xl font-medium tracking-tight">{{ t('archive.receipt') }} <span class="font-mono text-base text-muted-foreground" data-testid="archive-detail-id">{{ id }}</span></h1>
     <p v-if="detail" class="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-      <span>{{ t('archive.currentState') }}</span><AppStatusBadge :status="detail.state" data-testid="archive-detail-state" /><span class="tabular-nums">v{{ detail.currentVersion }} · {{ euro(detail.totalMinor) }}</span>
+      <template v-if="detail.state === 'void'"><span>{{ t('archive.currentState') }}</span><AppStatusBadge :status="detail.state" data-testid="archive-detail-state" /></template><span class="tabular-nums">v{{ detail.currentVersion }} · {{ euro(detail.totalMinor) }}</span>
     </p>
   </div>
   <AppErrorNote v-if="error" data-testid="error">{{ error }}</AppErrorNote>

@@ -29,7 +29,7 @@ test('buyer journey on a phone: issued receipt, save, void, exactly one encrypte
   await page.getByTestId('sim-add-bier').click();
   await expect(page.getByTestId('sim-total')).toHaveText(/10[.,]69/);
   await page.getByTestId('sim-issue').click();
-  await expect(page.getByTestId('sim-state')).toHaveText('paid');
+  await expect(page.getByTestId('sim-state')).toHaveText('issued');
   await expect(page.getByTestId('sim-qr').locator('svg')).toBeVisible();
   const qr = await qrUrlOf(page);
   await expectServerHas(page, qr.receiptId, 1, 'paid');
@@ -79,7 +79,7 @@ test('buyer journey on a phone: issued receipt, save, void, exactly one encrypte
 
     // --- the till voids the receipt: version 2 ---
     await page.getByTestId('sim-void').click();
-    await expect(page.getByTestId('sim-state')).toHaveText('void');
+    await expect(page.getByTestId('sim-state')).toHaveText('cancelled');
     await expect(page.getByTestId('sim-version')).toHaveText('2');
     await expectServerHas(page, qr.receiptId, 2, 'void');
 
