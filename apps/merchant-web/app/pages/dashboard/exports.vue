@@ -3,7 +3,7 @@ definePageMeta({ layout: 'dashboard', middleware: 'dashboard-auth' });
 
 interface Exp { id: string; kind: string; periodFrom: string; periodTo: string; status: string; createdAt: string; link: string | null; linkExpiresAt: string | null }
 const KINDS = [
-  { value: 'btw_csv', label: 'Accountant: BTW per day (rubriek 1a / 1b / 1e)' },
+  { value: 'btw_csv', label: 'Accountant: VAT per day (VAT return boxes 1a / 1b / 1e)' },
   { value: 'sales_csv', label: 'Sales per receipt' },
 ];
 const today = new Date().toISOString().slice(0, 10);

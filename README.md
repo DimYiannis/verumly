@@ -1,6 +1,6 @@
 # Less Receipts — digital receipts platform (Netherlands MVP)
 
-Merchants send every kassabon to the platform through an API. Receipts are stored under the **merchant's identity only**; a receipt never carries a buyer identifier. Buyers scan the QR code at the till with their phone camera, which opens the receipt in a free wallet PWA ("Bon opslaan?"). The only person ↔ receipt link is `buyer.claims`, and Postgres roles stop every merchant-side service from reading it.
+Merchants send every kassabon to the platform through an API. Receipts are stored under the **merchant's identity only**; a receipt never carries a buyer identifier. Buyers scan the QR code at the till with their phone camera, which opens the receipt in a free wallet PWA ("Save this receipt?"). The only person ↔ receipt link is `buyer.claims`, and Postgres roles stop every merchant-side service from reading it.
 
 Spec: `coding-agent-prompt-v2.md` (authoritative). Choices and departures: `docs/DECISIONS.md`. Evidence and open issues: `docs/FINDINGS.md`.
 
@@ -15,7 +15,7 @@ apps/
   wallet/         Nuxt PWA on RECEIPT_HOST: /r viewer + buyer wallet        :3001
 packages/
   schema/ crypto/ db/ terminal-sdk/ config/ dashboard-core/
-  receipt-nl/     Dutch rules: BTW math, rounding, ID formats, text parser
+  receipt-nl/     Dutch rules: VAT math, rounding, ID formats, text parser
 fixtures/receipts-nl/   corpus (real files, read-only to the build) + mock/
 scripts/                journey, extraction eval, seed, leads report
 docs/                   DECISIONS, FINDINGS, ARCHITECTURE, API
@@ -53,8 +53,8 @@ When no real corpus exists in `fixtures/receipts-nl/`, the corpus tests and eval
 
 1. Log into the dashboard (http://localhost:3000/dashboard), set up a demo terminal, open `/simulator` on the laptop.
 2. In the simulator, add items and press **Present**: a large QR appears.
-3. Scan the QR with the phone's own camera. The wallet opens the receipt (pre-bill banner "Geen definitieve bon / Not a final receipt").
-4. Log in with the emailed code and press **Bon opslaan?** → Save. The receipt is in the wallet.
+3. Scan the QR with the phone's own camera. The wallet opens the receipt (pre-bill banner "Not a final receipt — this is the bill, the final receipt follows after payment").
+4. Log in with the emailed code and press **Save this receipt?** → Save. The receipt is in the wallet.
 5. Edit the sale in the simulator (**Add item**), then **Pay card** / **Pay cash** (cash applies 5-cent rounding). The wallet shows the new version, and in NL `paid` is final. Push is sent on each new version if you opted in.
 
 For a phone on the same Wi-Fi, set `RECEIPT_HOST` to the laptop's LAN address over HTTPS (service workers and push need a secure context), or use a tunnel.

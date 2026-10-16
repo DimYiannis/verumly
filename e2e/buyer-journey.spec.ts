@@ -27,7 +27,7 @@ test('buyer journey on a phone: pre-bill, save, pay, exactly one encrypted push'
   await page.getByTestId('sim-add-koffie').click();
   await page.getByTestId('sim-add-koffie').click();
   await page.getByTestId('sim-add-bier').click();
-  await expect(page.getByTestId('sim-total')).toHaveText(/10,69/);
+  await expect(page.getByTestId('sim-total')).toHaveText(/10[.,]69/);
   await page.getByTestId('sim-present').click();
   await expect(page.getByTestId('sim-state')).toHaveText('presented');
   await expect(page.getByTestId('sim-qr').locator('svg')).toBeVisible();
@@ -39,22 +39,22 @@ test('buyer journey on a phone: pre-bill, save, pay, exactly one encrypted push'
   const phone = await newPhone(browser);
   const m = await phone.newPage();
   await m.goto(qr.url);
-  await expect(m.getByTestId('presented-banner')).toContainText('Geen definitieve bon');
+  await expect(m.getByTestId('presented-banner')).toContainText('Not a final receipt');
   await expect(m.getByTestId('receipt-line')).toHaveCount(2);
   await expect(m.getByTestId('confirm-sheet'), 'logged-out visitors get no sheet').toHaveCount(0);
   expect(m.url(), 'the secret is stripped from the address bar').not.toContain('#');
   expect(await m.evaluate(() => location.hash)).toBe('');
   await shot(m, 'prebill-banner-phone');
 
-  // log in with the code Mailpit received, come back to the receipt, confirm "Bon opslaan?"
+  // log in with the code Mailpit received, come back to the receipt, confirm "Save this receipt?"
   await m.getByTestId('save-to-wallet').click();
   await m.waitForURL(/\/login/);
   await walletLogin(m, buyerEmail);
   await expect(m.getByTestId('confirm-sheet')).toBeVisible();
   await expect(m.getByTestId('sheet-merchant')).toContainText(world.merchantName);
-  await expect(m.getByTestId('sheet-total')).toContainText('10,69');
+  await expect(m.getByTestId('sheet-total')).toContainText('10.69');
   expect(m.url()).not.toContain('#');
-  await shot(m, 'bon-opslaan-sheet');
+  await shot(m, 'save-receipt-sheet');
   await m.getByTestId('save-button').click();
   await m.waitForURL(new RegExp(`/receipts/${qr.receiptId}`));
   expect(m.url()).not.toContain('#');
@@ -89,7 +89,7 @@ test('buyer journey on a phone: pre-bill, save, pay, exactly one encrypted push'
     await expect(m.getByTestId('receipt-view')).toHaveAttribute('data-state', 'paid');
     await expect(m.getByTestId('receipt-view')).toHaveAttribute('data-version', '2');
     await expect(m.getByTestId('presented-banner')).toHaveCount(0);
-    await expect(m.getByTestId('receipt-total')).toContainText('10,69');
+    await expect(m.getByTestId('receipt-total')).toContainText('10.69');
     await shot(m, 'final-version-after-paying');
 
     // --- push: exactly one, encrypted, for version 2 ---

@@ -47,5 +47,5 @@ export function euro(cents: number): string {
 }
 
 export function amsterdam(iso: string | Date): string {
-  return new Intl.DateTimeFormat('nl-NL', { dateStyle: 'short', timeStyle: 'medium', timeZone: 'Europe/Amsterdam' }).format(new Date(iso));
+  return new Intl.DateTimeFormat('en-GB', { dateStyle: 'short', timeStyle: 'medium', timeZone: 'Europe/Amsterdam' }).format(new Date(iso));
 }

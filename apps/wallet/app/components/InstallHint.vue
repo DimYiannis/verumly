@@ -24,9 +24,9 @@ onMounted(() => {
 
 <template>
   <section v-if="!standalone" class="card" aria-labelledby="a2hs-h" data-testid="install-hint">
-    <h2 id="a2hs-h" class="font-semibold">Zet Bonnen op je beginscherm</h2>
-    <p v-if="ios" class="text-sm text-slate-800">Tik in Safari op <strong>Deel</strong> en kies <strong>Zet op beginscherm</strong>. Zo opent de app direct en kun je meldingen ontvangen.</p>
-    <p v-else class="text-sm text-slate-800">Kies in het browsermenu <strong>App installeren</strong> of <strong>Toevoegen aan startscherm</strong>.</p>
-    <button v-if="deferred" type="button" class="btn btn-primary mt-3" data-testid="install-button" @click="deferred?.prompt()">Installeer app</button>
+    <h2 id="a2hs-h" class="font-semibold">Add Receipts to your home screen</h2>
+    <p v-if="ios" class="text-sm text-slate-800">In Safari, tap <strong>Share</strong> and choose <strong>Add to Home Screen</strong>. The app then opens directly and you can receive notifications.</p>
+    <p v-else class="text-sm text-slate-800">In the browser menu, choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</p>
+    <button v-if="deferred" type="button" class="btn btn-primary mt-3" data-testid="install-button" @click="deferred?.prompt()">Install app</button>
   </section>
 </template>

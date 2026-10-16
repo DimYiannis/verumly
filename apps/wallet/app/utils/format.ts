@@ -1,23 +1,23 @@
-/** Dutch formatting and list helpers. Receipt times are shown in Europe/Amsterdam (v2 §2.6). */
+/** English formatting and list helpers. Receipt times are shown in Europe/Amsterdam (v2 §2.6). */
 import type { ReceiptFilters, ReceiptListItem } from './api-schemas.ts';
 
 const TZ = 'Europe/Amsterdam';
-const euro = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' });
+const euro = new Intl.NumberFormat('en-NL', { style: 'currency', currency: 'EUR' });
 
 export function formatEuro(cents: number): string {
   return euro.format(cents / 100);
 }
 
 export function formatQty(qty: string): string {
-  return qty.replace('.', ',');
+  return qty;
 }
 
 export function formatTime(iso: string): string {
-  return new Intl.DateTimeFormat('nl-NL', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+  return new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 }
 
 export function formatDateTime(iso: string): string {
-  return new Intl.DateTimeFormat('nl-NL', { timeZone: TZ, day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+  return new Intl.DateTimeFormat('en-GB', { timeZone: TZ, day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 }
 
 /** `YYYY-MM-DD` of the Amsterdam calendar day the instant falls on */
@@ -28,9 +28,11 @@ export function dayKey(iso: string): string {
 export function formatDayHeading(key: string, today: Date = new Date()): string {
   const todayKey = dayKey(today.toISOString());
   const yesterdayKey = dayKey(new Date(today.getTime() - 86_400_000).toISOString());
-  if (key === todayKey) return 'Vandaag';
-  if (key === yesterdayKey) return 'Gisteren';
-  return new Intl.DateTimeFormat('nl-NL', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(`${key}T12:00:00Z`));
+  if (key === todayKey) return 'Today';
+  if (key === yesterdayKey) return 'Yesterday';
+  const date = new Date(`${key}T12:00:00Z`);
+  const part = (options: Intl.DateTimeFormatOptions): string => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', ...options }).format(date);
+  return `${part({ weekday: 'long' })} ${part({ day: 'numeric' })} ${part({ month: 'long' })}`;
 }
 
 export interface DayGroup<T> {
@@ -67,10 +69,10 @@ export function filterCachedItems(items: ReceiptListItem[], f: ReceiptFilters): 
 
 export const STATE_LABEL: Record<string, string> = {
   open: 'Open',
-  presented: 'Rekening (nog niet betaald)',
-  paid: 'Betaald',
-  fiscalised: 'Definitief',
-  void: 'Vervallen',
+  presented: 'Bill (not yet paid)',
+  paid: 'Paid',
+  fiscalised: 'Final',
+  void: 'Void',
 };
 
 export function centsFromInput(value: string): number | null {
@@ -83,7 +85,7 @@ export function centsFromInput(value: string): number | null {
 export function inputFromCents(cents: number | null): string {
   if (cents === null) return '';
   const abs = Math.abs(cents);
-  return `${cents < 0 ? '-' : ''}${Math.floor(abs / 100)},${String(abs % 100).padStart(2, '0')}`;
+  return `${cents < 0 ? '-' : ''}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;
 }
 
 function amsterdamOffsetMs(utcMs: number): number {

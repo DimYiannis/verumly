@@ -1,6 +1,6 @@
 /**
  * `pnpm eval:extraction` — recorded Qianfan outputs → deterministic parser → compared with the truth files.
- * Gate (exit 1): no receipt may reach `done` with a gross or per-rate BTW that differs from the truth.
+ * Gate (exit 1): no receipt may reach `done` with a gross or per-rate VAT that differs from the truth.
  * Accuracy per field is reported, not gated.
  */
 import { loadCorpus } from './lib/corpus.ts';

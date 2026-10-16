@@ -27,12 +27,12 @@ export function pushPayload(crf: Crf, job: NotifyVersionJob): PushPayload {
   const final = isFinalState(crf.state, crf.fiscal.country);
   const merchant = crf.merchant.name;
   if (crf.state === 'void') {
-    return { title: 'Bon vervallen', body: `${merchant}: deze bon is vervallen.`, receiptId: job.receiptId, version: job.version, final };
+    return { title: 'Receipt voided', body: `${merchant}: this receipt has been voided.`, receiptId: job.receiptId, version: job.version, final };
   }
   if (final) {
-    return { title: 'Bon definitief', body: `${merchant}: je bon is betaald en definitief.`, receiptId: job.receiptId, version: job.version, final };
+    return { title: 'Receipt final', body: `${merchant}: your receipt is paid and final.`, receiptId: job.receiptId, version: job.version, final };
   }
-  return { title: 'Bon bijgewerkt', body: `${merchant}: je bon is bijgewerkt (nog niet definitief).`, receiptId: job.receiptId, version: job.version, final };
+  return { title: 'Receipt updated', body: `${merchant}: your receipt was updated (not final yet).`, receiptId: job.receiptId, version: job.version, final };
 }
 
 /** Push services coalesce messages with the same Topic, so a retried job cannot show two notifications. */

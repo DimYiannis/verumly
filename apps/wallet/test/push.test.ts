@@ -50,9 +50,9 @@ describe('urlBase64ToUint8Array', () => {
 describe('push payload', () => {
   const id = '0199f3a2-7c1e-7a55-9c3e-5d8f2b6a1c40';
   it('parses the worker payload', () => {
-    expect(parsePushPayload(JSON.stringify({ title: 'Bon bijgewerkt', body: 'Definitief', receiptId: id, version: 3, final: true }))).toEqual({
-      title: 'Bon bijgewerkt',
-      body: 'Definitief',
+    expect(parsePushPayload(JSON.stringify({ title: 'Receipt updated', body: 'Final', receiptId: id, version: 3, final: true }))).toEqual({
+      title: 'Receipt updated',
+      body: 'Final',
       receiptId: id,
       version: 3,
       final: true,
@@ -61,7 +61,7 @@ describe('push payload', () => {
   it('falls back to a generic notification on junk (a push must always show something)', () => {
     for (const raw of [null, '', 'not json', '42', 'null', '{"receiptId":"x"}']) {
       const p = parsePushPayload(raw);
-      expect(p.title).toBe('Bonnen');
+      expect(p.title).toBe('Receipts');
       expect(p.receiptId).toBeNull();
     }
   });

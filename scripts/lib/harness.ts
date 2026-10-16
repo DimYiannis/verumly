@@ -56,7 +56,7 @@ export async function startStack(opts: { startMerchant?: boolean; claimWindowDay
   const adminDb = drizzle(admin, { schema: tables });
   const org = await createOrg(adminDb, { legalName: 'Café Het Plein B.V.', kvkNumber: '12345678', vatNumber: 'NL123456789B01' });
   const loc = await createLocation(adminDb, org.id, 'Café Het Plein');
-  const terminal = await createTerminal(adminDb, { orgId: org.id, locationId: loc.id, label: 'Kassa 1' });
+  const terminal = await createTerminal(adminDb, { orgId: org.id, locationId: loc.id, label: 'Till 1' });
 
   const logs = new LogCapture();
   const merchantPort = await freePort();

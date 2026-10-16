@@ -95,12 +95,12 @@ export function salesCsv(rows: ExportReceiptRow[]): string {
 }
 
 /**
- * Accountant CSV: BTW per day and per rate (`scope=day`), then the period total per rate (`scope=period`).
- * `net_cents` is the turnover excluding BTW (omzet) that goes in rubriek 1a (21%), 1b (9%) or 1e (0% / out of scope);
- * `vat_cents` is the BTW due on it. Amounts in euro cents.
+ * Accountant CSV: VAT per day and per rate (`scope=day`), then the period total per rate (`scope=period`).
+ * `net_cents` is the turnover excluding VAT that goes in VAT return box 1a (21%), 1b (9%) or 1e (0% / out of scope);
+ * `vat_cents` is the VAT due on it. Amounts in euro cents.
  */
 export function btwAccountantCsv(rows: VatDayRow[], from: string, to: string): string {
-  const out = ['scope,period,rubriek,rate,gross_cents,net_cents,vat_cents,receipts'];
+  const out = ['scope,period,vat_return_box,rate,gross_cents,net_cents,vat_cents,receipts'];
   for (const r of rows) out.push(csvLine(['day', r.day, RUBRIEK[r.rate], r.rate, r.gross, r.net, r.vat, r.receipts]));
   const totals: Record<number, VatDayRow> = {};
   for (const r of rows) {

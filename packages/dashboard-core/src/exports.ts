@@ -6,7 +6,7 @@ import { QUEUES, tables, withOrg, type Db, type ExportJob } from '@lr/db';
 import { DashboardError } from './errors.ts';
 import { requireRole, type Actor } from './roles.ts';
 
-/** `sales_csv`: one row per receipt line period; `btw_csv`: accountant CSV, BTW per day and rubriek 1a/1b/1e. */
+/** `sales_csv`: one row per receipt line period; `btw_csv`: accountant CSV, VAT per day and VAT return box 1a/1b/1e. */
 export const EXPORT_KINDS = ['sales_csv', 'btw_csv'] as const;
 export type ExportKind = (typeof EXPORT_KINDS)[number];
 

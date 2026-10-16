@@ -154,8 +154,8 @@ export async function runJourney(opts: JourneyOptions = {}): Promise<JourneyResu
       return { status: `v3 paid final, gross 1069, rounding +1, ${jobs.rows[0].n} notify-version jobs`, value: null };
     });
 
-    // 6. dashboard archive + BTW export with per-rate amounts
-    await hop('6. Receipt appears in the dashboard archive and in the BTW export (per-rate amounts)', async () => {
+    // 6. dashboard archive + VAT export with per-rate amounts
+    await hop('6. Receipt appears in the dashboard archive and in the VAT export (per-rate amounts)', async () => {
       const dash = connect('dashboard', stack.testDb.env);
       try {
         const archive = await searchArchive(dash.db, stack.org.id, {});
@@ -177,7 +177,7 @@ export async function runJourney(opts: JourneyOptions = {}): Promise<JourneyResu
         const r21 = rows.find((r) => r.rate === 21);
         assert.deepEqual({ g: r9?.gross, n: r9?.net, v: r9?.vat }, { g: 680, n: 624, v: 56 });
         assert.deepEqual({ g: r21?.gross, n: r21?.net, v: r21?.vat }, { g: 389, n: 321, v: 68 });
-        return { status: `archive 1 row; BTW 9%: 680/624/56, 21%: 389/321/68`, value: null };
+        return { status: `archive 1 row; VAT 9%: 680/624/56, 21%: 389/321/68`, value: null };
       } finally {
         await dash.close();
       }

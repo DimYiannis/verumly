@@ -22,7 +22,7 @@ const claimError = ref<string | null>(null);
 let pollTimer: ReturnType<typeof setTimeout> | undefined;
 let pollAttempt = 0;
 
-useHead({ title: 'Bon' });
+useHead({ title: 'Receipt' });
 
 /** Park the secret so a reload, a login round trip or a dead network cannot lose it. */
 async function queue(autoClaim: boolean) {
@@ -113,7 +113,7 @@ async function save() {
     await wallet.cacheReceipt(id);
     await goToSaved(true);
   } catch (e) {
-    if (!(e instanceof ApiError)) claimError.value = 'Opslaan is niet gelukt. Probeer het opnieuw.';
+    if (!(e instanceof ApiError)) claimError.value = 'Saving failed. Please try again.';
     else if (e.isNetwork || e.status === 404 || e.status >= 500) {
       // keep the secret; the wallet shows it as "Arriving" and claims it when it can
       await queue(true);
@@ -123,12 +123,12 @@ async function save() {
       takenByOther.value = true;
       sheetOpen.value = false;
       await dropPending();
-    } else if (e.status === 410) claimError.value = 'De bewaartermijn van deze bon is verstreken.';
+    } else if (e.status === 410) claimError.value = 'The retention period of this receipt has passed.';
     else if (e.status === 401) {
       await queue(false);
       await wallet.endSession();
       await navigateTo({ path: '/login', query: { next: `/r/${id}` } });
-    } else claimError.value = 'Opslaan is niet gelukt. Probeer het opnieuw.';
+    } else claimError.value = 'Saving failed. Please try again.';
   } finally {
     busy.value = false;
   }
@@ -168,63 +168,63 @@ onBeforeUnmount(() => clearTimeout(pollTimer));
 
 <template>
   <div>
-    <p v-if="phase === 'loading'" role="status" data-testid="loading">Bon ophalen…</p>
+    <p v-if="phase === 'loading'" role="status" data-testid="loading">Fetching receipt…</p>
 
     <section v-else-if="phase === 'invalid'" class="card" role="alert" data-testid="invalid-link">
-      <h1 class="text-xl font-bold">Ongeldige link</h1>
-      <p>Dit is geen geldige bonlink. Scan de QR-code op de bon opnieuw.</p>
+      <h1 class="text-xl font-bold">Invalid link</h1>
+      <p>This is not a valid receipt link. Scan the QR code on the receipt again.</p>
     </section>
 
     <section v-else-if="phase === 'nolink'" class="card space-y-3" role="alert" data-testid="incomplete-link">
-      <h1 class="text-xl font-bold">Link onvolledig</h1>
-      <p>Het geheime deel van de link ontbreekt. Scan de QR-code op de bon opnieuw.</p>
-      <NuxtLink v-if="wallet.session.value" to="/" class="btn btn-secondary">Naar mijn bonnen</NuxtLink>
+      <h1 class="text-xl font-bold">Incomplete link</h1>
+      <p>The secret part of the link is missing. Scan the QR code on the receipt again.</p>
+      <NuxtLink v-if="wallet.session.value" to="/" class="btn btn-secondary">Go to my receipts</NuxtLink>
     </section>
 
     <section v-else-if="phase === 'notfound'" class="card" role="alert" data-testid="not-found">
-      <h1 class="text-xl font-bold">Bon niet gevonden</h1>
-      <p>Deze link klopt niet. Vraag het personeel om een nieuwe QR-code.</p>
+      <h1 class="text-xl font-bold">Receipt not found</h1>
+      <p>This link is not correct. Ask the staff for a new QR code.</p>
     </section>
 
     <section v-else-if="phase === 'limited'" class="card" role="alert" data-testid="rate-limited">
-      <h1 class="text-xl font-bold">Even wachten</h1>
-      <p>Er zijn te veel pogingen gedaan. Probeer het later opnieuw.</p>
+      <h1 class="text-xl font-bold">Please wait</h1>
+      <p>Too many attempts were made. Try again later.</p>
     </section>
 
     <section v-else-if="phase === 'error'" class="card space-y-3" role="alert" data-testid="load-error">
-      <h1 class="text-xl font-bold">Er ging iets mis</h1>
-      <button type="button" class="btn btn-secondary" @click="resolve">Opnieuw proberen</button>
+      <h1 class="text-xl font-bold">Something went wrong</h1>
+      <button type="button" class="btn btn-secondary" @click="resolve">Try again</button>
     </section>
 
     <section v-else-if="phase === 'arriving'" class="card space-y-3" role="status" data-testid="arriving-state">
-      <h1 class="text-xl font-bold">Bon onderweg</h1>
-      <p>Geen verbinding. We bewaren deze bon en halen hem op zodra je weer online bent.</p>
-      <p v-if="!wallet.session.value">Log daarna in om hem op te slaan.</p>
+      <h1 class="text-xl font-bold">Receipt arriving</h1>
+      <p>No connection. We are keeping this receipt and will fetch it as soon as you are back online.</p>
+      <p v-if="!wallet.session.value">Log in afterwards to save it.</p>
       <NuxtLink :to="wallet.session.value ? '/' : { path: '/login', query: { next: `/r/${id}` } }" class="btn btn-secondary">
-        {{ wallet.session.value ? 'Naar mijn bonnen' : 'Inloggen' }}
+        {{ wallet.session.value ? 'Go to my receipts' : 'Log in' }}
       </NuxtLink>
     </section>
 
     <section v-else-if="phase === 'pending'" class="card space-y-3" role="status" data-testid="pending-state">
-      <h1 class="text-xl font-bold">Bon is bijna klaar</h1>
-      <p>De kassa heeft de bon nog niet doorgestuurd. We blijven het proberen; je hoeft niets te doen.</p>
-      <NuxtLink v-if="wallet.session.value" to="/" class="btn btn-secondary">Naar mijn bonnen</NuxtLink>
+      <h1 class="text-xl font-bold">Receipt almost ready</h1>
+      <p>The till has not sent the receipt yet. We keep trying; you do not need to do anything.</p>
+      <NuxtLink v-if="wallet.session.value" to="/" class="btn btn-secondary">Go to my receipts</NuxtLink>
     </section>
 
     <template v-else-if="view">
       <p v-if="takenByOther" role="alert" data-testid="taken-notice" class="mb-4 rounded-xl border border-slate-300 bg-white p-3">
-        Deze bon is al opgeslagen in een andere portemonnee.
+        This receipt has already been saved in another wallet.
       </p>
       <p v-else-if="dismissed" role="status" data-testid="dismissed-notice" class="mb-4 rounded-xl border border-slate-300 bg-white p-3">
-        Niet opgeslagen.
-        <button type="button" class="font-semibold underline" data-testid="reopen-sheet" @click="reopenSheet">Toch opslaan</button>
+        Not saved.
+        <button type="button" class="font-semibold underline" data-testid="reopen-sheet" @click="reopenSheet">Save anyway</button>
       </p>
       <!-- the sheet is modal: keep the receipt behind it out of the tab order and the accessibility tree -->
       <div :inert="sheetOpen">
         <ReceiptView :detail="view" />
       </div>
       <div v-if="!wallet.session.value && !takenByOther" class="sticky bottom-4 mt-4">
-        <button type="button" class="btn btn-primary w-full shadow-lg" data-testid="save-to-wallet" @click="saveToWallet">Bewaar in portemonnee / Save to wallet</button>
+        <button type="button" class="btn btn-primary w-full shadow-lg" data-testid="save-to-wallet" @click="saveToWallet">Save to wallet</button>
       </div>
       <ConfirmSheet
         v-if="sheetOpen"

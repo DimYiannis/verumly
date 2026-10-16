@@ -34,7 +34,7 @@ async function save() {
     <label class="block text-sm">KvK number (8 digits)
       <input v-model="form.kvkNumber" :disabled="!canWrite" required pattern="\d{8}" data-testid="org-kvk" class="mt-1 w-full rounded border border-slate-300 px-3 py-2 disabled:bg-slate-100" />
     </label>
-    <label class="block text-sm">BTW-id (NL123456789B01)
+    <label class="block text-sm">VAT ID (NL123456789B01)
       <input v-model="form.vatNumber" :disabled="!canWrite" pattern="NL\d{9}B\d{2}" placeholder="optional" data-testid="org-vat" class="mt-1 w-full rounded border border-slate-300 px-3 py-2 disabled:bg-slate-100" />
     </label>
     <label class="block text-sm">Retention (years, minimum 7)

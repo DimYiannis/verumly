@@ -10,7 +10,7 @@ export interface PendingClaim {
   lastAttemptAt: number | null;
   /**
    * true: claim in the background as soon as possible (the buyer already chose Save, or was offline when scanning).
-   * false: parked until the buyer confirms on the "Bon opslaan?" sheet (a logged-out "Save to wallet" tap).
+   * false: parked until the buyer confirms on the "Save this receipt?" sheet (a logged-out "Save to wallet" tap).
    */
   autoClaim: boolean;
   status: 'pending';

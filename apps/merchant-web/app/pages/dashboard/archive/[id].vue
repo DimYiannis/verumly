@@ -27,7 +27,7 @@ const newestFirst = computed(() => [...(detail.value?.versions ?? [])].reverse()
       <a :href="`/api/dashboard/archive/${id}/pdf?version=${v.version}`" class="rounded border border-slate-300 px-3 py-1 text-sm" data-testid="archive-pdf" download>PDF</a>
     </div>
     <table class="w-full text-sm">
-      <thead class="text-left text-slate-500"><tr><th class="py-1">Item</th><th>Qty</th><th>BTW</th><th class="text-right">Total</th></tr></thead>
+      <thead class="text-left text-slate-500"><tr><th class="py-1">Item</th><th>Qty</th><th>VAT</th><th class="text-right">Total</th></tr></thead>
       <tbody>
         <tr v-for="l in v.crf.lines" :key="l.lineNo" data-testid="archive-line">
           <td class="py-1">{{ l.description }}</td><td>{{ l.qty }}</td><td>{{ l.vatRate === null ? '—' : `${l.vatRate}%` }}</td><td class="text-right tabular-nums">{{ euro(l.total) }}</td>
@@ -35,7 +35,7 @@ const newestFirst = computed(() => [...(detail.value?.versions ?? [])].reverse()
       </tbody>
     </table>
     <dl class="mt-3 space-y-1 text-sm">
-      <div v-for="s in v.crf.vatSummary" :key="s.rate" class="flex justify-between" data-testid="archive-vat"><dt>BTW {{ s.rate }}% over {{ euro(s.net) }}</dt><dd class="tabular-nums">{{ euro(s.vat) }}</dd></div>
+      <div v-for="s in v.crf.vatSummary" :key="s.rate" class="flex justify-between" data-testid="archive-vat"><dt>VAT {{ s.rate }}% on {{ euro(s.net) }}</dt><dd class="tabular-nums">{{ euro(s.vat) }}</dd></div>
       <div v-if="v.crf.totals.rounding" class="flex justify-between"><dt>Rounding</dt><dd class="tabular-nums">{{ euro(v.crf.totals.rounding) }}</dd></div>
       <div class="flex justify-between font-semibold"><dt>Total</dt><dd class="tabular-nums" data-testid="archive-version-total">{{ euro(v.crf.totals.gross + v.crf.totals.tip + v.crf.totals.rounding) }}</dd></div>
       <div v-for="(p, i) in v.crf.payments" :key="i" class="flex justify-between text-slate-600"><dt>Paid ({{ p.method }})</dt><dd class="tabular-nums">{{ euro(p.amount) }}</dd></div>

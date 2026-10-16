@@ -8,9 +8,9 @@ const error = ref<string | null>(null);
 const saved = ref('');
 
 const ROWS: { key: keyof Consents; label: string; hint: string }[] = [
-  { key: 'analytics', label: 'Inzichten', hint: 'Bereken uitgaven per maand, categorie en winkel uit je bonnen.' },
-  { key: 'marketing', label: 'Aanbiedingen', hint: 'Winkels mogen je aanbiedingen laten zien. Standaard uit.' },
-  { key: 'push', label: 'Meldingen', hint: 'Toestemming om meldingen te sturen als een bon wordt bijgewerkt.' },
+  { key: 'analytics', label: 'Insights', hint: 'Calculate spending per month, category and shop from your receipts.' },
+  { key: 'marketing', label: 'Offers', hint: 'Shops may show you offers. Off by default.' },
+  { key: 'push', label: 'Notifications', hint: 'Permission to send notifications when a receipt is updated.' },
 ];
 
 function onChange(key: keyof Consents, event: Event) {
@@ -24,17 +24,17 @@ async function toggle(key: keyof Consents, value: boolean) {
   model.value = { ...model.value, [key]: value };
   try {
     model.value = (await wallet.api.putConsents({ [key]: value })).consents;
-    saved.value = 'Opgeslagen.';
+    saved.value = 'Saved.';
   } catch (e) {
     model.value = { ...model.value, [key]: previous };
-    error.value = e instanceof ApiError && e.isNetwork ? 'Geen verbinding; de wijziging is niet opgeslagen.' : 'Opslaan is niet gelukt.';
+    error.value = e instanceof ApiError && e.isNetwork ? 'No connection; the change was not saved.' : 'Saving failed.';
   }
 }
 </script>
 
 <template>
   <fieldset class="card space-y-3" data-testid="consents">
-    <legend class="px-1 font-semibold">Toestemmingen</legend>
+    <legend class="px-1 font-semibold">Permissions</legend>
     <div v-for="row in ROWS" :key="row.key" class="flex items-start gap-3">
       <input
         :id="`consent-${row.key}`"

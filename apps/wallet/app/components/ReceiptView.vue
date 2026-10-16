@@ -9,7 +9,7 @@ const selected = ref<number | null>(null);
 const latest = computed(() => props.detail.receipt);
 const shown = computed(() => props.detail.versions.find((v) => v.version === selected.value)?.crf ?? latest.value);
 const viewingOld = computed(() => shown.value.version !== latest.value.version);
-const PAYMENT_LABEL: Record<string, string> = { card: 'Pinpas', cash: 'Contant', other: 'Overig' };
+const PAYMENT_LABEL: Record<string, string> = { card: 'Card', cash: 'Cash', other: 'Other' };
 </script>
 
 <template>
@@ -20,18 +20,17 @@ const PAYMENT_LABEL: Record<string, string> = { card: 'Pinpas', cash: 'Contant',
       data-testid="presented-banner"
       class="rounded-xl border-2 border-amber-500 bg-amber-100 p-3 text-center font-bold text-amber-950"
     >
-      Geen definitieve bon / Not a final receipt
-      <span class="mt-1 block text-sm font-normal">Dit is de rekening. De definitieve bon verschijnt na betaling.</span>
+      Not a final receipt — this is the bill, the final receipt follows after payment
     </p>
     <p v-else-if="shown.state === 'void'" role="status" data-testid="void-banner" class="rounded-xl border-2 border-red-600 bg-red-50 p-3 text-center font-bold text-red-900">
-      Deze bon is vervallen / Voided
+      This receipt is void
     </p>
     <p v-else-if="detail.final && !viewingOld" role="status" data-testid="final-badge" class="rounded-xl bg-brand-100 p-3 text-center font-semibold text-brand-900">
-      Definitieve bon
+      Final receipt
     </p>
     <p v-if="viewingOld" role="status" data-testid="old-version-note" class="rounded-xl bg-slate-200 p-3 text-center text-sm text-slate-900">
-      Je bekijkt versie {{ shown.version }}; de nieuwste is versie {{ latest.version }}.
-      <button type="button" class="font-semibold underline" @click="selected = null">Toon nieuwste</button>
+      You are viewing version {{ shown.version }}; the latest is version {{ latest.version }}.
+      <button type="button" class="font-semibold underline" @click="selected = null">Show latest</button>
     </p>
 
     <header class="card">
@@ -40,18 +39,18 @@ const PAYMENT_LABEL: Record<string, string> = { card: 'Pinpas', cash: 'Contant',
         <time :datetime="shown.createdAt" data-testid="receipt-time">{{ formatDateTime(shown.createdAt) }}</time>
         · KvK {{ shown.merchant.kvkNumber }}<template v-if="shown.merchant.vatNumber"> · {{ shown.merchant.vatNumber }}</template>
       </p>
-      <p class="mt-1 text-sm text-slate-700">{{ STATE_LABEL[shown.state] ?? shown.state }} · versie {{ shown.version }}</p>
+      <p class="mt-1 text-sm text-slate-700">{{ STATE_LABEL[shown.state] ?? shown.state }} · version {{ shown.version }}</p>
     </header>
 
     <section class="card" aria-labelledby="lines-h">
-      <h2 id="lines-h" class="mb-2 font-semibold">Regels</h2>
+      <h2 id="lines-h" class="mb-2 font-semibold">Lines</h2>
       <ul data-testid="receipt-lines" class="divide-y divide-slate-100">
         <li v-for="line in shown.lines" :key="line.lineNo" data-testid="receipt-line" :data-kind="line.kind" class="flex justify-between gap-3 py-2">
           <span>
             <span class="block">{{ line.description }}</span>
             <span v-if="line.kind === 'item' && line.qty !== '1'" class="text-sm text-slate-700">{{ formatQty(line.qty) }} × {{ formatEuro(line.unitPrice) }}</span>
-            <span v-if="line.kind === 'deposit'" class="text-sm text-slate-700">Statiegeld</span>
-            <span v-if="line.kind === 'discount'" class="text-sm text-slate-700">Korting</span>
+            <span v-if="line.kind === 'deposit'" class="text-sm text-slate-700">Deposit</span>
+            <span v-if="line.kind === 'discount'" class="text-sm text-slate-700">Discount</span>
           </span>
           <span class="whitespace-nowrap tabular-nums" :class="line.total < 0 ? 'text-brand-700' : ''">{{ formatEuro(line.total) }}</span>
         </li>
@@ -59,35 +58,35 @@ const PAYMENT_LABEL: Record<string, string> = { card: 'Pinpas', cash: 'Contant',
     </section>
 
     <section class="card" aria-labelledby="totals-h">
-      <h2 id="totals-h" class="sr-only">Totaal</h2>
+      <h2 id="totals-h" class="sr-only">Total</h2>
       <dl class="space-y-1">
         <div class="flex justify-between text-lg font-bold">
-          <dt>Totaal</dt>
+          <dt>Total</dt>
           <dd data-testid="receipt-total" class="tabular-nums">{{ formatEuro(shown.totals.gross) }}</dd>
         </div>
         <div v-if="shown.totals.tip > 0" class="flex justify-between text-sm">
-          <dt>Fooi</dt>
+          <dt>Tip</dt>
           <dd class="tabular-nums">{{ formatEuro(shown.totals.tip) }}</dd>
         </div>
         <div v-if="shown.totals.rounding !== 0" class="flex justify-between text-sm">
-          <dt>Afronding</dt>
+          <dt>Rounding</dt>
           <dd data-testid="receipt-rounding" class="tabular-nums">{{ formatEuro(shown.totals.rounding) }}</dd>
         </div>
         <div v-if="shown.totals.rounding !== 0 || shown.totals.tip > 0" class="flex justify-between font-semibold">
-          <dt>Te betalen</dt>
+          <dt>To pay</dt>
           <dd data-testid="receipt-payable" class="tabular-nums">{{ formatEuro(shown.totals.gross + shown.totals.tip + shown.totals.rounding) }}</dd>
         </div>
       </dl>
     </section>
 
     <section v-if="shown.vatSummary.length > 0" class="card" aria-labelledby="btw-h">
-      <h2 id="btw-h" class="mb-2 font-semibold">BTW</h2>
+      <h2 id="btw-h" class="mb-2 font-semibold">VAT</h2>
       <table class="w-full text-sm" data-testid="vat-summary">
         <thead>
           <tr class="text-left text-slate-700">
-            <th scope="col" class="font-medium">Tarief</th>
+            <th scope="col" class="font-medium">Rate</th>
             <th scope="col" class="text-right font-medium">Excl.</th>
-            <th scope="col" class="text-right font-medium">BTW</th>
+            <th scope="col" class="text-right font-medium">VAT</th>
             <th scope="col" class="text-right font-medium">Incl.</th>
           </tr>
         </thead>
@@ -103,7 +102,7 @@ const PAYMENT_LABEL: Record<string, string> = { card: 'Pinpas', cash: 'Contant',
     </section>
 
     <section v-if="shown.payments.length > 0" class="card" aria-labelledby="pay-h">
-      <h2 id="pay-h" class="mb-2 font-semibold">Betaling</h2>
+      <h2 id="pay-h" class="mb-2 font-semibold">Payment</h2>
       <ul data-testid="payments">
         <li v-for="(p, i) in shown.payments" :key="i" class="flex justify-between">
           <span>{{ PAYMENT_LABEL[p.method] ?? p.method }}</span>
@@ -113,7 +112,7 @@ const PAYMENT_LABEL: Record<string, string> = { card: 'Pinpas', cash: 'Contant',
     </section>
 
     <section v-if="detail.versions.length > 1" class="card" aria-labelledby="ver-h">
-      <h2 id="ver-h" class="mb-2 font-semibold">Versies</h2>
+      <h2 id="ver-h" class="mb-2 font-semibold">Versions</h2>
       <ol data-testid="version-history" class="space-y-1">
         <li v-for="v in [...detail.versions].reverse()" :key="v.version">
           <button
@@ -124,7 +123,7 @@ const PAYMENT_LABEL: Record<string, string> = { card: 'Pinpas', cash: 'Contant',
             :class="v.version === shown.version ? 'bg-brand-50 font-semibold' : ''"
             @click="selected = v.version === latest.version ? null : v.version"
           >
-            <span>Versie {{ v.version }} · {{ STATE_LABEL[v.state] ?? v.state }}</span>
+            <span>Version {{ v.version }} · {{ STATE_LABEL[v.state] ?? v.state }}</span>
             <time :datetime="v.createdAt" class="text-sm text-slate-700">{{ formatDateTime(v.createdAt) }}</time>
           </button>
         </li>

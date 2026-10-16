@@ -66,7 +66,7 @@ describe('GET /v1/me/receipts/:id/pdf', () => {
     const res = await w.buyer.inject({ method: 'GET', url: `/v1/me/receipts/${r.receiptId}/pdf`, headers: { authorization: `Bearer ${u.token}` } });
     expect(res.statusCode).toBe(200);
     expect(res.headers['content-type']).toBe('application/pdf');
-    expect(res.headers['content-disposition']).toContain(`bon-${r.receiptId.slice(0, 8)}.pdf`);
+    expect(res.headers['content-disposition']).toContain(`receipt-${r.receiptId.slice(0, 8)}.pdf`);
     expect(res.rawPayload.subarray(0, 5).toString('latin1')).toBe('%PDF-');
     expect(res.rawPayload.length).toBeGreaterThan(1000);
     expect(res.rawPayload.subarray(-6).toString('latin1')).toContain('%%EOF');

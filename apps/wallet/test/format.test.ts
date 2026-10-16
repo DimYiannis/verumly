@@ -17,9 +17,10 @@ function item(id: string, createdAt: string, merchantName = 'Café Het Plein', s
 }
 
 describe('formatEuro', () => {
-  it('uses Dutch formatting', () => {
-    expect(formatEuro(123456).replace(/\s/g, ' ')).toBe('€ 1.234,56');
-    expect(formatEuro(-250).replace(/\s/g, ' ')).toBe('€ -2,50');
+  it('uses English (en-NL) formatting', () => {
+    expect(formatEuro(123456).replace(/\s/g, ' ')).toBe('€1,234.56');
+    expect(formatEuro(-250).replace(/\s/g, ' ')).toBe('-€2.50');
+    expect(formatEuro(680).replace(/\s/g, ' ')).toBe('€6.80');
   });
 });
 
@@ -39,11 +40,11 @@ describe('Amsterdam days', () => {
     ]);
   });
 
-  it('labels today, yesterday and older days in Dutch', () => {
+  it('labels today, yesterday and older days in English', () => {
     const now = new Date('2026-10-16T12:00:00Z');
-    expect(formatDayHeading('2026-10-16', now)).toBe('Vandaag');
-    expect(formatDayHeading('2026-10-15', now)).toBe('Gisteren');
-    expect(formatDayHeading('2026-10-10', now)).toBe('zaterdag 10 oktober');
+    expect(formatDayHeading('2026-10-16', now)).toBe('Today');
+    expect(formatDayHeading('2026-10-15', now)).toBe('Yesterday');
+    expect(formatDayHeading('2026-10-10', now)).toBe('Saturday 10 October');
   });
 });
 
@@ -62,7 +63,7 @@ describe('Amsterdam local time <-> UTC', () => {
 });
 
 describe('euro input', () => {
-  it('parses Dutch and dotted decimals into cents', () => {
+  it('parses comma and dotted decimals into cents', () => {
     expect(centsFromInput('12,50')).toBe(1250);
     expect(centsFromInput('12.5')).toBe(1250);
     expect(centsFromInput('7')).toBe(700);
@@ -72,8 +73,8 @@ describe('euro input', () => {
     expect(centsFromInput('')).toBeNull();
   });
   it('formats cents for an input', () => {
-    expect(inputFromCents(1250)).toBe('12,50');
-    expect(inputFromCents(-5)).toBe('-0,05');
+    expect(inputFromCents(1250)).toBe('12.50');
+    expect(inputFromCents(-5)).toBe('-0.05');
     expect(inputFromCents(null)).toBe('');
   });
 });

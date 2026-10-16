@@ -67,7 +67,7 @@ try {
   page.on('request', (r) => requests.push(r.url()));
   await page.goto(first.qrUrl);
   await T('presented-banner').waitFor();
-  assert.match(await T('presented-banner').innerText(), /Geen definitieve bon \/ Not a final receipt/);
+  assert.match(await T('presented-banner').innerText(), /Not a final receipt/);
   assert.equal(new URL(page.url()).hash, '', `fragment still in URL: ${page.url()}`);
   assert.equal(await page.evaluate(() => location.hash), '');
   assert.equal(await T('receipt-line').count(), 2);
@@ -91,9 +91,9 @@ try {
   await T('confirm-sheet').waitFor();
   assert.match(page.url(), new RegExp(`/r/${first.receiptId}$`));
   assert.match(await T('sheet-merchant').innerText(), /Café Het Plein/);
-  assert.match((await T('sheet-total').innerText()).replace(/\s/g, ' '), /€ 10,69|€ 10,70/);
+  assert.match((await T('sheet-total').innerText()).replace(/\s/g, ' '), /€10\.69|€10\.70/);
   await page.screenshot({ path: `${SHOTS}/2-confirm-sheet.png` });
-  step(`login via Mailpit code, returned to sheet "Bon opslaan?" (${(await T('sheet-total').innerText()).replace(/\s/g, ' ')})`);
+  step(`login via Mailpit code, returned to sheet "Save this receipt?" (${(await T('sheet-total').innerText()).replace(/\s/g, ' ')})`);
 
   // 3. save -> receipt detail
   await T('save-button').click();
@@ -102,7 +102,7 @@ try {
   await T('presented-banner').waitFor();
   assert.equal(await T('vat-row').count(), 2);
   await page.screenshot({ path: `${SHOTS}/3-saved-detail.png`, fullPage: true });
-  step('claimed: receipt detail with pre-bill banner and 2 BTW rows');
+  step('claimed: receipt detail with pre-bill banner and 2 VAT rows');
 
   // 4. wallet list
   await page.goto(WALLET + '/');
@@ -169,7 +169,7 @@ try {
     await cdp.send('ServiceWorker.deliverPushMessage', {
       origin: WALLET,
       registrationId: reg.registrationId,
-      data: JSON.stringify({ title: 'Bon bijgewerkt', body: 'Je bon is nu definitief.', receiptId: first.receiptId, version: 3, final: true }),
+      data: JSON.stringify({ title: 'Receipt updated', body: 'Your receipt is now final.', receiptId: first.receiptId, version: 3, final: true }),
     });
     const readNotifications = () =>
       page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).map((n) => ({ title: n.title, body: n.body, tag: n.tag, data: n.data })));
@@ -178,7 +178,7 @@ try {
       await page.waitForTimeout(250);
       shown = await readNotifications();
     }
-    assert.deepEqual(shown, [{ title: 'Bon bijgewerkt', body: 'Je bon is nu definitief.', tag: first.receiptId, data: { receiptId: first.receiptId, version: 3, final: true } }]);
+    assert.deepEqual(shown, [{ title: 'Receipt updated', body: 'Your receipt is now final.', tag: first.receiptId, data: { receiptId: first.receiptId, version: 3, final: true } }]);
     step('push: service worker showed the notification (title/body/tag/data) for the receipt');
   }
 
@@ -220,12 +220,12 @@ try {
     await page.waitForURL(/\/uploads\/u1$/);
     await T('correction-form').waitFor({ timeout: 15_000 });
     assert.equal(await T('corr-merchant').inputValue(), 'Albert Heijn');
-    assert.equal(await T('corr-gross').inputValue(), '19,99');
+    assert.equal(await T('corr-gross').inputValue(), '19.99');
     await page.screenshot({ path: `${SHOTS}/9-correction-form.png`, fullPage: true });
-    await T('corr-gross').fill('1,09');
+    await T('corr-gross').fill('1.09');
     await T('corr-submit').click();
     await T('match-offer').waitFor();
-    assert.match(await T('match-offer').innerText(), /Officiële bon gevonden — vervangen\?/);
+    assert.match(await T('match-offer').innerText(), /Official receipt found — replace\?/);
     await page.screenshot({ path: `${SHOTS}/10-match-offer.png`, fullPage: true });
     await T('accept-match').click();
     await page.waitForURL(new RegExp(`/receipts/${first.receiptId}`));

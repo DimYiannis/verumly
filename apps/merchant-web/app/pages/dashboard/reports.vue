@@ -48,7 +48,7 @@ const RUBRIEK: Record<number, string> = { 21: '1a', 9: '1b', 0: '1e' };
 
   <h2 class="mb-2 font-medium">Sales</h2>
   <table class="mb-6 w-full overflow-hidden rounded-lg border border-slate-200 bg-white text-sm">
-    <thead class="bg-slate-100 text-left"><tr><th class="p-2">Period</th><th class="p-2 text-right">Receipts</th><th class="p-2 text-right">Gross</th><th class="p-2 text-right">Net</th><th class="p-2 text-right">BTW</th><th class="p-2 text-right">Rounding</th><th class="p-2 text-right">Voids</th></tr></thead>
+    <thead class="bg-slate-100 text-left"><tr><th class="p-2">Period</th><th class="p-2 text-right">Receipts</th><th class="p-2 text-right">Gross</th><th class="p-2 text-right">Net</th><th class="p-2 text-right">VAT</th><th class="p-2 text-right">Rounding</th><th class="p-2 text-right">Voids</th></tr></thead>
     <tbody class="tabular-nums">
       <tr v-for="r in sales" :key="r.period" class="border-t border-slate-100" data-testid="report-sales-row" :data-period="r.period">
         <td class="p-2">{{ r.period }}</td><td class="p-2 text-right">{{ r.receipts }}</td><td class="p-2 text-right">{{ euro(r.gross) }}</td><td class="p-2 text-right">{{ euro(r.net) }}</td><td class="p-2 text-right">{{ euro(r.vat) }}</td><td class="p-2 text-right">{{ euro(r.rounding) }}</td><td class="p-2 text-right">{{ r.voids }} ({{ euro(r.voidGross) }})</td>
@@ -60,9 +60,9 @@ const RUBRIEK: Record<number, string> = { 21: '1a', 9: '1b', 0: '1e' };
     </tbody>
   </table>
 
-  <h2 class="mb-2 font-medium">BTW per rate</h2>
+  <h2 class="mb-2 font-medium">VAT per rate</h2>
   <table class="w-full overflow-hidden rounded-lg border border-slate-200 bg-white text-sm">
-    <thead class="bg-slate-100 text-left"><tr><th class="p-2">Period</th><th class="p-2">Rate</th><th class="p-2">Rubriek</th><th class="p-2 text-right">Gross</th><th class="p-2 text-right">Net</th><th class="p-2 text-right">BTW</th></tr></thead>
+    <thead class="bg-slate-100 text-left"><tr><th class="p-2">Period</th><th class="p-2">Rate</th><th class="p-2">VAT return box</th><th class="p-2 text-right">Gross</th><th class="p-2 text-right">Net</th><th class="p-2 text-right">VAT</th></tr></thead>
     <tbody class="tabular-nums">
       <tr v-for="r in vat" :key="`${r.period}-${r.rate}`" class="border-t border-slate-100" data-testid="report-vat-row" :data-period="r.period" :data-rate="r.rate">
         <td class="p-2">{{ r.period }}</td><td class="p-2">{{ r.rate }}%</td><td class="p-2">{{ RUBRIEK[r.rate] }}</td><td class="p-2 text-right">{{ euro(r.gross) }}</td><td class="p-2 text-right">{{ euro(r.net) }}</td><td class="p-2 text-right">{{ euro(r.vat) }}</td>

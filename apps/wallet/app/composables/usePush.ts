@@ -36,17 +36,17 @@ export function usePush() {
     try {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
-        error.value = 'Meldingen zijn niet toegestaan. Pas dit aan in de instellingen van je browser.';
+        error.value = 'Notifications are not allowed. Change this in your browser settings.';
         return;
       }
       const registration = await navigator.serviceWorker.getRegistration();
       if (!registration) {
-        error.value = 'De app is nog niet klaar voor meldingen. Herlaad de pagina en probeer het opnieuw.';
+        error.value = 'The app is not ready for notifications yet. Reload the page and try again.';
         return;
       }
       const key = config.public.vapidPublicKey || (await wallet.api.vapidPublicKey()).publicKey;
       if (!key) {
-        error.value = 'Meldingen zijn op de server nog niet ingesteld.';
+        error.value = 'Notifications are not set up on the server yet.';
         return;
       }
       const sub = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(key) });
@@ -54,14 +54,14 @@ export function usePush() {
       const p256dh = json.keys?.p256dh;
       const auth = json.keys?.auth;
       if (!json.endpoint || !p256dh || !auth) {
-        error.value = 'Je browser gaf geen geldig meldingsabonnement.';
+        error.value = 'Your browser did not provide a valid notification subscription.';
         return;
       }
       const { id } = await wallet.api.addPushSubscription({ endpoint: json.endpoint, keys: { p256dh, auth } });
       await wallet.kv.set(SUBSCRIPTION_KEY, id);
       await wallet.api.putConsents({ push: true });
     } catch (e) {
-      error.value = e instanceof ApiError && e.isNetwork ? 'Geen verbinding.' : 'Meldingen aanzetten is niet gelukt.';
+      error.value = e instanceof ApiError && e.isNetwork ? 'No connection.' : 'Turning on notifications failed.';
     } finally {
       busy.value = false;
       await refresh();
@@ -79,7 +79,7 @@ export function usePush() {
       await wallet.kv.delete(SUBSCRIPTION_KEY);
       await wallet.api.putConsents({ push: false });
     } catch {
-      error.value = 'Meldingen uitzetten is niet gelukt.';
+      error.value = 'Turning off notifications failed.';
     } finally {
       busy.value = false;
       await refresh();

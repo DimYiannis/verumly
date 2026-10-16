@@ -15,7 +15,7 @@ const pdfBusy = ref(false);
 const pdfError = ref<string | null>(null);
 const justSaved = route.query.saved === '1';
 
-useHead({ title: 'Bon' });
+useHead({ title: 'Receipt' });
 
 async function load() {
   try {
@@ -43,11 +43,11 @@ async function downloadPdf() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `bon-${id}.pdf`;
+    a.download = `receipt-${id}.pdf`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   } catch (e) {
-    pdfError.value = e instanceof ApiError && e.isNetwork ? 'PDF downloaden kan alleen online.' : 'De PDF kon niet worden gemaakt.';
+    pdfError.value = e instanceof ApiError && e.isNetwork ? 'Downloading the PDF is only possible online.' : 'The PDF could not be created.';
   } finally {
     pdfBusy.value = false;
   }
@@ -66,18 +66,18 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', onVisible
 
 <template>
   <div class="space-y-4">
-    <NuxtLink to="/" class="inline-block py-2 font-medium text-brand-700 underline">← Alle bonnen</NuxtLink>
-    <p v-if="status === 'loading'" role="status">Bon laden…</p>
-    <p v-else-if="status === 'notfound'" role="alert" data-testid="not-found" class="card">Deze bon staat niet in jouw portemonnee.</p>
-    <p v-else-if="status === 'unavailable'" role="alert" data-testid="unavailable" class="card">Je bent offline en deze bon is nog niet op dit toestel bewaard.</p>
-    <p v-else-if="status === 'error'" role="alert" class="card">Er ging iets mis bij het laden.</p>
+    <NuxtLink to="/" class="inline-block py-2 font-medium text-brand-700 underline">← All receipts</NuxtLink>
+    <p v-if="status === 'loading'" role="status">Loading receipt…</p>
+    <p v-else-if="status === 'notfound'" role="alert" data-testid="not-found" class="card">This receipt is not in your wallet.</p>
+    <p v-else-if="status === 'unavailable'" role="alert" data-testid="unavailable" class="card">You are offline and this receipt has not been saved on this device yet.</p>
+    <p v-else-if="status === 'error'" role="alert" class="card">Something went wrong while loading.</p>
     <template v-else-if="detail">
-      <p v-if="justSaved" role="status" data-testid="saved-notice" class="rounded-xl bg-brand-100 p-3 font-semibold text-brand-900">Bon opgeslagen in je portemonnee.</p>
-      <p v-if="fromCache" role="status" data-testid="cached-notice" class="rounded-xl bg-amber-100 p-3 text-amber-950">Offline: dit is de laatst opgeslagen versie.</p>
+      <p v-if="justSaved" role="status" data-testid="saved-notice" class="rounded-xl bg-brand-100 p-3 font-semibold text-brand-900">Receipt saved to your wallet.</p>
+      <p v-if="fromCache" role="status" data-testid="cached-notice" class="rounded-xl bg-amber-100 p-3 text-amber-950">Offline: this is the last saved version.</p>
       <ReceiptView :detail="detail" />
       <div class="space-y-2">
         <button type="button" class="btn btn-secondary w-full" data-testid="download-pdf" :disabled="pdfBusy" @click="downloadPdf">
-          {{ pdfBusy ? 'PDF maken…' : 'Download PDF' }}
+          {{ pdfBusy ? 'Creating PDF…' : 'Download PDF' }}
         </button>
         <p v-if="pdfError" role="alert" data-testid="pdf-error" class="text-red-800">{{ pdfError }}</p>
       </div>

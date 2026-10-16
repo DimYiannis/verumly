@@ -1,7 +1,7 @@
 import { merchantKeyOf, parseExtraction, truthPrintedAtUtc, type ParsedReceipt } from '@lr/receipt-nl';
 import { readRecorded, type Corpus } from './corpus.ts';
 
-export const FIELDS = ['merchant key', 'date/time', 'gross', 'BTW per rate', 'payment method', 'line count'] as const;
+export const FIELDS = ['merchant key', 'date/time', 'gross', 'VAT per rate', 'payment method', 'line count'] as const;
 export type Field = (typeof FIELDS)[number];
 
 export interface EvalRow {
@@ -49,11 +49,11 @@ export function evaluate(corpus: Corpus): EvalReport {
       'merchant key': parsed.merchantKey === merchantKeyOf({ name: t.merchant.name, kvkNumber: t.merchant.kvk, vatNumber: t.merchant.vatNumber, postcode: t.merchant.postcode }),
       'date/time': parsed.printedAtUtc === truthPrintedAtUtc(t),
       gross: match.gross,
-      'BTW per rate': match.vat,
+      'VAT per rate': match.vat,
       'payment method': method === null ? null : parsed.paymentMethod === method,
       'line count': t.lines === null ? null : parsed.lines.length === t.lines.length,
     };
-    const wrong = [match.gross ? null : `gross ${parsed.gross} != ${t.gross}`, match.vat ? null : 'per-rate BTW differs'].filter((x) => x !== null);
+    const wrong = [match.gross ? null : `gross ${parsed.gross} != ${t.gross}`, match.vat ? null : 'per-rate VAT differs'].filter((x) => x !== null);
     evaluated.push({
       id: entry.id,
       status: parsed.status,

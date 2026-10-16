@@ -6,7 +6,7 @@ import { amsterdamLocalToUtcIso, centsFromInput, formatDateTime, formatEuro, inp
 import { pollUpload } from '~/utils/uploads';
 
 definePageMeta({ middleware: 'auth' });
-useHead({ title: 'Bon uitlezen' });
+useHead({ title: 'Reading receipt' });
 
 const route = useRoute();
 const wallet = useWallet();
@@ -58,7 +58,7 @@ async function watchUpload() {
     timedOut.value = settled === null;
   } catch (e) {
     if (stopped) return;
-    error.value = e instanceof ApiError && e.status === 404 ? 'Deze upload bestaat niet.' : e instanceof ApiError && e.isNetwork ? 'Geen verbinding.' : 'Status ophalen is niet gelukt.';
+    error.value = e instanceof ApiError && e.status === 404 ? 'This upload does not exist.' : e instanceof ApiError && e.isNetwork ? 'No connection.' : 'Fetching the status failed.';
   }
 }
 
@@ -70,11 +70,11 @@ async function submitCorrections() {
   fieldErrors.value = [];
   const gross = centsFromInput(form.gross);
   const printedAt = form.printedAt ? amsterdamLocalToUtcIso(form.printedAt) : null;
-  if (!form.merchantName.trim()) fieldErrors.value.push('Vul de naam van de winkel in.');
-  if (gross === null) fieldErrors.value.push('Vul het totaalbedrag in, bijvoorbeeld 12,50.');
-  if (!printedAt) fieldErrors.value.push('Vul datum en tijd van de bon in.');
+  if (!form.merchantName.trim()) fieldErrors.value.push('Enter the name of the shop.');
+  if (gross === null) fieldErrors.value.push('Enter the total amount, for example 12.50.');
+  if (!printedAt) fieldErrors.value.push('Enter the date and time of the receipt.');
   const lines = form.lines.map((l) => ({ ...l, cents: centsFromInput(l.total) }));
-  if (lines.some((l) => !l.description.trim() || l.cents === null)) fieldErrors.value.push('Elke regel heeft een omschrijving en een bedrag nodig.');
+  if (lines.some((l) => !l.description.trim() || l.cents === null)) fieldErrors.value.push('Every line needs a description and an amount.');
   if (fieldErrors.value.length > 0 || gross === null || !printedAt) return;
 
   busy.value = true;
@@ -90,7 +90,7 @@ async function submitCorrections() {
       }),
     );
   } catch (e) {
-    error.value = e instanceof ApiError && e.isNetwork ? 'Geen verbinding.' : 'Opslaan is niet gelukt.';
+    error.value = e instanceof ApiError && e.isNetwork ? 'No connection.' : 'Saving failed.';
   } finally {
     busy.value = false;
   }
@@ -104,7 +104,7 @@ async function acceptMatch() {
     await wallet.cacheReceipt(receiptId);
     await navigateTo({ path: `/receipts/${receiptId}`, query: { saved: '1' } });
   } catch (e) {
-    error.value = e instanceof ApiError && e.isNetwork ? 'Geen verbinding.' : 'Vervangen is niet gelukt.';
+    error.value = e instanceof ApiError && e.isNetwork ? 'No connection.' : 'Replacing failed.';
   } finally {
     busy.value = false;
   }
@@ -118,27 +118,27 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="space-y-4">
-    <NuxtLink to="/" class="inline-block py-2 font-medium text-brand-700 underline">← Alle bonnen</NuxtLink>
-    <h1 class="text-2xl font-bold">Bon uitlezen</h1>
+    <NuxtLink to="/" class="inline-block py-2 font-medium text-brand-700 underline">← All receipts</NuxtLink>
+    <h1 class="text-2xl font-bold">Reading receipt</h1>
 
     <p v-if="error" role="alert" data-testid="upload-error" class="rounded-xl bg-red-50 p-3 text-red-900">{{ error }}</p>
 
-    <p v-if="!upload && !error" role="status" data-testid="upload-processing" class="card">Bon laden…</p>
+    <p v-if="!upload && !error" role="status" data-testid="upload-processing" class="card">Loading receipt…</p>
 
     <p v-else-if="upload && (upload.status === 'pending_upload' || upload.status === 'processing')" role="status" aria-live="polite" data-testid="upload-processing" class="card">
-      We lezen je bon uit. Dit duurt meestal een paar seconden…
-      <span v-if="timedOut" class="mt-2 block">Het duurt langer dan verwacht. Je kunt later terugkomen; we blijven werken.</span>
+      We are reading your receipt. This usually takes a few seconds…
+      <span v-if="timedOut" class="mt-2 block">This is taking longer than expected. You can come back later; we keep working.</span>
     </p>
 
     <section v-else-if="upload?.status === 'failed'" class="card space-y-2" role="alert" data-testid="upload-failed">
-      <h2 class="font-semibold">Uitlezen is niet gelukt</h2>
-      <p>We konden deze foto niet lezen. Probeer een scherpere foto, goed belicht en recht van boven.</p>
-      <NuxtLink to="/add" class="btn btn-secondary">Opnieuw proberen</NuxtLink>
+      <h2 class="font-semibold">Reading failed</h2>
+      <p>We could not read this photo. Try a sharper photo, well lit and taken straight from above.</p>
+      <NuxtLink to="/add" class="btn btn-secondary">Try again</NuxtLink>
     </section>
 
     <section v-else-if="upload?.status === 'replaced' && upload.matchedReceiptId" class="card space-y-2" data-testid="upload-replaced">
-      <h2 class="font-semibold">Vervangen door de officiële bon</h2>
-      <NuxtLink :to="`/receipts/${upload.matchedReceiptId}`" class="btn btn-primary w-full">Bekijk de bon</NuxtLink>
+      <h2 class="font-semibold">Replaced by the official receipt</h2>
+      <NuxtLink :to="`/receipts/${upload.matchedReceiptId}`" class="btn btn-primary w-full">View the receipt</NuxtLink>
     </section>
 
     <template v-else-if="upload">
@@ -148,63 +148,62 @@ onBeforeUnmount(() => {
         aria-labelledby="match-h"
         data-testid="match-offer"
       >
-        <h2 id="match-h" class="text-lg font-bold">Officiële bon gevonden — vervangen?</h2>
-        <p class="text-sm text-slate-700">Official receipt found — replace?</p>
+        <h2 id="match-h" class="text-lg font-bold">Official receipt found — replace?</h2>
         <p v-if="upload.match">
           {{ upload.match.merchantName }} · {{ formatEuro(upload.match.total) }} · {{ formatDateTime(upload.match.createdAt) }}
         </p>
-        <p>De winkel heeft deze bon digitaal verstuurd. Vervang je foto door de officiële bon?</p>
+        <p>The shop sent this receipt digitally. Replace your photo with the official receipt?</p>
         <div class="flex flex-col gap-3">
-          <button type="button" class="btn btn-primary" data-testid="accept-match" :disabled="busy" @click="acceptMatch">Vervangen door de officiële bon</button>
-          <button type="button" class="btn btn-secondary" data-testid="decline-match" :disabled="busy" @click="matchDeclined = true">Nee, houd mijn foto</button>
+          <button type="button" class="btn btn-primary" data-testid="accept-match" :disabled="busy" @click="acceptMatch">Replace with the official receipt</button>
+          <button type="button" class="btn btn-secondary" data-testid="decline-match" :disabled="busy" @click="matchDeclined = true">No, keep my photo</button>
         </div>
       </section>
 
       <section v-if="upload.status === 'needs_review'" aria-labelledby="review-h" data-testid="correction-section">
-        <h2 id="review-h" class="text-lg font-bold">Controleer de gegevens</h2>
-        <p class="mb-3">We konden niet alles zeker lezen. Corrigeer wat er niet klopt.</p>
+        <h2 id="review-h" class="text-lg font-bold">Check the details</h2>
+        <p class="mb-3">We could not read everything with certainty. Correct anything that is wrong.</p>
         <ul v-if="upload.failures.length > 0" class="mb-3 list-disc pl-5 text-sm text-slate-800" data-testid="upload-failures">
           <li v-for="f in upload.failures" :key="f"><code>{{ f }}</code></li>
         </ul>
         <form class="card space-y-3" data-testid="correction-form" novalidate @submit.prevent="submitCorrections">
           <label class="block font-medium">
-            Winkel
+            Shop
             <input v-model="form.merchantName" class="input mt-1" data-testid="corr-merchant" required />
           </label>
           <label class="block font-medium">
-            Datum en tijd
+            Date and time
             <input v-model="form.printedAt" type="datetime-local" class="input mt-1" data-testid="corr-printed-at" required />
           </label>
           <label class="block font-medium">
-            Totaal (€)
+            Total (€)
             <input v-model="form.gross" inputmode="decimal" class="input mt-1" data-testid="corr-gross" required />
           </label>
           <fieldset class="space-y-3">
-            <legend class="font-medium">Regels</legend>
+            <legend class="font-medium">Lines</legend>
             <div v-for="(line, i) in form.lines" :key="i" class="grid grid-cols-[1fr_5rem_auto] items-end gap-2" data-testid="corr-line">
               <label class="text-sm">
-                Omschrijving
+                Description
                 <input v-model="line.description" class="input mt-1" :data-testid="`corr-line-desc-${i}`" />
               </label>
               <label class="text-sm">
-                Bedrag
+                Amount
                 <input v-model="line.total" inputmode="decimal" class="input mt-1" :data-testid="`corr-line-total-${i}`" />
               </label>
-              <button type="button" class="btn btn-secondary px-3" :aria-label="`Regel ${i + 1} verwijderen`" @click="form.lines.splice(i, 1)">✕</button>
+              <button type="button" class="btn btn-secondary px-3" :aria-label="`Remove line ${i + 1}`" @click="form.lines.splice(i, 1)">✕</button>
             </div>
-            <button type="button" class="btn btn-secondary" data-testid="corr-add-line" @click="addLine">Regel toevoegen</button>
+            <button type="button" class="btn btn-secondary" data-testid="corr-add-line" @click="addLine">Add line</button>
           </fieldset>
           <ul v-if="fieldErrors.length > 0" role="alert" class="list-disc pl-5 text-red-800" data-testid="corr-errors">
             <li v-for="m in fieldErrors" :key="m">{{ m }}</li>
           </ul>
-          <button type="submit" class="btn btn-primary w-full" data-testid="corr-submit" :disabled="busy">Opslaan</button>
+          <button type="submit" class="btn btn-primary w-full" data-testid="corr-submit" :disabled="busy">Save</button>
         </form>
       </section>
 
       <section v-else-if="upload.status === 'done' && upload.draft" class="card space-y-2" data-testid="upload-done">
-        <h2 class="font-semibold">Bon toegevoegd</h2>
+        <h2 class="font-semibold">Receipt added</h2>
         <p>
-          {{ upload.draft.merchantName ?? 'Onbekende winkel' }}
+          {{ upload.draft.merchantName ?? 'Unknown shop' }}
           <template v-if="upload.draft.gross !== null"> · {{ formatEuro(upload.draft.gross) }}</template>
           <template v-if="upload.draft.printedAt"> · {{ formatDateTime(upload.draft.printedAt) }}</template>
         </p>
@@ -214,7 +213,7 @@ onBeforeUnmount(() => {
             <span class="tabular-nums">{{ formatEuro(l.total) }}</span>
           </li>
         </ul>
-        <NuxtLink to="/" class="btn btn-secondary w-full">Terug naar mijn bonnen</NuxtLink>
+        <NuxtLink to="/" class="btn btn-secondary w-full">Back to my receipts</NuxtLink>
       </section>
     </template>
   </div>

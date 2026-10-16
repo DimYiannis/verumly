@@ -19,8 +19,8 @@ async function done() {
 
 <template>
   <section class="space-y-4">
-    <h1 class="text-2xl font-bold">Inloggen</h1>
-    <p>Vul je e-mailadres in. Je krijgt een code van 6 cijfers; een wachtwoord is niet nodig.</p>
+    <h1 class="text-2xl font-bold">Log in</h1>
+    <p>Enter your email address. You will receive a 6-digit code; no password needed.</p>
     <div class="card"><EmailLogin @done="done" /></div>
   </section>
 </template>

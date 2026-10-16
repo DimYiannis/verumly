@@ -86,6 +86,6 @@ describe('D. the gate machinery itself', () => {
     const wrongGross = { ...clean, truth: { ...clean.truth, gross: g + 1 } };
     expect(evaluate({ ...corpus, entries: [wrongGross] }).falseDone.map((r) => r.falseDone)).toEqual([`gross ${g} != ${g + 1}`]);
     const wrongVat = { ...clean, truth: { ...clean.truth, vat: clean.truth.vat.map((v) => ({ ...v, vat: v.vat + 1 })) } };
-    expect(evaluate({ ...corpus, entries: [wrongVat] }).falseDone.map((r) => r.falseDone)).toEqual(['per-rate BTW differs']);
+    expect(evaluate({ ...corpus, entries: [wrongVat] }).falseDone.map((r) => r.falseDone)).toEqual(['per-rate VAT differs']);
   });
 });

@@ -12,11 +12,11 @@ const info = ref<string | null>(null);
 
 function messageFor(e: unknown): string {
   if (e instanceof ApiError) {
-    if (e.isNetwork) return 'Geen verbinding. Probeer het opnieuw zodra je online bent.';
-    if (e.status === 429) return 'Te vaak geprobeerd. Wacht even en probeer het later opnieuw.';
-    if (e.status === 401) return 'Deze code klopt niet of is verlopen.';
+    if (e.isNetwork) return 'No connection. Try again once you are online.';
+    if (e.status === 429) return 'Too many attempts. Wait a moment and try again later.';
+    if (e.status === 401) return 'This code is incorrect or has expired.';
   }
-  return 'Er ging iets mis. Probeer het opnieuw.';
+  return 'Something went wrong. Please try again.';
 }
 
 async function sendCode() {
@@ -25,7 +25,7 @@ async function sendCode() {
   try {
     await wallet.api.emailStart(email.value.trim());
     step.value = 'code';
-    info.value = `We hebben een code van 6 cijfers gestuurd naar ${email.value.trim()}.`;
+    info.value = `We sent a 6-digit code to ${email.value.trim()}.`;
   } catch (e) {
     error.value = messageFor(e);
   } finally {
@@ -50,7 +50,7 @@ async function verify() {
 <template>
   <div data-testid="email-login">
     <form v-if="step === 'email'" class="space-y-3" @submit.prevent="sendCode">
-      <label class="block font-medium" for="login-email">E-mailadres</label>
+      <label class="block font-medium" for="login-email">Email address</label>
       <input
         id="login-email"
         v-model="email"
@@ -62,7 +62,7 @@ async function verify() {
         required
         data-testid="login-email"
       />
-      <button type="submit" class="btn btn-primary w-full" :disabled="busy" data-testid="login-send">Stuur me een code</button>
+      <button type="submit" class="btn btn-primary w-full" :disabled="busy" data-testid="login-send">Send me a code</button>
     </form>
     <form v-else class="space-y-3" @submit.prevent="verify">
       <p data-testid="login-info">{{ info }}</p>
@@ -79,8 +79,8 @@ async function verify() {
         required
         data-testid="login-code"
       />
-      <button type="submit" class="btn btn-primary w-full" :disabled="busy" data-testid="login-verify">Inloggen</button>
-      <button type="button" class="btn btn-secondary w-full" :disabled="busy" @click="step = 'email'">Ander e-mailadres</button>
+      <button type="submit" class="btn btn-primary w-full" :disabled="busy" data-testid="login-verify">Log in</button>
+      <button type="button" class="btn btn-secondary w-full" :disabled="busy" @click="step = 'email'">Use a different email address</button>
     </form>
     <p role="alert" data-testid="login-error" class="mt-3 text-red-800">{{ error }}</p>
   </div>
