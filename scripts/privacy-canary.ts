@@ -1,6 +1,5 @@
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { sha256Hex } from '@lr/crypto';
 import { runJourney } from './journey.ts';
@@ -17,7 +16,6 @@ import { runJourney } from './journey.ts';
  */
 
 const run = promisify(execFile);
-const REPO = fileURLToPath(new URL('..', import.meta.url));
 
 export interface Needle {
   name: string;
@@ -68,9 +66,14 @@ export function countHits(text: string, value: string): number {
   return n;
 }
 
+/** pg_dump runs inside whichever container publishes the Postgres port, so it works from any checkout directory and in CI. */
 async function pgDump(dbName: string, schemas: string[]): Promise<string> {
-  const args = ['compose', 'exec', '-T', 'postgres', 'pg_dump', '-U', 'postgres', ...schemas.flatMap((s) => ['-n', s]), dbName];
-  const { stdout } = await run('docker', args, { cwd: REPO, maxBuffer: 512 * 1024 * 1024 });
+  const port = process.env.PG_PORT ?? '5433';
+  const found = await run('docker', ['ps', '--filter', `publish=${port}`, '--format', '{{.ID}}']);
+  const container = found.stdout.trim().split('\n')[0];
+  if (!container) throw new Error(`no running container publishes port ${port}`);
+  const args = ['exec', container, 'pg_dump', '-U', 'postgres', ...schemas.flatMap((s) => ['-n', s]), dbName];
+  const { stdout } = await run('docker', args, { maxBuffer: 512 * 1024 * 1024 });
   return stdout;
 }
 
