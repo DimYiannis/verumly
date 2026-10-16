@@ -31,25 +31,43 @@ async function request() {
 </script>
 
 <template>
-  <h1 class="mb-4 text-xl font-semibold">Exports</h1>
-  <form class="mb-5 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4" @submit.prevent="request">
-    <label class="text-sm">Export
-      <select v-model="form.kind" data-testid="export-kind" class="mt-1 block rounded border border-slate-300 px-3 py-2"><option v-for="k in KINDS" :key="k.value" :value="k.value">{{ k.label }}</option></select>
-    </label>
-    <label class="text-sm">From<input v-model="form.from" type="date" required data-testid="export-from" class="mt-1 block rounded border border-slate-300 px-3 py-2" /></label>
-    <label class="text-sm">To<input v-model="form.to" type="date" required data-testid="export-to" class="mt-1 block rounded border border-slate-300 px-3 py-2" /></label>
-    <button data-testid="export-request" class="rounded bg-slate-900 px-4 py-2 text-white">Request export</button>
-  </form>
-  <p v-if="error" class="mb-3 text-sm text-red-700" role="alert" data-testid="error">{{ error }}</p>
-  <table class="w-full overflow-hidden rounded-lg border border-slate-200 bg-white text-sm">
-    <thead class="bg-slate-100 text-left"><tr><th class="p-2">Requested</th><th class="p-2">Kind</th><th class="p-2">Period</th><th class="p-2">Status</th><th class="p-2">Download</th></tr></thead>
-    <tbody>
-      <tr v-for="e in rows" :key="e.id" class="border-t border-slate-100" data-testid="export-row" :data-status="e.status">
-        <td class="p-2">{{ amsterdam(e.createdAt) }}</td><td class="p-2">{{ e.kind }}</td><td class="p-2">{{ e.periodFrom }} – {{ e.periodTo }}</td>
-        <td class="p-2" data-testid="export-status">{{ e.status }}</td>
-        <td class="p-2"><a v-if="e.link" :href="e.link" data-testid="export-link" class="underline">Download (valid 24 h)</a></td>
-      </tr>
-      <tr v-if="!rows.length"><td colspan="5" class="p-4 text-center text-slate-500">No exports yet.</td></tr>
-    </tbody>
-  </table>
+  <AppPageHeading title="Exports" description="CSV files for your accountant and for your own analysis." />
+
+  <Card>
+    <form @submit.prevent="request">
+      <CardContent class="grid items-end gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="space-y-2 lg:col-span-2">
+          <Label for="export-kind">Export</Label>
+          <AppNativeSelect id="export-kind" v-model="form.kind" data-testid="export-kind"><option v-for="k in KINDS" :key="k.value" :value="k.value">{{ k.label }}</option></AppNativeSelect>
+        </div>
+        <div class="space-y-2"><Label for="export-from">From</Label><Input id="export-from" v-model="form.from" type="date" required data-testid="export-from" /></div>
+        <div class="space-y-2"><Label for="export-to">To</Label><Input id="export-to" v-model="form.to" type="date" required data-testid="export-to" /></div>
+      </CardContent>
+      <CardFooter class="mt-6 justify-end"><Button data-testid="export-request">Request export</Button></CardFooter>
+    </form>
+  </Card>
+
+  <AppErrorNote v-if="error" data-testid="error">{{ error }}</AppErrorNote>
+
+  <Card>
+    <CardContent>
+      <div class="overflow-hidden rounded-md border">
+        <Table>
+          <TableHeader class="bg-muted [&_th]:text-xs [&_th]:font-medium [&_th]:text-text-secondary">
+            <TableRow class="hover:bg-muted"><TableHead class="px-4">Requested</TableHead><TableHead>Kind</TableHead><TableHead>Period</TableHead><TableHead>Status</TableHead><TableHead class="px-4">Download</TableHead></TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="e in rows" :key="e.id" class="h-[52px]" data-testid="export-row" :data-status="e.status">
+              <TableCell class="px-4">{{ amsterdam(e.createdAt) }}</TableCell>
+              <TableCell>{{ e.kind }}</TableCell>
+              <TableCell class="tabular-nums">{{ e.periodFrom }} to {{ e.periodTo }}</TableCell>
+              <TableCell><AppStatusBadge :status="e.status" data-testid="export-status" /></TableCell>
+              <TableCell class="px-4"><a v-if="e.link" :href="e.link" data-testid="export-link" class="font-medium text-primary hover:underline">Download (valid 24 h)</a></TableCell>
+            </TableRow>
+            <TableRow v-if="!rows.length" class="hover:bg-transparent"><TableCell colspan="5" class="h-[52px] text-center text-muted-foreground">No exports yet.</TableCell></TableRow>
+          </TableBody>
+        </Table>
+      </div>
+    </CardContent>
+  </Card>
 </template>

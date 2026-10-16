@@ -25,12 +25,12 @@ async function finish() {
 
 <template>
   <div class="space-y-4">
-    <h1 class="text-2xl font-bold">Welkom</h1>
-    <p>Je bent ingelogd. Alles hieronder is optioneel en staat standaard uit.</p>
-    <p v-if="loadError" role="alert" class="text-red-800">{{ loadError }}</p>
+    <h1 class="text-h1 font-semibold">Welkom</h1>
+    <p class="text-text-secondary">Je bent ingelogd. Alles hieronder is optioneel en staat standaard uit.</p>
+    <p v-if="loadError" role="alert" class="text-sm text-danger">{{ loadError }}</p>
     <ConsentToggles v-model="consents" />
     <PushOptIn />
     <InstallHint />
-    <button type="button" class="btn btn-primary w-full" data-testid="onboarding-done" @click="finish">Klaar</button>
+    <Button type="button" size="lg" class="w-full" data-testid="onboarding-done" @click="finish">Klaar</Button>
   </div>
 </template>

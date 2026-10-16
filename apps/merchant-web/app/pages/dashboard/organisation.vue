@@ -26,23 +26,45 @@ async function save() {
 </script>
 
 <template>
-  <h1 class="mb-4 text-xl font-semibold">Organisation</h1>
-  <form class="max-w-lg space-y-3 rounded-lg border border-slate-200 bg-white p-5" @submit.prevent="save">
-    <label class="block text-sm">Legal name
-      <input v-model="form.legalName" :disabled="!canWrite" required data-testid="org-legal-name" class="mt-1 w-full rounded border border-slate-300 px-3 py-2 disabled:bg-slate-100" />
-    </label>
-    <label class="block text-sm">KvK number (8 digits)
-      <input v-model="form.kvkNumber" :disabled="!canWrite" required pattern="\d{8}" data-testid="org-kvk" class="mt-1 w-full rounded border border-slate-300 px-3 py-2 disabled:bg-slate-100" />
-    </label>
-    <label class="block text-sm">BTW-id (NL123456789B01)
-      <input v-model="form.vatNumber" :disabled="!canWrite" pattern="NL\d{9}B\d{2}" placeholder="optional" data-testid="org-vat" class="mt-1 w-full rounded border border-slate-300 px-3 py-2 disabled:bg-slate-100" />
-    </label>
-    <label class="block text-sm">Retention (years, minimum 7)
-      <input v-model.number="form.retentionYears" :disabled="!canWrite" type="number" min="7" max="25" required data-testid="org-retention" class="mt-1 w-full rounded border border-slate-300 px-3 py-2 disabled:bg-slate-100" />
-    </label>
-    <button v-if="canWrite" data-testid="org-save" class="rounded bg-slate-900 px-4 py-2 text-white">Save</button>
-    <p v-else class="text-sm text-slate-500">Only owners can change organisation settings.</p>
-    <p v-if="saved" class="text-sm text-green-700" data-testid="org-saved">Saved.</p>
-    <p v-if="error" class="text-sm text-red-700" role="alert" data-testid="error">{{ error }}</p>
-  </form>
+  <AppPageHeading title="Organisation" description="Legal details printed on your receipts and the period they are kept." />
+
+  <Card>
+    <form @submit.prevent="save">
+      <CardContent class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        <div>
+          <h2 class="text-base font-medium">Legal details</h2>
+          <p class="mt-1 text-sm text-muted-foreground">Used on every receipt and in the exports for your accountant.</p>
+        </div>
+        <div class="max-w-lg space-y-6">
+          <div class="space-y-2">
+            <Label for="org-legal-name">Legal name</Label>
+            <Input id="org-legal-name" v-model="form.legalName" :disabled="!canWrite" required data-testid="org-legal-name" />
+          </div>
+          <div class="space-y-2">
+            <Label for="org-kvk">KvK number</Label>
+            <Input id="org-kvk" v-model="form.kvkNumber" :disabled="!canWrite" required pattern="\d{8}" data-testid="org-kvk" />
+            <p class="text-xs text-muted-foreground">8 digits.</p>
+          </div>
+          <div class="space-y-2">
+            <Label for="org-vat">BTW-id</Label>
+            <Input id="org-vat" :model-value="form.vatNumber ?? ''" @update:model-value="form.vatNumber = String($event)" :disabled="!canWrite" pattern="NL\d{9}B\d{2}" placeholder="optional" data-testid="org-vat" />
+            <p class="text-xs text-muted-foreground">Format NL123456789B01.</p>
+          </div>
+          <div class="space-y-2">
+            <Label for="org-retention">Retention in years</Label>
+            <Input id="org-retention" v-model.number="form.retentionYears" :disabled="!canWrite" type="number" min="7" max="25" required data-testid="org-retention" />
+            <p class="text-xs text-muted-foreground">Minimum 7 years.</p>
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter class="mt-6 justify-between gap-4">
+        <div class="text-sm">
+          <p v-if="saved" class="text-success" data-testid="org-saved">Saved.</p>
+          <p v-else-if="error" class="text-danger" role="alert" data-testid="error">{{ error }}</p>
+          <p v-else-if="!canWrite" class="text-muted-foreground">Only owners can change organisation settings.</p>
+        </div>
+        <Button v-if="canWrite" data-testid="org-save">Save changes</Button>
+      </CardFooter>
+    </form>
+  </Card>
 </template>

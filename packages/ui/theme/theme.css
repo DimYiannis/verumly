@@ -1,0 +1,133 @@
+/* less-receipts theme (Salespore design system, indigo accent) for shadcn-vue (Tailwind v4).
+   Usage: @import "tailwindcss"; @import "tw-animate-css"; @import "@lr/ui/theme/theme.css";
+   Light mode only. */
+@import './fonts.css';
+
+:root {
+  --radius: 0.75rem; /* 12px: cards and dialogs. sm = 4, md = 8, lg = 12 via @theme below */
+
+  --background: #F1F0EA;          /* shell */
+  --foreground: #14152B;
+  --card: #FDFCFA;
+  --card-foreground: #14152B;
+  --popover: #FDFCFA;
+  --popover-foreground: #14152B;
+  --primary: #3338B8;             /* the one accent */
+  --primary-foreground: #F8F7F4;
+  --secondary: #FDFCFA;           /* secondary button = paper + hairline */
+  --secondary-foreground: #14152B;
+  --muted: #F1F0EA;
+  --muted-foreground: #5C5F7A;    /* paper surfaces only; use --text-secondary on tints */
+  --accent: #E6E7F8;              /* shadcn hover/highlight surface (mint) */
+  --accent-foreground: #1C1F6E;
+  --destructive: #9A3B2E;
+  --destructive-foreground: #F8F7F4;
+  --border: #DCDCD3;              /* the one hairline */
+  --input: #DCDCD3;
+  --ring: #B3B6EE;                /* 3px focus ring */
+
+  --chart-1: #3338B8;
+  --chart-2: #5A5FD0;
+  --chart-3: #8A8EE0;
+  --chart-4: #1C1F6E;
+  --chart-5: #E6E7F8;
+
+  --sidebar: #F1F0EA;
+  --sidebar-foreground: #42445F;
+  --sidebar-primary: #3338B8;
+  --sidebar-primary-foreground: #F8F7F4;
+  --sidebar-accent: #E6E7F8;      /* selected nav item */
+  --sidebar-accent-foreground: #1C1F6E;
+  --sidebar-border: #DCDCD3;
+  --sidebar-ring: #B3B6EE;
+
+  --success: #2F6B3E; --success-soft: #E3F0E4; --success-border: #B9D8BF;
+  --warning: #7A5A10; --warning-soft: #F7EED6; --warning-border: #E6D29C;
+  --danger: #9A3B2E;  --danger-soft: #F9E9E4;  --danger-border: #EBC2B8;
+  --text-secondary: #42445F;
+  --selected: #E6E7F8;
+  --selected-border: #5A5FD0;
+}
+
+@theme inline {
+  --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --radius-xs: 4px;   /* checkbox */
+  --radius-sm: 6px;   /* badge, menu item */
+  --radius-md: 8px;   /* button, input, item card, table */
+  --radius-lg: 12px;  /* card, dialog */
+  --radius-xl: 12px;  /* shadcn cards use rounded-xl: keep at 12 */
+
+  --shadow-xs: none;
+  --shadow-sm: 0 1px 2px rgba(20,21,43,0.06);          /* raised */
+  --shadow-md: 0 12px 32px -8px rgba(20,21,43,0.18);   /* floating */
+  --shadow-lg: 0 12px 32px -8px rgba(20,21,43,0.18);
+  --shadow-xl: 0 12px 32px -8px rgba(20,21,43,0.18);
+
+  --text-label: 12px; --text-label--line-height: 16px; --text-label--letter-spacing: 0.04em; --text-label--font-weight: 500;
+  --text-small: 12px; --text-small--line-height: 16px;
+  --text-body: 16px;  --text-body--line-height: 24px;
+  --text-h3: 18px;    --text-h3--line-height: 28px; --text-h3--letter-spacing: -0.005em;
+  --text-h2: 24px;    --text-h2--line-height: 32px; --text-h2--letter-spacing: -0.015em;
+  --text-h1: 30px;    --text-h1--line-height: 36px; --text-h1--letter-spacing: -0.025em;
+  --text-display: 48px; --text-display--line-height: 52px; --text-display--letter-spacing: -0.035em;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-border: var(--success-border);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-border: var(--warning-border);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-border: var(--danger-border);
+  --color-text-secondary: var(--text-secondary);
+  --color-selected: var(--selected);
+  --color-selected-border: var(--selected-border);
+  --color-brand-950: #0D0F33;
+  --color-brand-900: #1C1F6E;
+  --color-brand-700: #3338B8;
+  --color-brand-500: #5A5FD0;
+  --color-paper-white: #F8F7F4;
+
+  --ease-brand: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground font-sans text-body antialiased; }
+  a { @apply text-primary underline-offset-3 hover:text-brand-900; }
+}

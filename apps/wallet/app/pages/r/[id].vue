@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { WifiOff } from '@lucide/vue';
 import { ApiError } from '~/utils/api';
 import type { ResolveView } from '~/utils/api-schemas';
 import { UUIDV7_RE } from '~/utils/receipt-link';
@@ -168,63 +169,78 @@ onBeforeUnmount(() => clearTimeout(pollTimer));
 
 <template>
   <div>
-    <p v-if="phase === 'loading'" role="status" data-testid="loading">Bon ophalen…</p>
+    <p v-if="phase === 'loading'" role="status" data-testid="loading" class="flex items-center gap-2 text-sm text-text-secondary">
+      <Spinner role="presentation" aria-hidden="true" />
+      Bon ophalen…
+    </p>
 
-    <section v-else-if="phase === 'invalid'" class="card" role="alert" data-testid="invalid-link">
-      <h1 class="text-xl font-bold">Ongeldige link</h1>
-      <p>Dit is geen geldige bonlink. Scan de QR-code op de bon opnieuw.</p>
+    <section v-else-if="phase === 'invalid'" class="space-y-2 rounded-xl border border-danger-border bg-card p-4" role="alert" data-testid="invalid-link">
+      <h1 class="text-h2 font-semibold">Ongeldige link</h1>
+      <p class="text-text-secondary">Dit is geen geldige bonlink. Scan de QR-code op de bon opnieuw.</p>
     </section>
 
-    <section v-else-if="phase === 'nolink'" class="card space-y-3" role="alert" data-testid="incomplete-link">
-      <h1 class="text-xl font-bold">Link onvolledig</h1>
-      <p>Het geheime deel van de link ontbreekt. Scan de QR-code op de bon opnieuw.</p>
-      <NuxtLink v-if="wallet.session.value" to="/" class="btn btn-secondary">Naar mijn bonnen</NuxtLink>
+    <section v-else-if="phase === 'nolink'" class="space-y-3 rounded-xl border border-border bg-card p-4" role="alert" data-testid="incomplete-link">
+      <h1 class="text-h2 font-semibold">Link onvolledig</h1>
+      <p class="text-text-secondary">Het geheime deel van de link ontbreekt. Scan de QR-code op de bon opnieuw.</p>
+      <Button v-if="wallet.session.value" as-child variant="secondary" size="lg" class="w-full">
+        <NuxtLink to="/">Naar mijn bonnen</NuxtLink>
+      </Button>
     </section>
 
-    <section v-else-if="phase === 'notfound'" class="card" role="alert" data-testid="not-found">
-      <h1 class="text-xl font-bold">Bon niet gevonden</h1>
-      <p>Deze link klopt niet. Vraag het personeel om een nieuwe QR-code.</p>
+    <section v-else-if="phase === 'notfound'" class="space-y-2 rounded-xl border border-border bg-card p-4" role="alert" data-testid="not-found">
+      <h1 class="text-h2 font-semibold">Bon niet gevonden</h1>
+      <p class="text-text-secondary">Deze link klopt niet. Vraag het personeel om een nieuwe QR-code.</p>
     </section>
 
-    <section v-else-if="phase === 'limited'" class="card" role="alert" data-testid="rate-limited">
-      <h1 class="text-xl font-bold">Even wachten</h1>
-      <p>Er zijn te veel pogingen gedaan. Probeer het later opnieuw.</p>
+    <section v-else-if="phase === 'limited'" class="space-y-2 rounded-xl border border-warning-border bg-card p-4" role="alert" data-testid="rate-limited">
+      <h1 class="text-h2 font-semibold">Even wachten</h1>
+      <p class="text-text-secondary">Er zijn te veel pogingen gedaan. Probeer het later opnieuw.</p>
     </section>
 
-    <section v-else-if="phase === 'error'" class="card space-y-3" role="alert" data-testid="load-error">
-      <h1 class="text-xl font-bold">Er ging iets mis</h1>
-      <button type="button" class="btn btn-secondary" @click="resolve">Opnieuw proberen</button>
+    <section v-else-if="phase === 'error'" class="space-y-3 rounded-xl border border-danger-border bg-card p-4" role="alert" data-testid="load-error">
+      <h1 class="text-h2 font-semibold">Er ging iets mis</h1>
+      <Button type="button" variant="secondary" size="lg" class="w-full" @click="resolve">Opnieuw proberen</Button>
     </section>
 
-    <section v-else-if="phase === 'arriving'" class="card space-y-3" role="status" data-testid="arriving-state">
-      <h1 class="text-xl font-bold">Bon onderweg</h1>
-      <p>Geen verbinding. We bewaren deze bon en halen hem op zodra je weer online bent.</p>
-      <p v-if="!wallet.session.value">Log daarna in om hem op te slaan.</p>
-      <NuxtLink :to="wallet.session.value ? '/' : { path: '/login', query: { next: `/r/${id}` } }" class="btn btn-secondary">
-        {{ wallet.session.value ? 'Naar mijn bonnen' : 'Inloggen' }}
-      </NuxtLink>
+    <section v-else-if="phase === 'arriving'" class="space-y-3 rounded-xl border border-border bg-card p-4" role="status" data-testid="arriving-state">
+      <h1 class="flex items-center gap-2 text-h2 font-semibold">
+        <WifiOff class="size-5 text-warning" aria-hidden="true" />
+        Bon onderweg
+      </h1>
+      <p class="text-text-secondary">Geen verbinding. We bewaren deze bon en halen hem op zodra je weer online bent.</p>
+      <p v-if="!wallet.session.value" class="text-text-secondary">Log daarna in om hem op te slaan.</p>
+      <Button as-child variant="secondary" size="lg" class="w-full">
+        <NuxtLink :to="wallet.session.value ? '/' : { path: '/login', query: { next: `/r/${id}` } }">
+          {{ wallet.session.value ? 'Naar mijn bonnen' : 'Inloggen' }}
+        </NuxtLink>
+      </Button>
     </section>
 
-    <section v-else-if="phase === 'pending'" class="card space-y-3" role="status" data-testid="pending-state">
-      <h1 class="text-xl font-bold">Bon is bijna klaar</h1>
-      <p>De kassa heeft de bon nog niet doorgestuurd. We blijven het proberen; je hoeft niets te doen.</p>
-      <NuxtLink v-if="wallet.session.value" to="/" class="btn btn-secondary">Naar mijn bonnen</NuxtLink>
+    <section v-else-if="phase === 'pending'" class="space-y-3 rounded-xl border border-border bg-card p-4" role="status" data-testid="pending-state">
+      <h1 class="flex items-center gap-2 text-h2 font-semibold">
+        <Spinner class="text-primary" role="presentation" aria-hidden="true" />
+        Bon is bijna klaar
+      </h1>
+      <p class="text-text-secondary">De kassa heeft de bon nog niet doorgestuurd. We blijven het proberen; je hoeft niets te doen.</p>
+      <Button v-if="wallet.session.value" as-child variant="secondary" size="lg" class="w-full">
+        <NuxtLink to="/">Naar mijn bonnen</NuxtLink>
+      </Button>
     </section>
 
     <template v-else-if="view">
-      <p v-if="takenByOther" role="alert" data-testid="taken-notice" class="mb-4 rounded-xl border border-slate-300 bg-white p-3">
+      <p v-if="takenByOther" role="alert" data-testid="taken-notice" class="mb-4 rounded-xl border border-border bg-card p-4 text-sm">
         Deze bon is al opgeslagen in een andere portemonnee.
       </p>
-      <p v-else-if="dismissed" role="status" data-testid="dismissed-notice" class="mb-4 rounded-xl border border-slate-300 bg-white p-3">
+      <p v-else-if="dismissed" role="status" data-testid="dismissed-notice" class="mb-4 flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 text-sm">
         Niet opgeslagen.
-        <button type="button" class="font-semibold underline" data-testid="reopen-sheet" @click="reopenSheet">Toch opslaan</button>
+        <Button type="button" size="lg" data-testid="reopen-sheet" @click="reopenSheet">Toch opslaan</Button>
       </p>
       <!-- the sheet is modal: keep the receipt behind it out of the tab order and the accessibility tree -->
       <div :inert="sheetOpen">
         <ReceiptView :detail="view" />
       </div>
-      <div v-if="!wallet.session.value && !takenByOther" class="sticky bottom-4 mt-4">
-        <button type="button" class="btn btn-primary w-full shadow-lg" data-testid="save-to-wallet" @click="saveToWallet">Bewaar in portemonnee / Save to wallet</button>
+      <div v-if="!wallet.session.value && !takenByOther" class="sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] mt-4">
+        <Button type="button" size="lg" class="w-full shadow-md" data-testid="save-to-wallet" @click="saveToWallet">Bewaar in portemonnee / Save to wallet</Button>
       </div>
       <ConfirmSheet
         v-if="sheetOpen"

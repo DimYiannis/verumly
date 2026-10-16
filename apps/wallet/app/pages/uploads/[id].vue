@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronLeft, Plus, X } from '@lucide/vue';
 import { ApiError } from '~/utils/api';
 import type { ParsedLineDto } from '@lr/schema';
 import type { UploadStatus } from '~/utils/api-schemas';
@@ -118,103 +119,129 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="space-y-4">
-    <NuxtLink to="/" class="inline-block py-2 font-medium text-brand-700 underline">← Alle bonnen</NuxtLink>
-    <h1 class="text-2xl font-bold">Bon uitlezen</h1>
+    <NuxtLink to="/" class="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary no-underline hover:text-brand-900">
+      <ChevronLeft class="size-4" aria-hidden="true" />
+      Alle bonnen
+    </NuxtLink>
+    <h1 class="text-h2 font-semibold">Bon uitlezen</h1>
 
-    <p v-if="error" role="alert" data-testid="upload-error" class="rounded-xl bg-red-50 p-3 text-red-900">{{ error }}</p>
+    <p v-if="error" role="alert" data-testid="upload-error" class="rounded-lg border border-danger-border bg-danger-soft p-3 text-sm text-danger">{{ error }}</p>
 
-    <p v-if="!upload && !error" role="status" data-testid="upload-processing" class="card">Bon laden…</p>
+    <p v-if="!upload && !error" role="status" data-testid="upload-processing" class="flex items-center gap-2 rounded-xl border border-border bg-card p-4 text-text-secondary">
+      <Spinner role="presentation" aria-hidden="true" />
+      Bon laden…
+    </p>
 
-    <p v-else-if="upload && (upload.status === 'pending_upload' || upload.status === 'processing')" role="status" aria-live="polite" data-testid="upload-processing" class="card">
+    <p
+      v-else-if="upload && (upload.status === 'pending_upload' || upload.status === 'processing')"
+      role="status"
+      aria-live="polite"
+      data-testid="upload-processing"
+      class="rounded-xl border border-border bg-card p-4 text-text-secondary"
+    >
+      <Spinner class="mb-2 text-primary" role="presentation" aria-hidden="true" />
       We lezen je bon uit. Dit duurt meestal een paar seconden…
       <span v-if="timedOut" class="mt-2 block">Het duurt langer dan verwacht. Je kunt later terugkomen; we blijven werken.</span>
     </p>
 
-    <section v-else-if="upload?.status === 'failed'" class="card space-y-2" role="alert" data-testid="upload-failed">
-      <h2 class="font-semibold">Uitlezen is niet gelukt</h2>
-      <p>We konden deze foto niet lezen. Probeer een scherpere foto, goed belicht en recht van boven.</p>
-      <NuxtLink to="/add" class="btn btn-secondary">Opnieuw proberen</NuxtLink>
+    <section v-else-if="upload?.status === 'failed'" class="space-y-3 rounded-xl border border-danger-border bg-card p-4" role="alert" data-testid="upload-failed">
+      <h2 class="text-h3 font-semibold">Uitlezen is niet gelukt</h2>
+      <p class="text-text-secondary">We konden deze foto niet lezen. Probeer een scherpere foto, goed belicht en recht van boven.</p>
+      <Button as-child variant="secondary" size="lg" class="w-full">
+        <NuxtLink to="/add">Opnieuw proberen</NuxtLink>
+      </Button>
     </section>
 
-    <section v-else-if="upload?.status === 'replaced' && upload.matchedReceiptId" class="card space-y-2" data-testid="upload-replaced">
-      <h2 class="font-semibold">Vervangen door de officiële bon</h2>
-      <NuxtLink :to="`/receipts/${upload.matchedReceiptId}`" class="btn btn-primary w-full">Bekijk de bon</NuxtLink>
+    <section v-else-if="upload?.status === 'replaced' && upload.matchedReceiptId" class="space-y-3 rounded-xl border border-border bg-card p-4" data-testid="upload-replaced">
+      <h2 class="text-h3 font-semibold">Vervangen door de officiële bon</h2>
+      <Button as-child size="lg" class="w-full">
+        <NuxtLink :to="`/receipts/${upload.matchedReceiptId}`">Bekijk de bon</NuxtLink>
+      </Button>
     </section>
 
     <template v-else-if="upload">
       <section
         v-if="upload.matchedReceiptId && !matchDeclined && upload.status === 'done'"
-        class="card space-y-3 border-2 border-brand-600"
+        class="space-y-3 rounded-xl border-2 border-selected-border bg-card p-4"
         aria-labelledby="match-h"
         data-testid="match-offer"
       >
-        <h2 id="match-h" class="text-lg font-bold">Officiële bon gevonden — vervangen?</h2>
-        <p class="text-sm text-slate-700">Official receipt found — replace?</p>
-        <p v-if="upload.match">
+        <h2 id="match-h" class="text-h3 font-semibold">Officiële bon gevonden — vervangen?</h2>
+        <p class="text-sm text-text-secondary">Official receipt found — replace?</p>
+        <p v-if="upload.match" class="font-mono text-sm">
           {{ upload.match.merchantName }} · {{ formatEuro(upload.match.total) }} · {{ formatDateTime(upload.match.createdAt) }}
         </p>
         <p>De winkel heeft deze bon digitaal verstuurd. Vervang je foto door de officiële bon?</p>
-        <div class="flex flex-col gap-3">
-          <button type="button" class="btn btn-primary" data-testid="accept-match" :disabled="busy" @click="acceptMatch">Vervangen door de officiële bon</button>
-          <button type="button" class="btn btn-secondary" data-testid="decline-match" :disabled="busy" @click="matchDeclined = true">Nee, houd mijn foto</button>
+        <div class="flex flex-col gap-2">
+          <Button type="button" size="lg" data-testid="accept-match" :disabled="busy" @click="acceptMatch">Vervangen door de officiële bon</Button>
+          <Button type="button" variant="secondary" size="lg" data-testid="decline-match" :disabled="busy" @click="matchDeclined = true">Nee, houd mijn foto</Button>
         </div>
       </section>
 
-      <section v-if="upload.status === 'needs_review'" aria-labelledby="review-h" data-testid="correction-section">
-        <h2 id="review-h" class="text-lg font-bold">Controleer de gegevens</h2>
-        <p class="mb-3">We konden niet alles zeker lezen. Corrigeer wat er niet klopt.</p>
-        <ul v-if="upload.failures.length > 0" class="mb-3 list-disc pl-5 text-sm text-slate-800" data-testid="upload-failures">
-          <li v-for="f in upload.failures" :key="f"><code>{{ f }}</code></li>
+      <section v-if="upload.status === 'needs_review'" class="space-y-3" aria-labelledby="review-h" data-testid="correction-section">
+        <div>
+          <h2 id="review-h" class="text-h3 font-semibold">Controleer de gegevens</h2>
+          <p class="text-text-secondary">We konden niet alles zeker lezen. Corrigeer wat er niet klopt.</p>
+        </div>
+        <ul v-if="upload.failures.length > 0" class="list-disc pl-5 text-sm text-text-secondary" data-testid="upload-failures">
+          <li v-for="f in upload.failures" :key="f"><code class="font-mono">{{ f }}</code></li>
         </ul>
-        <form class="card space-y-3" data-testid="correction-form" novalidate @submit.prevent="submitCorrections">
-          <label class="block font-medium">
-            Winkel
-            <input v-model="form.merchantName" class="input mt-1" data-testid="corr-merchant" required />
-          </label>
-          <label class="block font-medium">
-            Datum en tijd
-            <input v-model="form.printedAt" type="datetime-local" class="input mt-1" data-testid="corr-printed-at" required />
-          </label>
-          <label class="block font-medium">
-            Totaal (€)
-            <input v-model="form.gross" inputmode="decimal" class="input mt-1" data-testid="corr-gross" required />
-          </label>
+        <form class="space-y-4 rounded-xl border border-border bg-card p-4" data-testid="correction-form" novalidate @submit.prevent="submitCorrections">
+          <div class="space-y-2">
+            <Label for="corr-merchant">Winkel</Label>
+            <Input id="corr-merchant" v-model="form.merchantName" class="h-11" data-testid="corr-merchant" required />
+          </div>
+          <div class="space-y-2">
+            <Label for="corr-printed-at">Datum en tijd</Label>
+            <Input id="corr-printed-at" v-model="form.printedAt" type="datetime-local" class="h-11" data-testid="corr-printed-at" required />
+          </div>
+          <div class="space-y-2">
+            <Label for="corr-gross">Totaal (€)</Label>
+            <Input id="corr-gross" v-model="form.gross" inputmode="decimal" class="h-11 font-mono" data-testid="corr-gross" required />
+          </div>
           <fieldset class="space-y-3">
-            <legend class="font-medium">Regels</legend>
-            <div v-for="(line, i) in form.lines" :key="i" class="grid grid-cols-[1fr_5rem_auto] items-end gap-2" data-testid="corr-line">
-              <label class="text-sm">
-                Omschrijving
-                <input v-model="line.description" class="input mt-1" :data-testid="`corr-line-desc-${i}`" />
-              </label>
-              <label class="text-sm">
-                Bedrag
-                <input v-model="line.total" inputmode="decimal" class="input mt-1" :data-testid="`corr-line-total-${i}`" />
-              </label>
-              <button type="button" class="btn btn-secondary px-3" :aria-label="`Regel ${i + 1} verwijderen`" @click="form.lines.splice(i, 1)">✕</button>
+            <legend class="mb-2 text-label text-text-secondary">Regels</legend>
+            <div v-for="(line, i) in form.lines" :key="i" class="grid grid-cols-[1fr_6rem_auto] items-end gap-2" data-testid="corr-line">
+              <div class="space-y-2">
+                <Label :for="`corr-line-desc-${i}`">Omschrijving</Label>
+                <Input :id="`corr-line-desc-${i}`" v-model="line.description" class="h-11" :data-testid="`corr-line-desc-${i}`" />
+              </div>
+              <div class="space-y-2">
+                <Label :for="`corr-line-total-${i}`">Bedrag</Label>
+                <Input :id="`corr-line-total-${i}`" v-model="line.total" inputmode="decimal" class="h-11 font-mono" :data-testid="`corr-line-total-${i}`" />
+              </div>
+              <Button type="button" variant="secondary" class="size-11" :aria-label="`Regel ${i + 1} verwijderen`" @click="form.lines.splice(i, 1)">
+                <X aria-hidden="true" />
+              </Button>
             </div>
-            <button type="button" class="btn btn-secondary" data-testid="corr-add-line" @click="addLine">Regel toevoegen</button>
+            <Button type="button" variant="secondary" size="lg" data-testid="corr-add-line" @click="addLine">
+              <Plus aria-hidden="true" />
+              Regel toevoegen
+            </Button>
           </fieldset>
-          <ul v-if="fieldErrors.length > 0" role="alert" class="list-disc pl-5 text-red-800" data-testid="corr-errors">
+          <ul v-if="fieldErrors.length > 0" role="alert" class="list-disc pl-5 text-sm text-danger" data-testid="corr-errors">
             <li v-for="m in fieldErrors" :key="m">{{ m }}</li>
           </ul>
-          <button type="submit" class="btn btn-primary w-full" data-testid="corr-submit" :disabled="busy">Opslaan</button>
+          <Button type="submit" size="lg" class="w-full" data-testid="corr-submit" :disabled="busy">Opslaan</Button>
         </form>
       </section>
 
-      <section v-else-if="upload.status === 'done' && upload.draft" class="card space-y-2" data-testid="upload-done">
-        <h2 class="font-semibold">Bon toegevoegd</h2>
-        <p>
+      <section v-else-if="upload.status === 'done' && upload.draft" class="space-y-3 rounded-xl border border-border bg-card p-4" data-testid="upload-done">
+        <h2 class="text-h3 font-semibold">Bon toegevoegd</h2>
+        <p class="text-sm text-text-secondary">
           {{ upload.draft.merchantName ?? 'Onbekende winkel' }}
           <template v-if="upload.draft.gross !== null"> · {{ formatEuro(upload.draft.gross) }}</template>
           <template v-if="upload.draft.printedAt"> · {{ formatDateTime(upload.draft.printedAt) }}</template>
         </p>
-        <ul class="divide-y divide-slate-100" data-testid="upload-draft-lines">
-          <li v-for="(l, i) in upload.draft.lines" :key="i" class="flex justify-between py-1">
+        <ul class="divide-y divide-dashed divide-border font-mono text-sm" data-testid="upload-draft-lines">
+          <li v-for="(l, i) in upload.draft.lines" :key="i" class="flex justify-between gap-3 py-2">
             <span>{{ l.description }}</span>
             <span class="tabular-nums">{{ formatEuro(l.total) }}</span>
           </li>
         </ul>
-        <NuxtLink to="/" class="btn btn-secondary w-full">Terug naar mijn bonnen</NuxtLink>
+        <Button as-child variant="secondary" size="lg" class="w-full">
+          <NuxtLink to="/">Terug naar mijn bonnen</NuxtLink>
+        </Button>
       </section>
     </template>
   </div>

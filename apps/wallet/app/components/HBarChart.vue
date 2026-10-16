@@ -19,14 +19,14 @@ const rows = computed(() =>
 </script>
 
 <template>
-  <figure class="card" :data-testid="testid">
-    <figcaption class="mb-2 font-semibold">{{ title }}</figcaption>
+  <figure class="rounded-xl border border-border bg-card p-4" :data-testid="testid">
+    <figcaption class="mb-3 text-h3 font-semibold">{{ title }}</figcaption>
     <svg :viewBox="`0 0 ${W} ${Math.max(1, items.length) * ROW}`" role="img" :aria-label="`${title}: ${items.map((i) => `${i.label} ${formatEuro(i.value)}`).join(', ')}`" class="w-full">
       <title>{{ title }}</title>
       <g v-for="r in rows" :key="r.label">
-        <text :x="0" :y="r.y + 20" font-size="12" fill="#0f172a">{{ r.label.length > 16 ? `${r.label.slice(0, 15)}…` : r.label }}</text>
-        <rect :x="LABEL_W" :y="r.y + 8" :width="Math.max(2, r.w)" height="16" rx="3" fill="#0f766e" data-testid="bar" />
-        <text :x="W" :y="r.y + 20" text-anchor="end" font-size="11" fill="#334155">{{ formatEuro(r.value) }}</text>
+        <text :x="0" :y="r.y + 20" font-size="12" class="fill-foreground">{{ r.label.length > 16 ? `${r.label.slice(0, 15)}…` : r.label }}</text>
+        <rect :x="LABEL_W" :y="r.y + 8" :width="Math.max(2, r.w)" height="16" rx="3" class="fill-chart-1" data-testid="bar" />
+        <text :x="W" :y="r.y + 20" text-anchor="end" font-size="11" class="fill-text-secondary font-mono">{{ formatEuro(r.value) }}</text>
       </g>
     </svg>
     <table class="sr-only">

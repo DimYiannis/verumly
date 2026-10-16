@@ -49,39 +49,43 @@ async function verify() {
 
 <template>
   <div data-testid="email-login">
-    <form v-if="step === 'email'" class="space-y-3" @submit.prevent="sendCode">
-      <label class="block font-medium" for="login-email">E-mailadres</label>
-      <input
-        id="login-email"
-        v-model="email"
-        class="input"
-        type="email"
-        name="email"
-        autocomplete="email"
-        inputmode="email"
-        required
-        data-testid="login-email"
-      />
-      <button type="submit" class="btn btn-primary w-full" :disabled="busy" data-testid="login-send">Stuur me een code</button>
+    <form v-if="step === 'email'" class="space-y-4" @submit.prevent="sendCode">
+      <div class="space-y-2">
+        <Label for="login-email" class="text-sm font-medium text-foreground">E-mailadres</Label>
+        <Input
+          id="login-email"
+          v-model="email"
+          class="h-11 text-base"
+          type="email"
+          name="email"
+          autocomplete="email"
+          inputmode="email"
+          required
+          data-testid="login-email"
+        />
+      </div>
+      <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-send">Stuur me een code</Button>
     </form>
-    <form v-else class="space-y-3" @submit.prevent="verify">
-      <p data-testid="login-info">{{ info }}</p>
-      <label class="block font-medium" for="login-code">Code</label>
-      <input
-        id="login-code"
-        v-model="code"
-        class="input text-center text-2xl tracking-[0.5em]"
-        name="code"
-        autocomplete="one-time-code"
-        inputmode="numeric"
-        pattern="[0-9]{6}"
-        maxlength="6"
-        required
-        data-testid="login-code"
-      />
-      <button type="submit" class="btn btn-primary w-full" :disabled="busy" data-testid="login-verify">Inloggen</button>
-      <button type="button" class="btn btn-secondary w-full" :disabled="busy" @click="step = 'email'">Ander e-mailadres</button>
+    <form v-else class="space-y-4" @submit.prevent="verify">
+      <p class="text-sm text-text-secondary" data-testid="login-info">{{ info }}</p>
+      <div class="space-y-2">
+        <Label for="login-code" class="text-sm font-medium text-foreground">Code</Label>
+        <Input
+          id="login-code"
+          v-model="code"
+          class="h-14 text-center font-mono text-2xl tracking-[0.5em]"
+          name="code"
+          autocomplete="one-time-code"
+          inputmode="numeric"
+          pattern="[0-9]{6}"
+          maxlength="6"
+          required
+          data-testid="login-code"
+        />
+      </div>
+      <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-verify">Inloggen</Button>
+      <Button type="button" size="lg" variant="secondary" class="w-full" :disabled="busy" @click="step = 'email'">Ander e-mailadres</Button>
     </form>
-    <p role="alert" data-testid="login-error" class="mt-3 text-red-800">{{ error }}</p>
+    <p role="alert" data-testid="login-error" class="mt-3 text-sm text-danger">{{ error }}</p>
   </div>
 </template>

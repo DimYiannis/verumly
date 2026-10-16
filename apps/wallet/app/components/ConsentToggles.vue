@@ -13,10 +13,6 @@ const ROWS: { key: keyof Consents; label: string; hint: string }[] = [
   { key: 'push', label: 'Meldingen', hint: 'Toestemming om meldingen te sturen als een bon wordt bijgewerkt.' },
 ];
 
-function onChange(key: keyof Consents, event: Event) {
-  if (event.target instanceof HTMLInputElement) void toggle(key, event.target.checked);
-}
-
 async function toggle(key: keyof Consents, value: boolean) {
   error.value = null;
   saved.value = '';
@@ -33,24 +29,22 @@ async function toggle(key: keyof Consents, value: boolean) {
 </script>
 
 <template>
-  <fieldset class="card space-y-3" data-testid="consents">
-    <legend class="px-1 font-semibold">Toestemmingen</legend>
-    <div v-for="row in ROWS" :key="row.key" class="flex items-start gap-3">
-      <input
-        :id="`consent-${row.key}`"
-        type="checkbox"
-        role="switch"
-        class="mt-1 size-6 shrink-0 accent-brand-700"
-        :checked="model[row.key]"
-        :data-testid="`consent-${row.key}`"
-        @change="onChange(row.key, $event)"
-      />
-      <label :for="`consent-${row.key}`">
+  <fieldset class="space-y-4 rounded-xl border border-border bg-card p-4" data-testid="consents">
+    <legend class="px-1 text-h3 font-semibold">Toestemmingen</legend>
+    <div v-for="row in ROWS" :key="row.key" class="flex items-start justify-between gap-4">
+      <Label :for="`consent-${row.key}`" class="block min-h-11 flex-1 cursor-pointer py-1 text-base font-normal text-foreground">
         <span class="block font-medium">{{ row.label }}</span>
-        <span class="block text-sm text-slate-800">{{ row.hint }}</span>
-      </label>
+        <span class="mt-0.5 block text-sm text-text-secondary">{{ row.hint }}</span>
+      </Label>
+      <Switch
+        :id="`consent-${row.key}`"
+        class="mt-2"
+        :model-value="model[row.key]"
+        :data-testid="`consent-${row.key}`"
+        @update:model-value="(v: boolean) => toggle(row.key, v)"
+      />
     </div>
-    <p role="status" data-testid="consent-status" class="text-sm text-slate-800">{{ saved }}</p>
-    <p v-if="error" role="alert" class="text-red-800">{{ error }}</p>
+    <p role="status" data-testid="consent-status" class="text-sm text-text-secondary">{{ saved }}</p>
+    <p v-if="error" role="alert" class="text-sm text-danger">{{ error }}</p>
   </fieldset>
 </template>

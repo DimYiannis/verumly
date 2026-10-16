@@ -38,11 +38,17 @@ onMounted(async () => {
 
 <template>
   <div class="space-y-4">
-    <h1 class="text-2xl font-bold">Inzichten</h1>
-    <p v-if="error" role="alert" class="card">{{ error }}</p>
-    <p v-else-if="!data" role="status">Laden…</p>
+    <h1 class="text-h2 font-semibold">Inzichten</h1>
+    <p v-if="error" role="alert" class="rounded-xl border border-danger-border bg-danger-soft p-4 text-sm text-danger">{{ error }}</p>
+    <div v-else-if="!data" class="space-y-4">
+      <p role="status" class="flex items-center gap-2 text-sm text-text-secondary">
+        <Spinner role="presentation" aria-hidden="true" />
+        Laden…
+      </p>
+      <Skeleton class="h-48 w-full" />
+    </div>
     <template v-else>
-      <p v-if="data.perMonth.length === 0" class="card" data-testid="no-insights">Nog geen gegevens. Sla een paar bonnen op om je uitgaven te zien.</p>
+      <p v-if="data.perMonth.length === 0" class="rounded-xl border border-border bg-card p-4 text-text-secondary" data-testid="no-insights">Nog geen gegevens. Sla een paar bonnen op om je uitgaven te zien.</p>
       <template v-else>
         <BarChart testid="chart-months" title="Uitgaven per maand" :items="data.perMonth.map((m) => ({ label: monthLabel(m.month), value: m.total }))" />
         <HBarChart testid="chart-categories" title="Per categorie" :items="data.perCategory.map((c) => ({ label: CATEGORY_LABEL[c.category] ?? c.category, value: c.total }))" />

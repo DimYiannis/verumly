@@ -20,7 +20,7 @@ async function add() {
     await load();
   }
 }
-async function setRole(u: U, role: string) {
+async function setRole(u: U, role: string | undefined) {
   await attempt(error, () => $fetch<unknown>(`/api/dashboard/users/${u.id}`, { method: 'PATCH', body: { role } }));
   await load();
 }
@@ -33,33 +33,52 @@ async function resetTotp(u: U) {
 </script>
 
 <template>
-  <h1 class="mb-1 text-xl font-semibold">Users &amp; roles</h1>
-  <p class="mb-4 text-sm text-slate-600">Owner: everything. Manager: locations and terminals, no settings or users. Accountant: read-only, can request exports.</p>
-  <p v-if="error" class="mb-3 text-sm text-red-700" role="alert" data-testid="error">{{ error }}</p>
-  <table class="w-full overflow-hidden rounded-lg border border-slate-200 bg-white text-sm">
-    <thead class="bg-slate-100 text-left"><tr><th class="p-2">Email</th><th class="p-2">Role</th><th class="p-2">Authenticator</th><th class="p-2" /></tr></thead>
-    <tbody>
-      <tr v-for="u in rows" :key="u.id" class="border-t border-slate-100" data-testid="user-row">
-        <td class="p-2" data-testid="user-email">{{ u.email }}</td>
-        <td class="p-2">
-          <select :value="u.role" data-testid="user-role" class="rounded border border-slate-300 px-2 py-1" @change="setRole(u, ($event.target as HTMLSelectElement).value)">
-            <option value="owner">owner</option><option value="manager">manager</option><option value="accountant">accountant</option>
-          </select>
-        </td>
-        <td class="p-2">{{ u.mfaEnrolled ? 'enrolled' : 'not yet' }}</td>
-        <td class="space-x-3 p-2 text-right">
-          <button class="underline" data-testid="user-reset-totp" @click="resetTotp(u)">Reset authenticator</button>
-          <button v-if="u.email !== session.user?.email" class="text-red-700 underline" data-testid="user-delete" @click="remove(u)">Delete</button>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-  <form class="mt-6 flex max-w-3xl flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4" @submit.prevent="add">
-    <label class="text-sm">Email<input v-model="form.email" type="email" required data-testid="user-new-email" class="mt-1 block rounded border border-slate-300 px-3 py-2" /></label>
-    <label class="text-sm">Initial password (min 12)<input v-model="form.password" type="password" minlength="12" required autocomplete="new-password" data-testid="user-new-password" class="mt-1 block rounded border border-slate-300 px-3 py-2" /></label>
-    <label class="text-sm">Role
-      <select v-model="form.role" data-testid="user-new-role" class="mt-1 block rounded border border-slate-300 px-3 py-2"><option>owner</option><option>manager</option><option>accountant</option></select>
-    </label>
-    <button data-testid="user-create" class="rounded bg-slate-900 px-4 py-2 text-white">Add user</button>
-  </form>
+  <AppPageHeading title="Users" description="Owner: everything. Manager: locations and terminals, no settings or users. Accountant: read-only, can request exports." />
+  <AppErrorNote v-if="error" data-testid="error">{{ error }}</AppErrorNote>
+
+  <Card>
+    <CardContent>
+      <div class="overflow-hidden rounded-md border">
+        <Table>
+          <TableHeader class="bg-muted [&_th]:text-xs [&_th]:font-medium [&_th]:text-text-secondary">
+            <TableRow class="hover:bg-muted"><TableHead class="px-4">Email</TableHead><TableHead>Role</TableHead><TableHead>Authenticator</TableHead><TableHead class="px-4" /></TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="u in rows" :key="u.id" class="h-[52px]" data-testid="user-row">
+              <TableCell class="px-4 font-medium" data-testid="user-email">{{ u.email }}</TableCell>
+              <TableCell>
+                <AppNativeSelect :model-value="u.role" class="w-36" aria-label="Role" data-testid="user-role" @update:model-value="setRole(u, $event)">
+                  <option value="owner">owner</option><option value="manager">manager</option><option value="accountant">accountant</option>
+                </AppNativeSelect>
+              </TableCell>
+              <TableCell><Badge :variant="u.mfaEnrolled ? 'success' : 'neutral'">{{ u.mfaEnrolled ? 'enrolled' : 'not yet' }}</Badge></TableCell>
+              <TableCell class="space-x-1 px-4 text-right">
+                <Button variant="ghost" data-testid="user-reset-totp" @click="resetTotp(u)">Reset authenticator</Button>
+                <Button v-if="u.email !== session.user?.email" variant="ghost" class="text-danger hover:text-danger" data-testid="user-delete" @click="remove(u)">Delete</Button>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+    </CardContent>
+  </Card>
+
+  <Card>
+    <form @submit.prevent="add">
+      <CardHeader><CardTitle class="text-base">Add a user</CardTitle></CardHeader>
+      <CardContent class="mt-4 grid gap-6 sm:grid-cols-3">
+        <div class="space-y-2"><Label for="user-new-email">Email</Label><Input id="user-new-email" v-model="form.email" type="email" required data-testid="user-new-email" /></div>
+        <div class="space-y-2">
+          <Label for="user-new-password">Initial password</Label>
+          <Input id="user-new-password" v-model="form.password" type="password" minlength="12" required autocomplete="new-password" data-testid="user-new-password" />
+          <p class="text-xs text-muted-foreground">At least 12 characters.</p>
+        </div>
+        <div class="space-y-2">
+          <Label for="user-new-role">Role</Label>
+          <AppNativeSelect id="user-new-role" v-model="form.role" data-testid="user-new-role"><option>owner</option><option>manager</option><option>accountant</option></AppNativeSelect>
+        </div>
+      </CardContent>
+      <CardFooter class="mt-6 justify-end"><Button data-testid="user-create">Add user</Button></CardFooter>
+    </form>
+  </Card>
 </template>

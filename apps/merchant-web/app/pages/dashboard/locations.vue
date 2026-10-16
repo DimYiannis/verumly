@@ -40,30 +40,46 @@ async function remove(id: string) {
 </script>
 
 <template>
-  <h1 class="mb-4 text-xl font-semibold">Locations</h1>
-  <p v-if="error" class="mb-3 text-sm text-red-700" role="alert" data-testid="error">{{ error }}</p>
-  <table class="w-full overflow-hidden rounded-lg border border-slate-200 bg-white text-sm">
-    <thead class="bg-slate-100 text-left"><tr><th class="p-2">Name</th><th class="p-2">Address</th><th class="p-2">Postcode</th><th class="p-2" /></tr></thead>
-    <tbody>
-      <tr v-for="l in rows" :key="l.id" class="border-t border-slate-100" data-testid="location-row">
-        <template v-if="editing === l.id">
-          <td class="p-2"><input v-model="edit.name" class="w-full rounded border border-slate-300 px-2 py-1" data-testid="location-edit-name" /></td>
-          <td class="p-2"><input v-model="edit.address" class="w-full rounded border border-slate-300 px-2 py-1" /></td>
-          <td class="p-2"><input v-model="edit.postcode" class="w-28 rounded border border-slate-300 px-2 py-1" /></td>
-          <td class="space-x-2 p-2 text-right"><button class="text-slate-900 underline" data-testid="location-save" @click="saveEdit(l.id)">Save</button><button class="text-slate-500" @click="editing = null">Cancel</button></td>
-        </template>
-        <template v-else>
-          <td class="p-2">{{ l.name }}</td><td class="p-2">{{ l.address }}</td><td class="p-2">{{ l.postcode }}</td>
-          <td v-if="canWrite" class="space-x-3 p-2 text-right"><button class="underline" data-testid="location-edit" @click="startEdit(l)">Edit</button><button class="text-red-700 underline" data-testid="location-delete" @click="remove(l.id)">Delete</button></td>
-          <td v-else />
-        </template>
-      </tr>
-    </tbody>
-  </table>
-  <form v-if="canWrite" class="mt-5 flex max-w-3xl flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4" @submit.prevent="add">
-    <label class="text-sm">Name<input v-model="draft.name" required data-testid="location-name" class="mt-1 block rounded border border-slate-300 px-3 py-2" /></label>
-    <label class="text-sm">Address<input v-model="draft.address" data-testid="location-address" class="mt-1 block rounded border border-slate-300 px-3 py-2" /></label>
-    <label class="text-sm">Postcode<input v-model="draft.postcode" placeholder="1011AB" data-testid="location-postcode" class="mt-1 block w-28 rounded border border-slate-300 px-3 py-2" /></label>
-    <button data-testid="location-add" class="rounded bg-slate-900 px-4 py-2 text-white">Add location</button>
-  </form>
+  <AppPageHeading title="Locations" description="The venues your terminals belong to." />
+  <AppErrorNote v-if="error" data-testid="error">{{ error }}</AppErrorNote>
+
+  <Card>
+    <CardContent>
+      <div class="overflow-hidden rounded-md border">
+        <Table>
+          <TableHeader class="bg-muted [&_th]:text-xs [&_th]:font-medium [&_th]:text-text-secondary">
+            <TableRow class="hover:bg-muted"><TableHead class="px-4">Name</TableHead><TableHead>Address</TableHead><TableHead>Postcode</TableHead><TableHead class="px-4" /></TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="l in rows" :key="l.id" class="h-[52px]" data-testid="location-row">
+              <template v-if="editing === l.id">
+                <TableCell class="px-4"><Input v-model="edit.name" aria-label="Name" data-testid="location-edit-name" /></TableCell>
+                <TableCell><Input v-model="edit.address" aria-label="Address" /></TableCell>
+                <TableCell><Input v-model="edit.postcode" aria-label="Postcode" class="w-28" /></TableCell>
+                <TableCell class="space-x-2 px-4 text-right"><Button variant="ghost" @click="editing = null">Cancel</Button><Button data-testid="location-save" @click="saveEdit(l.id)">Save</Button></TableCell>
+              </template>
+              <template v-else>
+                <TableCell class="px-4 font-medium">{{ l.name }}</TableCell><TableCell>{{ l.address }}</TableCell><TableCell>{{ l.postcode }}</TableCell>
+                <TableCell v-if="canWrite" class="space-x-1 px-4 text-right"><Button variant="ghost" data-testid="location-edit" @click="startEdit(l)">Edit</Button><Button variant="ghost" class="text-danger hover:text-danger" data-testid="location-delete" @click="remove(l.id)">Delete</Button></TableCell>
+                <TableCell v-else />
+              </template>
+            </TableRow>
+            <TableRow v-if="!rows.length" class="hover:bg-transparent"><TableCell colspan="4" class="h-[52px] text-center text-muted-foreground">No locations yet.</TableCell></TableRow>
+          </TableBody>
+        </Table>
+      </div>
+    </CardContent>
+  </Card>
+
+  <Card v-if="canWrite">
+    <form @submit.prevent="add">
+      <CardHeader><CardTitle class="text-base">Add a location</CardTitle></CardHeader>
+      <CardContent class="mt-4 grid gap-6 sm:grid-cols-3">
+        <div class="space-y-2"><Label for="location-name">Name</Label><Input id="location-name" v-model="draft.name" required data-testid="location-name" /></div>
+        <div class="space-y-2"><Label for="location-address">Address</Label><Input id="location-address" v-model="draft.address" data-testid="location-address" /></div>
+        <div class="space-y-2"><Label for="location-postcode">Postcode</Label><Input id="location-postcode" v-model="draft.postcode" placeholder="1011AB" data-testid="location-postcode" /></div>
+      </CardContent>
+      <CardFooter class="mt-6 justify-end"><Button data-testid="location-add">Add location</Button></CardFooter>
+    </form>
+  </Card>
 </template>

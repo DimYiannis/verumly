@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Camera, FileUp } from '@lucide/vue';
 import { ApiError } from '~/utils/api';
 import { uploadFile, validateUploadFile, type UploadStartError } from '~/utils/uploads';
 
@@ -45,11 +46,16 @@ async function onFile(event: Event) {
 
 <template>
   <div class="space-y-4">
-    <h1 class="text-2xl font-bold">Oude bon toevoegen</h1>
-    <p>Maak een foto van een papieren kassabon of kies een PDF. We lezen de bon automatisch uit; jij controleert het resultaat.</p>
+    <h1 class="text-h2 font-semibold">Oude bon toevoegen</h1>
+    <p class="text-text-secondary">Maak een foto van een papieren kassabon of kies een PDF. We lezen de bon automatisch uit; jij controleert het resultaat.</p>
 
-    <div class="card space-y-3">
-      <label for="receipt-photo" class="btn btn-primary w-full cursor-pointer" :class="busy ? 'pointer-events-none opacity-50' : ''">Maak een foto</label>
+    <div class="space-y-3 rounded-xl border border-border bg-card p-4">
+      <Button as-child size="lg" class="w-full cursor-pointer" :class="busy ? 'pointer-events-none opacity-50' : ''">
+        <label for="receipt-photo">
+          <Camera aria-hidden="true" />
+          Maak een foto
+        </label>
+      </Button>
       <input
         id="receipt-photo"
         type="file"
@@ -61,11 +67,16 @@ async function onFile(event: Event) {
         @change="onFile"
       />
       <!-- `capture` forces the camera on phones, so a PDF needs a picker without it -->
-      <label for="receipt-file" class="btn btn-secondary w-full cursor-pointer" :class="busy ? 'pointer-events-none opacity-50' : ''">Kies een bestand (foto of PDF)</label>
+      <Button as-child variant="secondary" size="lg" class="w-full cursor-pointer" :class="busy ? 'pointer-events-none opacity-50' : ''">
+        <label for="receipt-file">
+          <FileUp aria-hidden="true" />
+          Kies een bestand (foto of PDF)
+        </label>
+      </Button>
       <input id="receipt-file" type="file" accept="image/*,application/pdf" class="sr-only" data-testid="file-input-library" :disabled="busy" @change="onFile" />
     </div>
 
-    <p role="status" aria-live="polite" data-testid="upload-step">{{ step }}</p>
-    <p v-if="error" role="alert" data-testid="upload-error" class="rounded-xl bg-red-50 p-3 text-red-900">{{ error }}</p>
+    <p role="status" aria-live="polite" data-testid="upload-step" class="text-sm text-text-secondary">{{ step }}</p>
+    <p v-if="error" role="alert" data-testid="upload-error" class="rounded-lg border border-danger-border bg-danger-soft p-3 text-sm text-danger">{{ error }}</p>
   </div>
 </template>
