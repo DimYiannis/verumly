@@ -32,13 +32,26 @@ export interface Draft {
 
 // A masked card number (****1234, XXXX-1234, 4111 **** **** 1111) or any long digit run
 // (card numbers, loyalty-card numbers) is dropped from item text before signing.
-const MASKED_PAN = /(?:[*xX•#]{2,}[\s-]*)+\d{2,6}|\b\d{4}[\s-]?[*xX•]{2,4}[\s-]?[*xX•]{2,4}[\s-]?\d{4}\b/g;
+const MASKED_PAN = /[*xX•#]{2,}(?:[\s-]+[*xX•#]{2,})*[\s-]*\d{2,6}|\b\d{4}[\s-]?[*xX•]{2,4}[\s-]?[*xX•]{2,4}[\s-]?\d{4}\b/g;
 const LONG_DIGITS = /\d(?:[\s-]?\d){7,}/g;
 
 /** Remove loyalty-card numbers and masked PANs from a line description; clamp to the CRF limit. */
+// Input is cut to a bounded length first: the masks are quadratic on pathological runs, and text past this is
+// discarded anyway (the result is clamped to MAX_DESCRIPTION), so nothing beyond the cut can leak into a payload.
+const MAX_SCRUB_INPUT = 400;
+
 export function scrubDescription(text: string): string {
-  const cleaned = text.replace(MASKED_PAN, ' ').replace(LONG_DIGITS, ' ').replace(/\s+/g, ' ').trim();
+  const cleaned = text.slice(0, MAX_SCRUB_INPUT).replace(MASKED_PAN, ' ').replace(LONG_DIGITS, ' ').replace(/\s+/g, ' ').trim();
   return (cleaned || 'Artikel').slice(0, MAX_DESCRIPTION);
+}
+
+/**
+ * `sku` and `category` are short codes, not prose: long digit runs are legitimate there (an EAN-13 is a normal sku),
+ * so only masked PANs are removed. Returns null when nothing is left.
+ */
+export function scrubCode(text: string | null | undefined): string | null {
+  const cleaned = (text ?? '').slice(0, MAX_SCRUB_INPUT).replace(MASKED_PAN, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
+  return cleaned || null;
 }
 
 function toQty(q: string | number | undefined): string {

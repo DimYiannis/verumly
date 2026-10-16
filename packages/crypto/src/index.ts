@@ -3,7 +3,6 @@ import { sha256, sha512 } from '@noble/hashes/sha2.js';
 import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils.js';
 import canonicalize from 'canonicalize';
 import { uuidv7 } from 'uuidv7';
-import { randomBytes, timingSafeEqual } from 'node:crypto';
 
 ed.hashes.sha512 = sha512;
 
@@ -26,18 +25,31 @@ export function sha256Hex(data: Uint8Array | string): string {
   return bytesToHex(sha256(typeof data === 'string' ? utf8ToBytes(data) : data));
 }
 
+// Isomorphic (Node, browser): the terminal SDK and the simulator run this package in the browser, where
+// there is neither `node:crypto` nor `Buffer`.
 export function b64url(bytes: Uint8Array): string {
-  return Buffer.from(bytes).toString('base64url');
+  if (typeof Buffer !== 'undefined') return Buffer.from(bytes).toString('base64url');
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 export function fromB64url(s: string): Uint8Array {
-  return new Uint8Array(Buffer.from(s, 'base64url'));
+  if (typeof Buffer !== 'undefined') return new Uint8Array(Buffer.from(s, 'base64url'));
+  const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+}
+
+function randomBytes(n: number): Uint8Array {
+  return globalThis.crypto.getRandomValues(new Uint8Array(n));
 }
 
 /** Constant-time equality of two strings of arbitrary length (hashes both first so lengths never leak). */
 export function constantTimeEqual(a: string, b: string): boolean {
   const ha = sha256(utf8ToBytes(a));
   const hb = sha256(utf8ToBytes(b));
-  return timingSafeEqual(ha, hb);
+  let diff = 0;
+  for (let i = 0; i < ha.length; i++) diff |= ha[i]! ^ hb[i]!;
+  return diff === 0;
 }
 
 // ---- claim secrets -------------------------------------------------------
@@ -45,7 +57,7 @@ export function constantTimeEqual(a: string, b: string): boolean {
 export const SECRET_BYTES = 32;
 /** 256-bit random secret, base64url (43 chars, no padding). Generated on the terminal. */
 export function generateSecret(): string {
-  return b64url(new Uint8Array(randomBytes(SECRET_BYTES)));
+  return b64url(randomBytes(SECRET_BYTES));
 }
 export function isWellFormedSecret(s: string): boolean {
   return /^[A-Za-z0-9_-]{43}$/.test(s);
@@ -60,7 +72,7 @@ export function verifySecret(secret: string, storedHashHex: string): boolean {
 
 /** Opaque tokens (API keys, sessions): 32 random bytes, shown once, stored as sha256 hex. */
 export function generateToken(): { token: string; hash: string } {
-  const token = b64url(new Uint8Array(randomBytes(32)));
+  const token = b64url(randomBytes(32));
   return { token, hash: sha256Hex(token) };
 }
 

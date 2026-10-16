@@ -2,7 +2,7 @@ import QRCode from 'qrcode';
 import { generateSecret, hashSecret, newReceiptId, signBytes, signPayload } from '@lr/crypto';
 import { cashRounding, checkTransition, deriveVatSummary, lineTotal, validateCrf, type Issue } from '@lr/receipt-nl';
 import type { Crf, CrfLine } from '@lr/schema';
-import { scrubDescription, toQty, type Draft, type DraftLine } from './mapping.ts';
+import { scrubCode, scrubDescription, toQty, type Draft, type DraftLine } from './mapping.ts';
 import type { LocalReceipt, OutboxItem, OutboxStore, StoredOutboxItem } from './store.ts';
 
 export interface SdkConfig {
@@ -37,6 +37,13 @@ export interface FlushResult {
   rejected: number;
   /** true when the pass stopped on a network/5xx/gap error and should be retried with backoff */
   retry: boolean;
+}
+
+/** What the server said about one queued item. */
+interface SendOutcome {
+  item: StoredOutboxItem;
+  status: 'ok' | 'retry' | 'rejected';
+  reason?: string;
 }
 
 /** Exponential backoff with jitter: min(cap, base·2^attempt) scaled into [50%, 100%]. */
@@ -156,14 +163,14 @@ export class TerminalSdk {
       return {
         lineNo: i + 1,
         kind,
-        sku: l.sku ?? null,
+        sku: scrubCode(l.sku),
         description: scrubDescription(l.description),
         qty,
         unitPrice: l.unitPrice,
         vatRate: kind === 'deposit' ? null : l.vatRate,
         discount,
         total: lineTotal(qty, l.unitPrice, discount),
-        category: l.category ?? null,
+        category: scrubCode(l.category),
       };
     });
     const gross = lines.reduce((s, l) => s + l.total, 0);
@@ -240,7 +247,7 @@ export class TerminalSdk {
     for (;;) {
       const items = await this.cfg.store.pending(batchSize);
       if (items.length === 0) return out;
-      let outcomes: Array<{ item: StoredOutboxItem; status: 'ok' | 'retry' | 'rejected'; reason?: string }>;
+      let outcomes: SendOutcome[];
       try {
         outcomes = items.length === 1 ? [await this.sendOne(items[0]!)] : await this.sendBatch(items);
       } catch {
@@ -250,10 +257,14 @@ export class TerminalSdk {
       const done = outcomes.filter((o) => o.status === 'ok').map((o) => o.item.seq);
       await this.cfg.store.remove(done);
       out.sent += done.length;
+      const dead = new Set<number>();
       for (const o of outcomes.filter((x) => x.status === 'rejected')) {
+        if (dead.has(o.item.seq)) continue; // already dead-lettered as a later version of an earlier rejection
         const cascade = await this.cfg.store.pendingAfter(o.item.receiptId, o.item.version);
-        await this.cfg.store.reject([o.item.seq, ...cascade.map((c) => c.seq)], o.reason ?? 'rejected');
-        out.rejected += 1 + cascade.length;
+        const seqs = [o.item.seq, ...cascade.map((c) => c.seq)];
+        await this.cfg.store.reject(seqs, o.reason ?? 'rejected');
+        for (const s of seqs) dead.add(s);
+        out.rejected += seqs.length;
       }
       if (outcomes.some((o) => o.status === 'retry')) {
         out.retry = true;
@@ -281,14 +292,29 @@ export class TerminalSdk {
     return { item, status: this.classify(res.status, err), reason: `${res.status} ${err ?? ''}`.trim() };
   }
 
+  private async sendEach(items: StoredOutboxItem[]) {
+    const outcomes: SendOutcome[] = [];
+    for (const item of items) {
+      outcomes.push(await this.sendOne(item).catch(() => ({ item, status: 'retry' as const, reason: 'network error' })));
+      if (outcomes.at(-1)?.status === 'retry') {
+        // stop at the first transient failure: later items must not overtake it
+        for (const rest of items.slice(outcomes.length)) outcomes.push({ item: rest, status: 'retry' as const, reason: 'not attempted' });
+        break;
+      }
+    }
+    return outcomes;
+  }
+
   private async sendBatch(items: StoredOutboxItem[]) {
     const body = JSON.stringify({ items: items.map((i) => ({ idempotencyKey: i.idempotencyKey, body: i.body })) });
     const res = await this.post('/v1/receipts:batch', body);
     if (!res.ok) {
-      const status = this.classify(res.status, undefined);
-      if (status === 'retry') throw new Error(`batch ${res.status}`);
-      // whole batch rejected (e.g. 401): treat as retryable; the key may be rotated
-      throw new Error(`batch ${res.status}`);
+      if (this.classify(res.status, undefined) === 'retry') throw new Error(`batch ${res.status}`);
+      // The server refused the whole batch for a reason retrying cannot fix (401 revoked or rotated key, 400 because one
+      // item is malformed, 413…). Retrying for ever would block every later receipt behind it, so deliver item by item:
+      // each item gets the verdict a single upload would get, the offender is dead-lettered together with its later
+      // versions, and everything else still flows.
+      return this.sendEach(items);
     }
     const json: unknown = await res.json();
     const results = typeof json === 'object' && json !== null && 'results' in json && Array.isArray(json.results) ? json.results : [];
