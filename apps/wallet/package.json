@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "nuxt build && PORT=3001 node .output/server/index.mjs",
+    "dev": "nuxt build && node scripts/serve.ts",
     "dev:hmr": "nuxt dev --port 3001",
     "build": "nuxt build && node scripts/check-build.ts",
     "preview": "node .output/server/index.mjs",

@@ -1,7 +1,8 @@
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { dbEnvSchema, s3EnvSchema, sharedEnvSchema } from '@lr/config';
 
-const defaultFixtures = new URL('../../../fixtures/receipts-nl', import.meta.url).pathname;
+const defaultFixtures = fileURLToPath(new URL('../../../fixtures/receipts-nl', import.meta.url));
 
 export const workerEnvSchema = dbEnvSchema
   .extend(s3EnvSchema.shape)
