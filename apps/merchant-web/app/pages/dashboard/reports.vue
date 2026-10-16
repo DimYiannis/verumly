@@ -5,6 +5,7 @@ interface SalesRow { period: string; receipts: number; gross: number; net: numbe
 interface VatRow { period: string; rate: number; gross: number; net: number; vat: number }
 interface Loc { id: string; name: string }
 
+const { t } = useLocale();
 const today = new Date();
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const filters = reactive({ from: iso(new Date(today.getTime() - 30 * 86400_000)), to: iso(today), granularity: 'day', locationId: '' });
@@ -32,41 +33,66 @@ const RUBRIEK: Record<number, string> = { 21: '1a', 9: '1b', 0: '1e' };
 </script>
 
 <template>
-  <h1 class="mb-4 text-xl font-semibold">Reports</h1>
-  <form class="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4" @submit.prevent="load">
-    <label class="text-sm">From<input v-model="filters.from" type="date" required data-testid="report-from" class="mt-1 block rounded border border-slate-300 px-3 py-2" /></label>
-    <label class="text-sm">To<input v-model="filters.to" type="date" required data-testid="report-to" class="mt-1 block rounded border border-slate-300 px-3 py-2" /></label>
-    <label class="text-sm">Per
-      <select v-model="filters.granularity" data-testid="report-granularity" class="mt-1 block rounded border border-slate-300 px-3 py-2"><option value="day">day</option><option value="month">month</option></select>
-    </label>
-    <label class="text-sm">Location
-      <select v-model="filters.locationId" data-testid="report-location" class="mt-1 block rounded border border-slate-300 px-3 py-2"><option value="">all</option><option v-for="l in locations" :key="l.id" :value="l.id">{{ l.name }}</option></select>
-    </label>
-    <button data-testid="report-run" class="rounded bg-slate-900 px-4 py-2 text-white">Show</button>
-  </form>
-  <p v-if="error" class="mb-3 text-sm text-red-700" role="alert" data-testid="error">{{ error }}</p>
+  <AppPageHeading :title="t('nav.reports')" :description="t('reports.description')" />
 
-  <h2 class="mb-2 font-medium">Sales</h2>
-  <table class="mb-6 w-full overflow-hidden rounded-lg border border-slate-200 bg-white text-sm">
-    <thead class="bg-slate-100 text-left"><tr><th class="p-2">Period</th><th class="p-2 text-right">Receipts</th><th class="p-2 text-right">Gross</th><th class="p-2 text-right">Net</th><th class="p-2 text-right">VAT</th><th class="p-2 text-right">Rounding</th><th class="p-2 text-right">Voids</th></tr></thead>
-    <tbody class="tabular-nums">
-      <tr v-for="r in sales" :key="r.period" class="border-t border-slate-100" data-testid="report-sales-row" :data-period="r.period">
-        <td class="p-2">{{ r.period }}</td><td class="p-2 text-right">{{ r.receipts }}</td><td class="p-2 text-right">{{ euro(r.gross) }}</td><td class="p-2 text-right">{{ euro(r.net) }}</td><td class="p-2 text-right">{{ euro(r.vat) }}</td><td class="p-2 text-right">{{ euro(r.rounding) }}</td><td class="p-2 text-right">{{ r.voids }} ({{ euro(r.voidGross) }})</td>
-      </tr>
-      <tr v-if="!sales.length"><td colspan="7" class="p-4 text-center text-slate-500" data-testid="report-empty">No sales in this period.</td></tr>
-      <tr v-else class="border-t-2 border-slate-300 font-semibold" data-testid="report-total">
-        <td class="p-2">Total</td><td class="p-2 text-right">{{ total.receipts }}</td><td class="p-2 text-right">{{ euro(total.gross) }}</td><td class="p-2 text-right">{{ euro(total.net) }}</td><td class="p-2 text-right">{{ euro(total.vat) }}</td><td class="p-2" /><td class="p-2 text-right">{{ total.voids }}</td>
-      </tr>
-    </tbody>
-  </table>
+  <Card>
+    <form @submit.prevent="load">
+      <CardContent class="grid items-end gap-6 sm:grid-cols-2 lg:grid-cols-5">
+        <div class="space-y-2"><Label for="report-from">{{ t('common.from') }}</Label><Input id="report-from" v-model="filters.from" type="date" required data-testid="report-from" /></div>
+        <div class="space-y-2"><Label for="report-to">{{ t('common.to') }}</Label><Input id="report-to" v-model="filters.to" type="date" required data-testid="report-to" /></div>
+        <div class="space-y-2">
+          <Label for="report-granularity">{{ t('reports.per') }}</Label>
+          <AppNativeSelect id="report-granularity" v-model="filters.granularity" data-testid="report-granularity"><option value="day">{{ t('reports.day') }}</option><option value="month">{{ t('reports.month') }}</option></AppNativeSelect>
+        </div>
+        <div class="space-y-2">
+          <Label for="report-location">{{ t('common.location') }}</Label>
+          <AppNativeSelect id="report-location" v-model="filters.locationId" data-testid="report-location"><option value="">{{ t('common.all') }}</option><option v-for="l in locations" :key="l.id" :value="l.id">{{ l.name }}</option></AppNativeSelect>
+        </div>
+        <div><Button data-testid="report-run">{{ t('reports.show') }}</Button></div>
+      </CardContent>
+    </form>
+  </Card>
 
-  <h2 class="mb-2 font-medium">VAT per rate</h2>
-  <table class="w-full overflow-hidden rounded-lg border border-slate-200 bg-white text-sm">
-    <thead class="bg-slate-100 text-left"><tr><th class="p-2">Period</th><th class="p-2">Rate</th><th class="p-2">VAT return box</th><th class="p-2 text-right">Gross</th><th class="p-2 text-right">Net</th><th class="p-2 text-right">VAT</th></tr></thead>
-    <tbody class="tabular-nums">
-      <tr v-for="r in vat" :key="`${r.period}-${r.rate}`" class="border-t border-slate-100" data-testid="report-vat-row" :data-period="r.period" :data-rate="r.rate">
-        <td class="p-2">{{ r.period }}</td><td class="p-2">{{ r.rate }}%</td><td class="p-2">{{ RUBRIEK[r.rate] }}</td><td class="p-2 text-right">{{ euro(r.gross) }}</td><td class="p-2 text-right">{{ euro(r.net) }}</td><td class="p-2 text-right">{{ euro(r.vat) }}</td>
-      </tr>
-    </tbody>
-  </table>
+  <AppErrorNote v-if="error" data-testid="error">{{ error }}</AppErrorNote>
+
+  <Card>
+    <CardHeader><CardTitle class="text-base">{{ t('reports.salesTitle') }}</CardTitle></CardHeader>
+    <CardContent>
+      <div class="overflow-hidden rounded-md border">
+        <Table>
+          <TableHeader class="bg-muted [&_th]:text-xs [&_th]:font-medium [&_th]:text-text-secondary">
+            <TableRow class="hover:bg-muted"><TableHead class="px-4">{{ t('common.period') }}</TableHead><TableHead class="text-right">{{ t('reports.receipts') }}</TableHead><TableHead class="text-right">{{ t('common.gross') }}</TableHead><TableHead class="text-right">{{ t('common.net') }}</TableHead><TableHead class="text-right">{{ t('common.btw') }}</TableHead><TableHead class="text-right">{{ t('common.rounding') }}</TableHead><TableHead class="px-4 text-right">{{ t('reports.voids') }}</TableHead></TableRow>
+          </TableHeader>
+          <TableBody class="tabular-nums">
+            <TableRow v-for="r in sales" :key="r.period" class="h-[52px]" data-testid="report-sales-row" :data-period="r.period">
+              <TableCell class="px-4">{{ r.period }}</TableCell><TableCell class="text-right">{{ r.receipts }}</TableCell><TableCell class="text-right">{{ euro(r.gross) }}</TableCell><TableCell class="text-right">{{ euro(r.net) }}</TableCell><TableCell class="text-right">{{ euro(r.vat) }}</TableCell><TableCell class="text-right">{{ euro(r.rounding) }}</TableCell><TableCell class="px-4 text-right">{{ r.voids }} ({{ euro(r.voidGross) }})</TableCell>
+            </TableRow>
+            <TableRow v-if="!sales.length" class="hover:bg-transparent"><TableCell colspan="7" class="h-[52px] text-center text-muted-foreground" data-testid="report-empty">{{ t('reports.emptySales') }}</TableCell></TableRow>
+            <TableRow v-else class="h-[52px] bg-muted/50 font-medium" data-testid="report-total">
+              <TableCell class="px-4">{{ t('common.total') }}</TableCell><TableCell class="text-right">{{ total.receipts }}</TableCell><TableCell class="text-right">{{ euro(total.gross) }}</TableCell><TableCell class="text-right">{{ euro(total.net) }}</TableCell><TableCell class="text-right">{{ euro(total.vat) }}</TableCell><TableCell /><TableCell class="px-4 text-right">{{ total.voids }}</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardHeader><CardTitle class="text-base">{{ t('reports.vatTitle') }}</CardTitle></CardHeader>
+    <CardContent>
+      <div class="overflow-hidden rounded-md border">
+        <Table>
+          <TableHeader class="bg-muted [&_th]:text-xs [&_th]:font-medium [&_th]:text-text-secondary">
+            <TableRow class="hover:bg-muted"><TableHead class="px-4">{{ t('common.period') }}</TableHead><TableHead>{{ t('reports.rate') }}</TableHead><TableHead>{{ t('reports.rubriek') }}</TableHead><TableHead class="text-right">{{ t('common.gross') }}</TableHead><TableHead class="text-right">{{ t('common.net') }}</TableHead><TableHead class="px-4 text-right">{{ t('common.btw') }}</TableHead></TableRow>
+          </TableHeader>
+          <TableBody class="tabular-nums">
+            <TableRow v-for="r in vat" :key="`${r.period}-${r.rate}`" class="h-[52px]" data-testid="report-vat-row" :data-period="r.period" :data-rate="r.rate">
+              <TableCell class="px-4">{{ r.period }}</TableCell><TableCell>{{ r.rate }}%</TableCell><TableCell>{{ RUBRIEK[r.rate] }}</TableCell><TableCell class="text-right">{{ euro(r.gross) }}</TableCell><TableCell class="text-right">{{ euro(r.net) }}</TableCell><TableCell class="px-4 text-right">{{ euro(r.vat) }}</TableCell>
+            </TableRow>
+            <TableRow v-if="!vat.length" class="hover:bg-transparent"><TableCell colspan="6" class="h-[52px] text-center text-muted-foreground">{{ t('reports.emptyVat') }}</TableCell></TableRow>
+          </TableBody>
+        </Table>
+      </div>
+    </CardContent>
+  </Card>
 </template>

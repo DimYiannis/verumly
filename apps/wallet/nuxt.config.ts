@@ -20,7 +20,8 @@ export default defineNuxtConfig({
   // so there is nothing to server-render, and one static shell precaches cleanly for offline use.
   ssr: false,
   devtools: { enabled: false },
-  modules: ['@vite-pwa/nuxt'],
+  modules: ['shadcn-nuxt', '@vite-pwa/nuxt'],
+  shadcn: { prefix: '', componentDir: '@/components/ui' },
   css: ['~/assets/css/main.css'],
   vite: { plugins: [tailwindcss()] },
   build: { transpile: ['@lr/schema', '@lr/config'] },
@@ -42,7 +43,7 @@ export default defineNuxtConfig({
       title: 'Receipts',
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
-        { name: 'theme-color', content: '#0f766e' },
+        { name: 'theme-color', content: '#3338B8' },
         // The secret is in the URL fragment, which is never sent in Referer, but keep outgoing links clean anyway.
         { name: 'referrer', content: 'no-referrer' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
@@ -65,8 +66,8 @@ export default defineNuxtConfig({
       start_url: '/',
       scope: '/',
       display: 'standalone',
-      background_color: '#f8fafc',
-      theme_color: '#0f766e',
+      background_color: '#F1F0EA',
+      theme_color: '#3338B8',
       icons: [
         { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
         { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },

@@ -3,6 +3,8 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineNuxtConfig({
   compatibilityDate: '2026-10-01',
   devtools: { enabled: false },
+  modules: ['shadcn-nuxt'],
+  shadcn: { prefix: '', componentDir: '@/components/ui' },
   css: ['~/assets/css/main.css'],
   vite: { plugins: [tailwindcss()] },
   // The dashboard and the simulator are client-side apps behind an API: no SSR (no cookie forwarding, no

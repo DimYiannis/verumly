@@ -1,19 +1,21 @@
 <script setup lang="ts">
+import type { MessageKey } from '~/i18n';
 import { ApiError } from '~/utils/api';
 import type { Consents } from '~/utils/api-schemas';
 
 definePageMeta({ middleware: 'auth' });
-useHead({ title: 'Preferences' });
+const { t } = useLocale();
+useHead({ title: () => t('onboarding.pageTitle') });
 
 const wallet = useWallet();
 const consents = ref<Consents>({ analytics: false, marketing: false, push: false });
-const loadError = ref<string | null>(null);
+const loadError = ref<MessageKey | null>(null);
 
 onMounted(async () => {
   try {
     consents.value = (await wallet.api.getConsents()).consents;
   } catch (e) {
-    loadError.value = e instanceof ApiError && e.isNetwork ? 'Offline: preferences cannot be loaded right now.' : 'Loading preferences failed.';
+    loadError.value = e instanceof ApiError && e.isNetwork ? 'onboarding.err.offline' : 'onboarding.err.failed';
   }
 });
 
@@ -25,12 +27,12 @@ async function finish() {
 
 <template>
   <div class="space-y-4">
-    <h1 class="text-2xl font-bold">Welcome</h1>
-    <p>You are logged in. Everything below is optional and off by default.</p>
-    <p v-if="loadError" role="alert" class="text-red-800">{{ loadError }}</p>
+    <h1 class="text-h1 font-semibold">{{ t('onboarding.title') }}</h1>
+    <p class="text-text-secondary">{{ t('onboarding.body') }}</p>
+    <p v-if="loadError" role="alert" class="text-sm text-danger">{{ t(loadError) }}</p>
     <ConsentToggles v-model="consents" />
     <PushOptIn />
     <InstallHint />
-    <button type="button" class="btn btn-primary w-full" data-testid="onboarding-done" @click="finish">Done</button>
+    <Button type="button" size="lg" class="w-full" data-testid="onboarding-done" @click="finish">{{ t('onboarding.done') }}</Button>
   </div>
 </template>

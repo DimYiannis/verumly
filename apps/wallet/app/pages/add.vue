@@ -1,20 +1,23 @@
 <script setup lang="ts">
+import { Camera, FileUp } from '@lucide/vue';
+import type { MessageKey } from '~/i18n';
 import { ApiError } from '~/utils/api';
 import { uploadFile, validateUploadFile, type UploadStartError } from '~/utils/uploads';
 
 definePageMeta({ middleware: 'auth' });
-useHead({ title: 'Add receipt' });
+const { t } = useLocale();
+useHead({ title: () => t('add.pageTitle') });
 
 const wallet = useWallet();
 const busy = ref(false);
-const error = ref<string | null>(null);
-const step = ref('');
+const error = ref<MessageKey | null>(null);
+const uploading = ref(false);
 
-const START_ERROR: Record<UploadStartError, string> = {
-  unsupported_type: 'Choose a photo (JPEG, PNG, WebP, HEIC) or a PDF.',
-  too_large: 'This file is larger than 10 MB.',
-  empty: 'This file is empty.',
-};
+const START_ERROR = {
+  unsupported_type: 'add.err.unsupported_type',
+  too_large: 'add.err.too_large',
+  empty: 'add.err.empty',
+} as const satisfies Record<UploadStartError, MessageKey>;
 
 async function onFile(event: Event) {
   const input = event.target;
@@ -27,17 +30,17 @@ async function onFile(event: Event) {
     return;
   }
   busy.value = true;
-  step.value = 'Uploading…';
+  uploading.value = true;
   try {
     const uploadId = await uploadFile(wallet.api, file);
     await navigateTo(`/uploads/${uploadId}`);
   } catch (e) {
-    if (e instanceof ApiError && e.isNetwork) error.value = 'No connection. Try again when you are online.';
+    if (e instanceof ApiError && e.isNetwork) error.value = 'add.err.offline';
     else if (e instanceof ApiError && e.status === 401) await wallet.endSession();
-    else error.value = 'Upload failed. Please try again.';
+    else error.value = 'add.err.failed';
   } finally {
     busy.value = false;
-    step.value = '';
+    uploading.value = false;
     if (input instanceof HTMLInputElement) input.value = '';
   }
 }
@@ -45,11 +48,16 @@ async function onFile(event: Event) {
 
 <template>
   <div class="space-y-4">
-    <h1 class="text-2xl font-bold">Add an old receipt</h1>
-    <p>Take a photo of a paper receipt or choose a PDF. We read the receipt automatically; you check the result.</p>
+    <h1 class="text-h2 font-semibold">{{ t('add.title') }}</h1>
+    <p class="text-text-secondary">{{ t('add.body') }}</p>
 
-    <div class="card space-y-3">
-      <label for="receipt-photo" class="btn btn-primary w-full cursor-pointer" :class="busy ? 'pointer-events-none opacity-50' : ''">Take a photo</label>
+    <div class="space-y-3 rounded-xl border border-border bg-card p-4">
+      <Button as-child size="lg" class="w-full cursor-pointer" :class="busy ? 'pointer-events-none opacity-50' : ''">
+        <label for="receipt-photo">
+          <Camera aria-hidden="true" />
+          {{ t('add.camera') }}
+        </label>
+      </Button>
       <input
         id="receipt-photo"
         type="file"
@@ -61,11 +69,16 @@ async function onFile(event: Event) {
         @change="onFile"
       />
       <!-- `capture` forces the camera on phones, so a PDF needs a picker without it -->
-      <label for="receipt-file" class="btn btn-secondary w-full cursor-pointer" :class="busy ? 'pointer-events-none opacity-50' : ''">Choose a file (photo or PDF)</label>
+      <Button as-child variant="secondary" size="lg" class="w-full cursor-pointer" :class="busy ? 'pointer-events-none opacity-50' : ''">
+        <label for="receipt-file">
+          <FileUp aria-hidden="true" />
+          {{ t('add.file') }}
+        </label>
+      </Button>
       <input id="receipt-file" type="file" accept="image/*,application/pdf" class="sr-only" data-testid="file-input-library" :disabled="busy" @change="onFile" />
     </div>
 
-    <p role="status" aria-live="polite" data-testid="upload-step">{{ step }}</p>
-    <p v-if="error" role="alert" data-testid="upload-error" class="rounded-xl bg-red-50 p-3 text-red-900">{{ error }}</p>
+    <p role="status" aria-live="polite" data-testid="upload-step" class="text-sm text-text-secondary">{{ uploading ? t('add.uploading') : '' }}</p>
+    <p v-if="error" role="alert" data-testid="upload-error" class="rounded-lg border border-danger-border bg-danger-soft p-3 text-sm text-danger">{{ t(error) }}</p>
   </div>
 </template>

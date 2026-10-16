@@ -102,7 +102,7 @@ export default async function globalSetup(): Promise<(() => Promise<void>) | und
       detached: true,
       stdio: ['ignore', log, log],
       // EXTRACTOR=recorded and PUSH_ALLOW_LOOPBACK=true are also the app defaults outside production; set explicitly for the record
-      env: { ...process.env, EXTRACTOR: 'recorded', PUSH_ALLOW_LOOPBACK: 'true' },
+      env: { ...process.env, EXTRACTOR: 'recorded', PUSH_ALLOW_LOOPBACK: 'true', DEMO_MODE: 'false' },
     });
     closeSync(log);
     console.log(`e2e: started \`pnpm dev\` (pid ${started.pid}), log .local/e2e-pnpm-dev.log`);

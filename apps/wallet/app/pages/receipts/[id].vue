@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ChevronLeft, Download } from '@lucide/vue';
+import type { MessageKey } from '~/i18n';
 import { ApiError } from '~/utils/api';
 import type { ReceiptDetail } from '~/utils/api-schemas';
 
@@ -6,16 +8,17 @@ definePageMeta({ middleware: 'auth' });
 
 const route = useRoute();
 const wallet = useWallet();
+const { t } = useLocale();
 const id = String(route.params.id);
 
 const detail = shallowRef<ReceiptDetail | null>(null);
 const status = ref<'loading' | 'ready' | 'notfound' | 'unavailable' | 'error'>('loading');
 const fromCache = ref(false);
 const pdfBusy = ref(false);
-const pdfError = ref<string | null>(null);
+const pdfError = ref<MessageKey | null>(null);
 const justSaved = route.query.saved === '1';
 
-useHead({ title: 'Receipt' });
+useHead({ title: () => t('viewer.pageTitle') });
 
 async function load() {
   try {
@@ -43,11 +46,11 @@ async function downloadPdf() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `receipt-${id}.pdf`;
+    a.download = `bon-${id}.pdf`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   } catch (e) {
-    pdfError.value = e instanceof ApiError && e.isNetwork ? 'Downloading the PDF is only possible online.' : 'The PDF could not be created.';
+    pdfError.value = e instanceof ApiError && e.isNetwork ? 'receiptPage.err.offline' : 'receiptPage.err.failed';
   } finally {
     pdfBusy.value = false;
   }
@@ -66,20 +69,27 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', onVisible
 
 <template>
   <div class="space-y-4">
-    <NuxtLink to="/" class="inline-block py-2 font-medium text-brand-700 underline">← All receipts</NuxtLink>
-    <p v-if="status === 'loading'" role="status">Loading receipt…</p>
-    <p v-else-if="status === 'notfound'" role="alert" data-testid="not-found" class="card">This receipt is not in your wallet.</p>
-    <p v-else-if="status === 'unavailable'" role="alert" data-testid="unavailable" class="card">You are offline and this receipt has not been saved on this device yet.</p>
-    <p v-else-if="status === 'error'" role="alert" class="card">Something went wrong while loading.</p>
+    <NuxtLink to="/" class="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary no-underline hover:text-brand-900">
+      <ChevronLeft class="size-4" aria-hidden="true" />
+      {{ t('common.allReceipts') }}
+    </NuxtLink>
+    <p v-if="status === 'loading'" role="status" class="flex items-center gap-2 text-sm text-text-secondary">
+      <Spinner role="presentation" aria-hidden="true" />
+      {{ t('receiptPage.loading') }}
+    </p>
+    <p v-else-if="status === 'notfound'" role="alert" data-testid="not-found" class="rounded-xl border border-border bg-card p-4">{{ t('receiptPage.notFound') }}</p>
+    <p v-else-if="status === 'unavailable'" role="alert" data-testid="unavailable" class="rounded-xl border border-border bg-card p-4">{{ t('receiptPage.unavailable') }}</p>
+    <p v-else-if="status === 'error'" role="alert" class="rounded-xl border border-danger-border bg-danger-soft p-4 text-danger">{{ t('receiptPage.error') }}</p>
     <template v-else-if="detail">
-      <p v-if="justSaved" role="status" data-testid="saved-notice" class="rounded-xl bg-brand-100 p-3 font-semibold text-brand-900">Receipt saved to your wallet.</p>
-      <p v-if="fromCache" role="status" data-testid="cached-notice" class="rounded-xl bg-amber-100 p-3 text-amber-950">Offline: this is the last saved version.</p>
+      <p v-if="justSaved" role="status" data-testid="saved-notice" class="rounded-xl border border-success-border bg-success-soft p-3 font-medium text-success">{{ t('receiptPage.saved') }}</p>
+      <p v-if="fromCache" role="status" data-testid="cached-notice" class="rounded-xl border border-warning-border bg-warning-soft p-3 text-sm text-warning">{{ t('receiptPage.cached') }}</p>
       <ReceiptView :detail="detail" />
       <div class="space-y-2">
-        <button type="button" class="btn btn-secondary w-full" data-testid="download-pdf" :disabled="pdfBusy" @click="downloadPdf">
-          {{ pdfBusy ? 'Creating PDF…' : 'Download PDF' }}
-        </button>
-        <p v-if="pdfError" role="alert" data-testid="pdf-error" class="text-red-800">{{ pdfError }}</p>
+        <Button type="button" variant="secondary" size="lg" class="w-full" data-testid="download-pdf" :disabled="pdfBusy" @click="downloadPdf">
+          <Download aria-hidden="true" />
+          {{ pdfBusy ? t('receiptPage.pdfBusy') : t('receiptPage.pdf') }}
+        </Button>
+        <p v-if="pdfError" role="alert" data-testid="pdf-error" class="text-sm text-danger">{{ t(pdfError) }}</p>
       </div>
     </template>
   </div>

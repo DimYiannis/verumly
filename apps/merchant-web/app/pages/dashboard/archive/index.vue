@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { RefreshCwIcon } from '@lucide/vue';
+
 definePageMeta({ layout: 'dashboard', middleware: 'dashboard-auth' });
 
 interface Row { id: string; locationName: string; state: string; currentVersion: number; totalMinor: number; createdAt: string; receivedAt: string }
+const { t, tx } = useLocale();
 const PAGE = 50;
 const rows = ref<Row[]>([]);
 const error = ref('');
@@ -34,38 +37,55 @@ function page(delta: number) {
 </script>
 
 <template>
-  <div class="mb-4 flex items-center justify-between">
-    <h1 class="text-xl font-semibold">Receipt archive</h1>
-    <button class="rounded border border-slate-300 px-3 py-1 text-sm" data-testid="archive-refresh" @click="load">Refresh</button>
-  </div>
-  <form class="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4" @submit.prevent="search">
-    <label class="text-sm">Search<input v-model="filters.q" placeholder="item or receipt id" data-testid="archive-q" class="mt-1 block rounded border border-slate-300 px-3 py-2" /></label>
-    <label class="text-sm">State
-      <select v-model="filters.state" data-testid="archive-state" class="mt-1 block rounded border border-slate-300 px-3 py-2">
-        <option value="">any</option><option>presented</option><option>paid</option><option>void</option><option>open</option>
-      </select>
-    </label>
-    <label class="text-sm">From<input v-model="filters.from" type="date" data-testid="archive-from" class="mt-1 block rounded border border-slate-300 px-3 py-2" /></label>
-    <label class="text-sm">To<input v-model="filters.to" type="date" data-testid="archive-to" class="mt-1 block rounded border border-slate-300 px-3 py-2" /></label>
-    <label class="text-sm">Amount (€)<input v-model="filters.amount" placeholder="12,50" data-testid="archive-amount" class="mt-1 block w-28 rounded border border-slate-300 px-3 py-2" /></label>
-    <button data-testid="archive-search" class="rounded bg-slate-900 px-4 py-2 text-white">Search</button>
-  </form>
-  <p v-if="error" class="mb-3 text-sm text-red-700" role="alert" data-testid="error">{{ error }}</p>
-  <table class="w-full overflow-hidden rounded-lg border border-slate-200 bg-white text-sm" data-testid="archive-table">
-    <thead class="bg-slate-100 text-left"><tr><th class="p-2">Time (Amsterdam)</th><th class="p-2">Location</th><th class="p-2">State</th><th class="p-2">Version</th><th class="p-2 text-right">Total</th></tr></thead>
-    <tbody>
-      <tr v-for="r in rows" :key="r.id" class="cursor-pointer border-t border-slate-100 hover:bg-slate-50" data-testid="archive-row" :data-receipt-id="r.id" :data-state="r.state" @click="navigateTo(`/dashboard/archive/${r.id}`)">
-        <td class="p-2"><NuxtLink :to="`/dashboard/archive/${r.id}`" data-testid="archive-link">{{ amsterdam(r.createdAt) }}</NuxtLink></td>
-        <td class="p-2">{{ r.locationName }}</td>
-        <td class="p-2"><span class="rounded bg-slate-100 px-2 py-0.5" data-testid="archive-state-cell">{{ r.state }}</span></td>
-        <td class="p-2">v{{ r.currentVersion }}</td>
-        <td class="p-2 text-right tabular-nums" data-testid="archive-total">{{ euro(r.totalMinor) }}</td>
-      </tr>
-      <tr v-if="!rows.length && !loading"><td colspan="5" class="p-4 text-center text-slate-500" data-testid="archive-empty">No receipts found.</td></tr>
-    </tbody>
-  </table>
-  <div class="mt-3 flex items-center gap-3 text-sm">
-    <button :disabled="offset === 0" class="rounded border border-slate-300 px-3 py-1 disabled:opacity-40" data-testid="archive-prev" @click="page(-1)">Previous</button>
-    <button :disabled="rows.length < PAGE" class="rounded border border-slate-300 px-3 py-1 disabled:opacity-40" data-testid="archive-next" @click="page(1)">Next</button>
-  </div>
+  <AppPageHeading :title="t('archive.title')" :description="t('archive.description')">
+    <Button variant="outline" data-testid="archive-refresh" @click="load"><RefreshCwIcon />{{ t('archive.refresh') }}</Button>
+  </AppPageHeading>
+
+  <Card>
+    <CardContent>
+      <form class="grid grid-cols-1 items-end gap-4 sm:grid-cols-2 lg:grid-cols-6" @submit.prevent="search">
+        <div class="space-y-2 lg:col-span-2"><Label for="archive-q">{{ t('common.search') }}</Label><Input id="archive-q" v-model="filters.q" :placeholder="t('archive.searchPlaceholder')" data-testid="archive-q" /></div>
+        <div class="space-y-2">
+          <Label for="archive-state">{{ t('common.state') }}</Label>
+          <AppNativeSelect id="archive-state" v-model="filters.state" data-testid="archive-state">
+            <option value="">{{ t('common.any') }}</option><option v-for="s in ['presented', 'paid', 'void', 'open']" :key="s" :value="s">{{ tx('status', s) }}</option>
+          </AppNativeSelect>
+        </div>
+        <div class="space-y-2"><Label for="archive-from">{{ t('common.from') }}</Label><Input id="archive-from" v-model="filters.from" type="date" data-testid="archive-from" /></div>
+        <div class="space-y-2"><Label for="archive-to">{{ t('common.to') }}</Label><Input id="archive-to" v-model="filters.to" type="date" data-testid="archive-to" /></div>
+        <div class="space-y-2"><Label for="archive-amount">{{ t('archive.amount') }}</Label><Input id="archive-amount" v-model="filters.amount" placeholder="12,50" data-testid="archive-amount" /></div>
+        <div class="sm:col-span-2 lg:col-span-6"><Button data-testid="archive-search">{{ t('common.search') }}</Button></div>
+      </form>
+    </CardContent>
+  </Card>
+
+  <AppErrorNote v-if="error" data-testid="error">{{ error }}</AppErrorNote>
+
+  <Card>
+    <CardContent class="space-y-4">
+      <div class="overflow-hidden rounded-md border">
+        <Table data-testid="archive-table">
+          <TableHeader class="bg-muted [&_th]:text-xs [&_th]:font-medium [&_th]:text-text-secondary">
+            <TableRow class="hover:bg-muted">
+              <TableHead class="px-4">{{ t('common.time') }}</TableHead><TableHead>{{ t('common.location') }}</TableHead><TableHead>{{ t('common.state') }}</TableHead><TableHead>{{ t('archive.version') }}</TableHead><TableHead class="px-4 text-right">{{ t('common.total') }}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="r in rows" :key="r.id" class="h-[52px] cursor-pointer" data-testid="archive-row" :data-receipt-id="r.id" :data-state="r.state" @click="navigateTo(`/dashboard/archive/${r.id}`)">
+              <TableCell class="px-4"><NuxtLink :to="`/dashboard/archive/${r.id}`" class="font-medium hover:underline" data-testid="archive-link">{{ amsterdam(r.createdAt) }}</NuxtLink></TableCell>
+              <TableCell>{{ r.locationName }}</TableCell>
+              <TableCell><AppStatusBadge :status="r.state" data-testid="archive-state-cell" /></TableCell>
+              <TableCell class="tabular-nums">v{{ r.currentVersion }}</TableCell>
+              <TableCell class="px-4 text-right tabular-nums" data-testid="archive-total">{{ euro(r.totalMinor) }}</TableCell>
+            </TableRow>
+            <TableRow v-if="!rows.length && !loading" class="hover:bg-transparent"><TableCell colspan="5" class="h-[52px] text-center text-muted-foreground" data-testid="archive-empty">{{ t('archive.empty') }}</TableCell></TableRow>
+          </TableBody>
+        </Table>
+      </div>
+      <div class="flex items-center gap-2">
+        <Button variant="outline" :disabled="offset === 0" data-testid="archive-prev" @click="page(-1)">{{ t('archive.previous') }}</Button>
+        <Button variant="outline" :disabled="rows.length < PAGE" data-testid="archive-next" @click="page(1)">{{ t('archive.next') }}</Button>
+      </div>
+    </CardContent>
+  </Card>
 </template>

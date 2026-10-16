@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ChevronLeft, Plus, X } from '@lucide/vue';
+import type { MessageKey } from '~/i18n';
 import { ApiError } from '~/utils/api';
 import type { ParsedLineDto } from '@lr/schema';
 import type { UploadStatus } from '~/utils/api-schemas';
@@ -6,7 +8,8 @@ import { amsterdamLocalToUtcIso, centsFromInput, formatDateTime, formatEuro, inp
 import { pollUpload } from '~/utils/uploads';
 
 definePageMeta({ middleware: 'auth' });
-useHead({ title: 'Reading receipt' });
+const { t, locale } = useLocale();
+useHead({ title: () => t('uploadPage.pageTitle') });
 
 const route = useRoute();
 const wallet = useWallet();
@@ -14,7 +17,7 @@ const id = String(route.params.id);
 
 const upload = ref<UploadStatus | null>(null);
 const timedOut = ref(false);
-const error = ref<string | null>(null);
+const error = ref<MessageKey | null>(null);
 const busy = ref(false);
 const matchDeclined = ref(false);
 let stopped = false;
@@ -24,7 +27,7 @@ interface FormLine extends Omit<ParsedLineDto, 'total'> {
   total: string;
 }
 const form = reactive<{ merchantName: string; printedAt: string; gross: string; lines: FormLine[] }>({ merchantName: '', printedAt: '', gross: '', lines: [] });
-const fieldErrors = ref<string[]>([]);
+const fieldErrors = ref<MessageKey[]>([]);
 
 function fillForm(u: UploadStatus) {
   form.merchantName = u.draft?.merchantName ?? '';
@@ -58,7 +61,7 @@ async function watchUpload() {
     timedOut.value = settled === null;
   } catch (e) {
     if (stopped) return;
-    error.value = e instanceof ApiError && e.status === 404 ? 'This upload does not exist.' : e instanceof ApiError && e.isNetwork ? 'No connection.' : 'Fetching the status failed.';
+    error.value = e instanceof ApiError && e.status === 404 ? 'uploadPage.err.notFound' : e instanceof ApiError && e.isNetwork ? 'uploadPage.err.offline' : 'uploadPage.err.status';
   }
 }
 
@@ -70,11 +73,11 @@ async function submitCorrections() {
   fieldErrors.value = [];
   const gross = centsFromInput(form.gross);
   const printedAt = form.printedAt ? amsterdamLocalToUtcIso(form.printedAt) : null;
-  if (!form.merchantName.trim()) fieldErrors.value.push('Enter the name of the shop.');
-  if (gross === null) fieldErrors.value.push('Enter the total amount, for example 12.50.');
-  if (!printedAt) fieldErrors.value.push('Enter the date and time of the receipt.');
+  if (!form.merchantName.trim()) fieldErrors.value.push('uploadPage.field.merchant');
+  if (gross === null) fieldErrors.value.push('uploadPage.field.gross');
+  if (!printedAt) fieldErrors.value.push('uploadPage.field.printedAt');
   const lines = form.lines.map((l) => ({ ...l, cents: centsFromInput(l.total) }));
-  if (lines.some((l) => !l.description.trim() || l.cents === null)) fieldErrors.value.push('Every line needs a description and an amount.');
+  if (lines.some((l) => !l.description.trim() || l.cents === null)) fieldErrors.value.push('uploadPage.field.lines');
   if (fieldErrors.value.length > 0 || gross === null || !printedAt) return;
 
   busy.value = true;
@@ -90,7 +93,7 @@ async function submitCorrections() {
       }),
     );
   } catch (e) {
-    error.value = e instanceof ApiError && e.isNetwork ? 'No connection.' : 'Saving failed.';
+    error.value = e instanceof ApiError && e.isNetwork ? 'uploadPage.err.offline' : 'uploadPage.err.saveFailed';
   } finally {
     busy.value = false;
   }
@@ -104,7 +107,7 @@ async function acceptMatch() {
     await wallet.cacheReceipt(receiptId);
     await navigateTo({ path: `/receipts/${receiptId}`, query: { saved: '1' } });
   } catch (e) {
-    error.value = e instanceof ApiError && e.isNetwork ? 'No connection.' : 'Replacing failed.';
+    error.value = e instanceof ApiError && e.isNetwork ? 'uploadPage.err.offline' : 'uploadPage.err.replaceFailed';
   } finally {
     busy.value = false;
   }
@@ -118,102 +121,129 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="space-y-4">
-    <NuxtLink to="/" class="inline-block py-2 font-medium text-brand-700 underline">← All receipts</NuxtLink>
-    <h1 class="text-2xl font-bold">Reading receipt</h1>
+    <NuxtLink to="/" class="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary no-underline hover:text-brand-900">
+      <ChevronLeft class="size-4" aria-hidden="true" />
+      {{ t('common.allReceipts') }}
+    </NuxtLink>
+    <h1 class="text-h2 font-semibold">{{ t('uploadPage.title') }}</h1>
 
-    <p v-if="error" role="alert" data-testid="upload-error" class="rounded-xl bg-red-50 p-3 text-red-900">{{ error }}</p>
+    <p v-if="error" role="alert" data-testid="upload-error" class="rounded-lg border border-danger-border bg-danger-soft p-3 text-sm text-danger">{{ t(error) }}</p>
 
-    <p v-if="!upload && !error" role="status" data-testid="upload-processing" class="card">Loading receipt…</p>
-
-    <p v-else-if="upload && (upload.status === 'pending_upload' || upload.status === 'processing')" role="status" aria-live="polite" data-testid="upload-processing" class="card">
-      We are reading your receipt. This usually takes a few seconds…
-      <span v-if="timedOut" class="mt-2 block">This is taking longer than expected. You can come back later; we keep working.</span>
+    <p v-if="!upload && !error" role="status" data-testid="upload-processing" class="flex items-center gap-2 rounded-xl border border-border bg-card p-4 text-text-secondary">
+      <Spinner role="presentation" aria-hidden="true" />
+      {{ t('uploadPage.loading') }}
     </p>
 
-    <section v-else-if="upload?.status === 'failed'" class="card space-y-2" role="alert" data-testid="upload-failed">
-      <h2 class="font-semibold">Reading failed</h2>
-      <p>We could not read this photo. Try a sharper photo, well lit and taken straight from above.</p>
-      <NuxtLink to="/add" class="btn btn-secondary">Try again</NuxtLink>
+    <p
+      v-else-if="upload && (upload.status === 'pending_upload' || upload.status === 'processing')"
+      role="status"
+      aria-live="polite"
+      data-testid="upload-processing"
+      class="rounded-xl border border-border bg-card p-4 text-text-secondary"
+    >
+      <Spinner class="mb-2 text-primary" role="presentation" aria-hidden="true" />
+      {{ t('uploadPage.processing') }}
+      <span v-if="timedOut" class="mt-2 block">{{ t('uploadPage.slow') }}</span>
+    </p>
+
+    <section v-else-if="upload?.status === 'failed'" class="space-y-3 rounded-xl border border-danger-border bg-card p-4" role="alert" data-testid="upload-failed">
+      <h2 class="text-h3 font-semibold">{{ t('uploadPage.failedTitle') }}</h2>
+      <p class="text-text-secondary">{{ t('uploadPage.failedBody') }}</p>
+      <Button as-child variant="secondary" size="lg" class="w-full">
+        <NuxtLink to="/add">{{ t('common.retry') }}</NuxtLink>
+      </Button>
     </section>
 
-    <section v-else-if="upload?.status === 'replaced' && upload.matchedReceiptId" class="card space-y-2" data-testid="upload-replaced">
-      <h2 class="font-semibold">Replaced by the official receipt</h2>
-      <NuxtLink :to="`/receipts/${upload.matchedReceiptId}`" class="btn btn-primary w-full">View the receipt</NuxtLink>
+    <section v-else-if="upload?.status === 'replaced' && upload.matchedReceiptId" class="space-y-3 rounded-xl border border-border bg-card p-4" data-testid="upload-replaced">
+      <h2 class="text-h3 font-semibold">{{ t('uploadPage.replacedTitle') }}</h2>
+      <Button as-child size="lg" class="w-full">
+        <NuxtLink :to="`/receipts/${upload.matchedReceiptId}`">{{ t('uploadPage.viewReceipt') }}</NuxtLink>
+      </Button>
     </section>
 
     <template v-else-if="upload">
       <section
         v-if="upload.matchedReceiptId && !matchDeclined && upload.status === 'done'"
-        class="card space-y-3 border-2 border-brand-600"
+        class="space-y-3 rounded-xl border-2 border-selected-border bg-card p-4"
         aria-labelledby="match-h"
         data-testid="match-offer"
       >
-        <h2 id="match-h" class="text-lg font-bold">Official receipt found — replace?</h2>
-        <p v-if="upload.match">
-          {{ upload.match.merchantName }} · {{ formatEuro(upload.match.total) }} · {{ formatDateTime(upload.match.createdAt) }}
+        <h2 id="match-h" class="text-h3 font-semibold">{{ t('uploadPage.matchTitle') }}</h2>
+        <p v-if="t('uploadPage.matchEn')" class="text-sm text-text-secondary">{{ t('uploadPage.matchEn') }}</p>
+        <p v-if="upload.match" class="font-mono text-sm">
+          {{ upload.match.merchantName }} · {{ formatEuro(upload.match.total, locale) }} · {{ formatDateTime(upload.match.createdAt, locale) }}
         </p>
-        <p>The shop sent this receipt digitally. Replace your photo with the official receipt?</p>
-        <div class="flex flex-col gap-3">
-          <button type="button" class="btn btn-primary" data-testid="accept-match" :disabled="busy" @click="acceptMatch">Replace with the official receipt</button>
-          <button type="button" class="btn btn-secondary" data-testid="decline-match" :disabled="busy" @click="matchDeclined = true">No, keep my photo</button>
+        <p>{{ t('uploadPage.matchBody') }}</p>
+        <div class="flex flex-col gap-2">
+          <Button type="button" size="lg" data-testid="accept-match" :disabled="busy" @click="acceptMatch">{{ t('uploadPage.accept') }}</Button>
+          <Button type="button" variant="secondary" size="lg" data-testid="decline-match" :disabled="busy" @click="matchDeclined = true">{{ t('uploadPage.decline') }}</Button>
         </div>
       </section>
 
-      <section v-if="upload.status === 'needs_review'" aria-labelledby="review-h" data-testid="correction-section">
-        <h2 id="review-h" class="text-lg font-bold">Check the details</h2>
-        <p class="mb-3">We could not read everything with certainty. Correct anything that is wrong.</p>
-        <ul v-if="upload.failures.length > 0" class="mb-3 list-disc pl-5 text-sm text-slate-800" data-testid="upload-failures">
-          <li v-for="f in upload.failures" :key="f"><code>{{ f }}</code></li>
+      <section v-if="upload.status === 'needs_review'" class="space-y-3" aria-labelledby="review-h" data-testid="correction-section">
+        <div>
+          <h2 id="review-h" class="text-h3 font-semibold">{{ t('uploadPage.reviewTitle') }}</h2>
+          <p class="text-text-secondary">{{ t('uploadPage.reviewBody') }}</p>
+        </div>
+        <ul v-if="upload.failures.length > 0" class="list-disc pl-5 text-sm text-text-secondary" data-testid="upload-failures">
+          <li v-for="f in upload.failures" :key="f"><code class="font-mono">{{ f }}</code></li>
         </ul>
-        <form class="card space-y-3" data-testid="correction-form" novalidate @submit.prevent="submitCorrections">
-          <label class="block font-medium">
-            Shop
-            <input v-model="form.merchantName" class="input mt-1" data-testid="corr-merchant" required />
-          </label>
-          <label class="block font-medium">
-            Date and time
-            <input v-model="form.printedAt" type="datetime-local" class="input mt-1" data-testid="corr-printed-at" required />
-          </label>
-          <label class="block font-medium">
-            Total (€)
-            <input v-model="form.gross" inputmode="decimal" class="input mt-1" data-testid="corr-gross" required />
-          </label>
+        <form class="space-y-4 rounded-xl border border-border bg-card p-4" data-testid="correction-form" novalidate @submit.prevent="submitCorrections">
+          <div class="space-y-2">
+            <Label for="corr-merchant">{{ t('uploadPage.merchant') }}</Label>
+            <Input id="corr-merchant" v-model="form.merchantName" class="h-11" data-testid="corr-merchant" required />
+          </div>
+          <div class="space-y-2">
+            <Label for="corr-printed-at">{{ t('uploadPage.dateTime') }}</Label>
+            <Input id="corr-printed-at" v-model="form.printedAt" type="datetime-local" class="h-11" data-testid="corr-printed-at" required />
+          </div>
+          <div class="space-y-2">
+            <Label for="corr-gross">{{ t('uploadPage.gross') }}</Label>
+            <Input id="corr-gross" v-model="form.gross" inputmode="decimal" class="h-11 font-mono" data-testid="corr-gross" required />
+          </div>
           <fieldset class="space-y-3">
-            <legend class="font-medium">Lines</legend>
-            <div v-for="(line, i) in form.lines" :key="i" class="grid grid-cols-[1fr_5rem_auto] items-end gap-2" data-testid="corr-line">
-              <label class="text-sm">
-                Description
-                <input v-model="line.description" class="input mt-1" :data-testid="`corr-line-desc-${i}`" />
-              </label>
-              <label class="text-sm">
-                Amount
-                <input v-model="line.total" inputmode="decimal" class="input mt-1" :data-testid="`corr-line-total-${i}`" />
-              </label>
-              <button type="button" class="btn btn-secondary px-3" :aria-label="`Remove line ${i + 1}`" @click="form.lines.splice(i, 1)">✕</button>
+            <legend class="mb-2 text-label text-text-secondary">{{ t('uploadPage.lines') }}</legend>
+            <div v-for="(line, i) in form.lines" :key="i" class="grid grid-cols-[1fr_6rem_auto] items-end gap-2" data-testid="corr-line">
+              <div class="space-y-2">
+                <Label :for="`corr-line-desc-${i}`">{{ t('uploadPage.lineDesc') }}</Label>
+                <Input :id="`corr-line-desc-${i}`" v-model="line.description" class="h-11" :data-testid="`corr-line-desc-${i}`" />
+              </div>
+              <div class="space-y-2">
+                <Label :for="`corr-line-total-${i}`">{{ t('uploadPage.lineAmount') }}</Label>
+                <Input :id="`corr-line-total-${i}`" v-model="line.total" inputmode="decimal" class="h-11 font-mono" :data-testid="`corr-line-total-${i}`" />
+              </div>
+              <Button type="button" variant="secondary" class="size-11" :aria-label="t('uploadPage.removeLine', { n: i + 1 })" @click="form.lines.splice(i, 1)">
+                <X aria-hidden="true" />
+              </Button>
             </div>
-            <button type="button" class="btn btn-secondary" data-testid="corr-add-line" @click="addLine">Add line</button>
+            <Button type="button" variant="secondary" size="lg" data-testid="corr-add-line" @click="addLine">
+              <Plus aria-hidden="true" />
+              {{ t('uploadPage.addLine') }}
+            </Button>
           </fieldset>
-          <ul v-if="fieldErrors.length > 0" role="alert" class="list-disc pl-5 text-red-800" data-testid="corr-errors">
-            <li v-for="m in fieldErrors" :key="m">{{ m }}</li>
+          <ul v-if="fieldErrors.length > 0" role="alert" class="list-disc pl-5 text-sm text-danger" data-testid="corr-errors">
+            <li v-for="m in fieldErrors" :key="m">{{ t(m) }}</li>
           </ul>
-          <button type="submit" class="btn btn-primary w-full" data-testid="corr-submit" :disabled="busy">Save</button>
+          <Button type="submit" size="lg" class="w-full" data-testid="corr-submit" :disabled="busy">{{ t('uploadPage.submit') }}</Button>
         </form>
       </section>
 
-      <section v-else-if="upload.status === 'done' && upload.draft" class="card space-y-2" data-testid="upload-done">
-        <h2 class="font-semibold">Receipt added</h2>
-        <p>
-          {{ upload.draft.merchantName ?? 'Unknown shop' }}
-          <template v-if="upload.draft.gross !== null"> · {{ formatEuro(upload.draft.gross) }}</template>
-          <template v-if="upload.draft.printedAt"> · {{ formatDateTime(upload.draft.printedAt) }}</template>
+      <section v-else-if="upload.status === 'done' && upload.draft" class="space-y-3 rounded-xl border border-border bg-card p-4" data-testid="upload-done">
+        <h2 class="text-h3 font-semibold">{{ t('uploadPage.doneTitle') }}</h2>
+        <p class="text-sm text-text-secondary">
+          {{ upload.draft.merchantName ?? t('common.unknownMerchant') }}
+          <template v-if="upload.draft.gross !== null"> · {{ formatEuro(upload.draft.gross, locale) }}</template>
+          <template v-if="upload.draft.printedAt"> · {{ formatDateTime(upload.draft.printedAt, locale) }}</template>
         </p>
-        <ul class="divide-y divide-slate-100" data-testid="upload-draft-lines">
-          <li v-for="(l, i) in upload.draft.lines" :key="i" class="flex justify-between py-1">
+        <ul class="divide-y divide-dashed divide-border font-mono text-sm" data-testid="upload-draft-lines">
+          <li v-for="(l, i) in upload.draft.lines" :key="i" class="flex justify-between gap-3 py-2">
             <span>{{ l.description }}</span>
-            <span class="tabular-nums">{{ formatEuro(l.total) }}</span>
+            <span class="tabular-nums">{{ formatEuro(l.total, locale) }}</span>
           </li>
         </ul>
-        <NuxtLink to="/" class="btn btn-secondary w-full">Back to my receipts</NuxtLink>
+        <Button as-child variant="secondary" size="lg" class="w-full">
+          <NuxtLink to="/">{{ t('uploadPage.backToWallet') }}</NuxtLink>
+        </Button>
       </section>
     </template>
   </div>

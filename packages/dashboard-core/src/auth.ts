@@ -5,7 +5,7 @@ import { DashboardError } from './errors.ts';
 import type { KeyProvider } from './keys.ts';
 import { hashPassword, verifyPassword } from './password.ts';
 import type { Actor, Role } from './roles.ts';
-import { newTotpSecret, verifyTotp } from './totp.ts';
+import { currentTotp, newTotpSecret, verifyTotp } from './totp.ts';
 
 export interface AuthDeps {
   db: Db;
@@ -188,4 +188,22 @@ export async function currentUser(db: Db, actor: Actor) {
     if (!u || !o) throw new DashboardError('not_found', 'user not found');
     return { ...u, orgName: o.legalName };
   });
+}
+
+/**
+ * Demo only (the web app gates this behind DEMO_MODE): password login plus MFA in one call, answering the TOTP
+ * challenge with the code generated from the user's own seed. Same sessions and checks as the normal flow.
+ */
+export async function demoLogin(deps: AuthDeps, email: string, password: string): Promise<{ token: string } | null> {
+  const r = await login(deps, email, password);
+  if (!r) return null;
+  if (r.next === 'enrol') {
+    const e = await beginTotpEnrol(deps, r.token);
+    await confirmTotpEnrol(deps, r.token, e.enrolToken, currentTotp(e.secret, now(deps)));
+  } else {
+    const s = await pendingSession(deps, r.token);
+    const u = await userTotp(deps, s);
+    await verifyTotpLogin(deps, r.token, currentTotp(await deps.keys.decrypt(u.totp!), now(deps)));
+  }
+  return { token: r.token };
 }

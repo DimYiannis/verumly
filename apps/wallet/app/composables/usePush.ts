@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { MessageKey } from '~/i18n';
 import { ApiError } from '~/utils/api';
 import { detectPushSupport, urlBase64ToUint8Array, type PushEnv, type PushSupport } from '~/utils/push';
 
@@ -23,7 +24,8 @@ export function usePush() {
   const support = ref<PushSupport>({ kind: 'unsupported' });
   const subscribed = ref(false);
   const busy = ref(false);
-  const error = ref<string | null>(null);
+  /** a dictionary key, translated by the UI so it follows a language switch */
+  const error = ref<MessageKey | null>(null);
 
   async function refresh() {
     support.value = detectPushSupport(currentEnv());
@@ -36,17 +38,17 @@ export function usePush() {
     try {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
-        error.value = 'Notifications are not allowed. Change this in your browser settings.';
+        error.value = 'push.err.denied';
         return;
       }
       const registration = await navigator.serviceWorker.getRegistration();
       if (!registration) {
-        error.value = 'The app is not ready for notifications yet. Reload the page and try again.';
+        error.value = 'push.err.noRegistration';
         return;
       }
       const key = config.public.vapidPublicKey || (await wallet.api.vapidPublicKey()).publicKey;
       if (!key) {
-        error.value = 'Notifications are not set up on the server yet.';
+        error.value = 'push.err.noKey';
         return;
       }
       const sub = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(key) });
@@ -54,14 +56,14 @@ export function usePush() {
       const p256dh = json.keys?.p256dh;
       const auth = json.keys?.auth;
       if (!json.endpoint || !p256dh || !auth) {
-        error.value = 'Your browser did not provide a valid notification subscription.';
+        error.value = 'push.err.badSubscription';
         return;
       }
       const { id } = await wallet.api.addPushSubscription({ endpoint: json.endpoint, keys: { p256dh, auth } });
       await wallet.kv.set(SUBSCRIPTION_KEY, id);
       await wallet.api.putConsents({ push: true });
     } catch (e) {
-      error.value = e instanceof ApiError && e.isNetwork ? 'No connection.' : 'Turning on notifications failed.';
+      error.value = e instanceof ApiError && e.isNetwork ? 'push.err.offline' : 'push.err.enableFailed';
     } finally {
       busy.value = false;
       await refresh();
@@ -79,7 +81,7 @@ export function usePush() {
       await wallet.kv.delete(SUBSCRIPTION_KEY);
       await wallet.api.putConsents({ push: false });
     } catch {
-      error.value = 'Turning off notifications failed.';
+      error.value = 'push.err.disableFailed';
     } finally {
       busy.value = false;
       await refresh();
