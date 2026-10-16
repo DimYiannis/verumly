@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { MessageKey } from '~/i18n';
 import { ApiError } from '~/utils/api';
 
 const emit = defineEmits<{ done: [] }>();
@@ -7,16 +8,18 @@ const step = ref<'email' | 'code'>('email');
 const email = ref('');
 const code = ref('');
 const busy = ref(false);
-const error = ref<string | null>(null);
-const info = ref<string | null>(null);
+const { t } = useLocale();
+const error = ref<MessageKey | null>(null);
+/** the address the code was sent to, once it was */
+const sentTo = ref<string | null>(null);
 
-function messageFor(e: unknown): string {
+function messageFor(e: unknown): MessageKey {
   if (e instanceof ApiError) {
-    if (e.isNetwork) return 'Geen verbinding. Probeer het opnieuw zodra je online bent.';
-    if (e.status === 429) return 'Te vaak geprobeerd. Wacht even en probeer het later opnieuw.';
-    if (e.status === 401) return 'Deze code klopt niet of is verlopen.';
+    if (e.isNetwork) return 'login.err.offline';
+    if (e.status === 429) return 'login.err.rateLimited';
+    if (e.status === 401) return 'login.err.badCode';
   }
-  return 'Er ging iets mis. Probeer het opnieuw.';
+  return 'login.err.generic';
 }
 
 async function sendCode() {
@@ -25,7 +28,7 @@ async function sendCode() {
   try {
     await wallet.api.emailStart(email.value.trim());
     step.value = 'code';
-    info.value = `We hebben een code van 6 cijfers gestuurd naar ${email.value.trim()}.`;
+    sentTo.value = email.value.trim();
   } catch (e) {
     error.value = messageFor(e);
   } finally {
@@ -51,7 +54,7 @@ async function verify() {
   <div data-testid="email-login">
     <form v-if="step === 'email'" class="space-y-4" @submit.prevent="sendCode">
       <div class="space-y-2">
-        <Label for="login-email" class="text-sm font-medium text-foreground">E-mailadres</Label>
+        <Label for="login-email" class="text-sm font-medium text-foreground">{{ t('login.email') }}</Label>
         <Input
           id="login-email"
           v-model="email"
@@ -64,12 +67,12 @@ async function verify() {
           data-testid="login-email"
         />
       </div>
-      <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-send">Stuur me een code</Button>
+      <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-send">{{ t('login.sendCode') }}</Button>
     </form>
     <form v-else class="space-y-4" @submit.prevent="verify">
-      <p class="text-sm text-text-secondary" data-testid="login-info">{{ info }}</p>
+      <p class="text-sm text-text-secondary" data-testid="login-info">{{ sentTo === null ? '' : t('login.codeSent', { email: sentTo }) }}</p>
       <div class="space-y-2">
-        <Label for="login-code" class="text-sm font-medium text-foreground">Code</Label>
+        <Label for="login-code" class="text-sm font-medium text-foreground">{{ t('login.code') }}</Label>
         <Input
           id="login-code"
           v-model="code"
@@ -83,9 +86,9 @@ async function verify() {
           data-testid="login-code"
         />
       </div>
-      <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-verify">Inloggen</Button>
-      <Button type="button" size="lg" variant="secondary" class="w-full" :disabled="busy" @click="step = 'email'">Ander e-mailadres</Button>
+      <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-verify">{{ t('login.verify') }}</Button>
+      <Button type="button" size="lg" variant="secondary" class="w-full" :disabled="busy" @click="step = 'email'">{{ t('login.otherEmail') }}</Button>
     </form>
-    <p role="alert" data-testid="login-error" class="mt-3 text-sm text-danger">{{ error }}</p>
+    <p role="alert" data-testid="login-error" class="mt-3 text-sm text-danger">{{ error ? t(error) : '' }}</p>
   </div>
 </template>

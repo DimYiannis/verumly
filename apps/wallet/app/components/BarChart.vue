@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { formatEuro } from '~/utils/format';
 
+const { locale } = useLocale();
+
 /** Vertical bars, hand-written SVG (no chart library). Values are euro cents. */
 const props = defineProps<{ title: string; items: { label: string; value: number }[]; testid?: string }>();
 
@@ -22,7 +24,7 @@ const bars = computed(() =>
 <template>
   <figure class="rounded-xl border border-border bg-card p-4" :data-testid="testid">
     <figcaption class="mb-3 text-h3 font-semibold">{{ title }}</figcaption>
-    <svg :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="`${title}: ${items.map((i) => `${i.label} ${formatEuro(i.value)}`).join(', ')}`" class="w-full">
+    <svg :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="`${title}: ${items.map((i) => `${i.label} ${formatEuro(i.value, locale)}`).join(', ')}`" class="w-full">
       <title>{{ title }}</title>
       <line :x1="0" :x2="W" :y1="H - PAD_BOTTOM" :y2="H - PAD_BOTTOM" class="stroke-border" stroke-width="1" />
       <g v-for="b in bars" :key="b.label">
@@ -35,7 +37,7 @@ const bars = computed(() =>
       <tbody>
         <tr v-for="i in items" :key="i.label">
           <th scope="row">{{ i.label }}</th>
-          <td>{{ formatEuro(i.value) }}</td>
+          <td>{{ formatEuro(i.value, locale) }}</td>
         </tr>
       </tbody>
     </table>

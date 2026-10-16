@@ -1,23 +1,26 @@
-/** Dutch formatting and list helpers. Receipt times are shown in Europe/Amsterdam (v2 §2.6). */
+/** Locale-aware (Dutch by default) formatting and list helpers. Receipt times are shown in Europe/Amsterdam (v2 §2.6). */
+import { messages, type Locale } from '../i18n/index.ts';
 import type { ReceiptFilters, ReceiptListItem } from './api-schemas.ts';
 
 const TZ = 'Europe/Amsterdam';
-const euro = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' });
+const BCP47: Record<Locale, string> = { nl: 'nl-NL', en: 'en-GB' };
+const euros: Partial<Record<Locale, Intl.NumberFormat>> = {};
 
-export function formatEuro(cents: number): string {
-  return euro.format(cents / 100);
+export function formatEuro(cents: number, locale: Locale = 'nl'): string {
+  const fmt = (euros[locale] ??= new Intl.NumberFormat(BCP47[locale], { style: 'currency', currency: 'EUR' }));
+  return fmt.format(cents / 100);
 }
 
-export function formatQty(qty: string): string {
-  return qty.replace('.', ',');
+export function formatQty(qty: string, locale: Locale = 'nl'): string {
+  return locale === 'nl' ? qty.replace('.', ',') : qty;
 }
 
-export function formatTime(iso: string): string {
-  return new Intl.DateTimeFormat('nl-NL', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+export function formatTime(iso: string, locale: Locale = 'nl'): string {
+  return new Intl.DateTimeFormat(BCP47[locale], { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 }
 
-export function formatDateTime(iso: string): string {
-  return new Intl.DateTimeFormat('nl-NL', { timeZone: TZ, day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+export function formatDateTime(iso: string, locale: Locale = 'nl'): string {
+  return new Intl.DateTimeFormat(BCP47[locale], { timeZone: TZ, day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 }
 
 /** `YYYY-MM-DD` of the Amsterdam calendar day the instant falls on */
@@ -25,12 +28,12 @@ export function dayKey(iso: string): string {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: TZ }).format(new Date(iso));
 }
 
-export function formatDayHeading(key: string, today: Date = new Date()): string {
+export function formatDayHeading(key: string, today: Date = new Date(), locale: Locale = 'nl'): string {
   const todayKey = dayKey(today.toISOString());
   const yesterdayKey = dayKey(new Date(today.getTime() - 86_400_000).toISOString());
-  if (key === todayKey) return 'Vandaag';
-  if (key === yesterdayKey) return 'Gisteren';
-  return new Intl.DateTimeFormat('nl-NL', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(`${key}T12:00:00Z`));
+  if (key === todayKey) return messages[locale]['day.today'];
+  if (key === yesterdayKey) return messages[locale]['day.yesterday'];
+  return new Intl.DateTimeFormat(BCP47[locale], { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(`${key}T12:00:00Z`));
 }
 
 export interface DayGroup<T> {
@@ -64,14 +67,6 @@ export function filterCachedItems(items: ReceiptListItem[], f: ReceiptFilters): 
     return true;
   });
 }
-
-export const STATE_LABEL: Record<string, string> = {
-  open: 'Open',
-  presented: 'Rekening (nog niet betaald)',
-  paid: 'Betaald',
-  fiscalised: 'Definitief',
-  void: 'Vervallen',
-};
 
 export function centsFromInput(value: string): number | null {
   const m = /^(-?)(\d+)(?:[.,](\d{1,2}))?$/.exec(value.trim());

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ChevronLeft, Download } from '@lucide/vue';
+import type { MessageKey } from '~/i18n';
 import { ApiError } from '~/utils/api';
 import type { ReceiptDetail } from '~/utils/api-schemas';
 
@@ -7,16 +8,17 @@ definePageMeta({ middleware: 'auth' });
 
 const route = useRoute();
 const wallet = useWallet();
+const { t } = useLocale();
 const id = String(route.params.id);
 
 const detail = shallowRef<ReceiptDetail | null>(null);
 const status = ref<'loading' | 'ready' | 'notfound' | 'unavailable' | 'error'>('loading');
 const fromCache = ref(false);
 const pdfBusy = ref(false);
-const pdfError = ref<string | null>(null);
+const pdfError = ref<MessageKey | null>(null);
 const justSaved = route.query.saved === '1';
 
-useHead({ title: 'Bon' });
+useHead({ title: () => t('viewer.pageTitle') });
 
 async function load() {
   try {
@@ -48,7 +50,7 @@ async function downloadPdf() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   } catch (e) {
-    pdfError.value = e instanceof ApiError && e.isNetwork ? 'PDF downloaden kan alleen online.' : 'De PDF kon niet worden gemaakt.';
+    pdfError.value = e instanceof ApiError && e.isNetwork ? 'receiptPage.err.offline' : 'receiptPage.err.failed';
   } finally {
     pdfBusy.value = false;
   }
@@ -69,25 +71,25 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', onVisible
   <div class="space-y-4">
     <NuxtLink to="/" class="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary no-underline hover:text-brand-900">
       <ChevronLeft class="size-4" aria-hidden="true" />
-      Alle bonnen
+      {{ t('common.allReceipts') }}
     </NuxtLink>
     <p v-if="status === 'loading'" role="status" class="flex items-center gap-2 text-sm text-text-secondary">
       <Spinner role="presentation" aria-hidden="true" />
-      Bon laden…
+      {{ t('receiptPage.loading') }}
     </p>
-    <p v-else-if="status === 'notfound'" role="alert" data-testid="not-found" class="rounded-xl border border-border bg-card p-4">Deze bon staat niet in jouw portemonnee.</p>
-    <p v-else-if="status === 'unavailable'" role="alert" data-testid="unavailable" class="rounded-xl border border-border bg-card p-4">Je bent offline en deze bon is nog niet op dit toestel bewaard.</p>
-    <p v-else-if="status === 'error'" role="alert" class="rounded-xl border border-danger-border bg-danger-soft p-4 text-danger">Er ging iets mis bij het laden.</p>
+    <p v-else-if="status === 'notfound'" role="alert" data-testid="not-found" class="rounded-xl border border-border bg-card p-4">{{ t('receiptPage.notFound') }}</p>
+    <p v-else-if="status === 'unavailable'" role="alert" data-testid="unavailable" class="rounded-xl border border-border bg-card p-4">{{ t('receiptPage.unavailable') }}</p>
+    <p v-else-if="status === 'error'" role="alert" class="rounded-xl border border-danger-border bg-danger-soft p-4 text-danger">{{ t('receiptPage.error') }}</p>
     <template v-else-if="detail">
-      <p v-if="justSaved" role="status" data-testid="saved-notice" class="rounded-xl border border-success-border bg-success-soft p-3 font-medium text-success">Bon opgeslagen in je portemonnee.</p>
-      <p v-if="fromCache" role="status" data-testid="cached-notice" class="rounded-xl border border-warning-border bg-warning-soft p-3 text-sm text-warning">Offline: dit is de laatst opgeslagen versie.</p>
+      <p v-if="justSaved" role="status" data-testid="saved-notice" class="rounded-xl border border-success-border bg-success-soft p-3 font-medium text-success">{{ t('receiptPage.saved') }}</p>
+      <p v-if="fromCache" role="status" data-testid="cached-notice" class="rounded-xl border border-warning-border bg-warning-soft p-3 text-sm text-warning">{{ t('receiptPage.cached') }}</p>
       <ReceiptView :detail="detail" />
       <div class="space-y-2">
         <Button type="button" variant="secondary" size="lg" class="w-full" data-testid="download-pdf" :disabled="pdfBusy" @click="downloadPdf">
           <Download aria-hidden="true" />
-          {{ pdfBusy ? 'PDF maken…' : 'Download PDF' }}
+          {{ pdfBusy ? t('receiptPage.pdfBusy') : t('receiptPage.pdf') }}
         </Button>
-        <p v-if="pdfError" role="alert" data-testid="pdf-error" class="text-sm text-danger">{{ pdfError }}</p>
+        <p v-if="pdfError" role="alert" data-testid="pdf-error" class="text-sm text-danger">{{ t(pdfError) }}</p>
       </div>
     </template>
   </div>

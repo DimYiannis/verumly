@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { WifiOff } from '@lucide/vue';
+import type { MessageKey } from '~/i18n';
 import { ApiError } from '~/utils/api';
 import type { ResolveView } from '~/utils/api-schemas';
 import { UUIDV7_RE } from '~/utils/receipt-link';
@@ -10,6 +11,7 @@ type OkView = Extract<ResolveView, { status: 'ok' }>;
 
 const route = useRoute();
 const wallet = useWallet();
+const { t } = useLocale();
 const id = String(route.params.id);
 
 const phase = ref<Phase>('loading');
@@ -19,11 +21,11 @@ const sheetOpen = ref(false);
 const dismissed = ref(false);
 const takenByOther = ref(false);
 const busy = ref(false);
-const claimError = ref<string | null>(null);
+const claimError = ref<MessageKey | null>(null);
 let pollTimer: ReturnType<typeof setTimeout> | undefined;
 let pollAttempt = 0;
 
-useHead({ title: 'Bon' });
+useHead({ title: () => t('viewer.pageTitle') });
 
 /** Park the secret so a reload, a login round trip or a dead network cannot lose it. */
 async function queue(autoClaim: boolean) {
@@ -114,7 +116,7 @@ async function save() {
     await wallet.cacheReceipt(id);
     await goToSaved(true);
   } catch (e) {
-    if (!(e instanceof ApiError)) claimError.value = 'Opslaan is niet gelukt. Probeer het opnieuw.';
+    if (!(e instanceof ApiError)) claimError.value = 'viewer.err.saveFailed';
     else if (e.isNetwork || e.status === 404 || e.status >= 500) {
       // keep the secret; the wallet shows it as "Arriving" and claims it when it can
       await queue(true);
@@ -124,12 +126,12 @@ async function save() {
       takenByOther.value = true;
       sheetOpen.value = false;
       await dropPending();
-    } else if (e.status === 410) claimError.value = 'De bewaartermijn van deze bon is verstreken.';
+    } else if (e.status === 410) claimError.value = 'viewer.err.claimExpired';
     else if (e.status === 401) {
       await queue(false);
       await wallet.endSession();
       await navigateTo({ path: '/login', query: { next: `/r/${id}` } });
-    } else claimError.value = 'Opslaan is niet gelukt. Probeer het opnieuw.';
+    } else claimError.value = 'viewer.err.saveFailed';
   } finally {
     busy.value = false;
   }
@@ -171,47 +173,47 @@ onBeforeUnmount(() => clearTimeout(pollTimer));
   <div>
     <p v-if="phase === 'loading'" role="status" data-testid="loading" class="flex items-center gap-2 text-sm text-text-secondary">
       <Spinner role="presentation" aria-hidden="true" />
-      Bon ophalen…
+      {{ t('viewer.loading') }}
     </p>
 
     <section v-else-if="phase === 'invalid'" class="space-y-2 rounded-xl border border-danger-border bg-card p-4" role="alert" data-testid="invalid-link">
-      <h1 class="text-h2 font-semibold">Ongeldige link</h1>
-      <p class="text-text-secondary">Dit is geen geldige bonlink. Scan de QR-code op de bon opnieuw.</p>
+      <h1 class="text-h2 font-semibold">{{ t('viewer.invalidTitle') }}</h1>
+      <p class="text-text-secondary">{{ t('viewer.invalidBody') }}</p>
     </section>
 
     <section v-else-if="phase === 'nolink'" class="space-y-3 rounded-xl border border-border bg-card p-4" role="alert" data-testid="incomplete-link">
-      <h1 class="text-h2 font-semibold">Link onvolledig</h1>
-      <p class="text-text-secondary">Het geheime deel van de link ontbreekt. Scan de QR-code op de bon opnieuw.</p>
+      <h1 class="text-h2 font-semibold">{{ t('viewer.incompleteTitle') }}</h1>
+      <p class="text-text-secondary">{{ t('viewer.incompleteBody') }}</p>
       <Button v-if="wallet.session.value" as-child variant="secondary" size="lg" class="w-full">
-        <NuxtLink to="/">Naar mijn bonnen</NuxtLink>
+        <NuxtLink to="/">{{ t('common.toMyReceipts') }}</NuxtLink>
       </Button>
     </section>
 
     <section v-else-if="phase === 'notfound'" class="space-y-2 rounded-xl border border-border bg-card p-4" role="alert" data-testid="not-found">
-      <h1 class="text-h2 font-semibold">Bon niet gevonden</h1>
-      <p class="text-text-secondary">Deze link klopt niet. Vraag het personeel om een nieuwe QR-code.</p>
+      <h1 class="text-h2 font-semibold">{{ t('viewer.notFoundTitle') }}</h1>
+      <p class="text-text-secondary">{{ t('viewer.notFoundBody') }}</p>
     </section>
 
     <section v-else-if="phase === 'limited'" class="space-y-2 rounded-xl border border-warning-border bg-card p-4" role="alert" data-testid="rate-limited">
-      <h1 class="text-h2 font-semibold">Even wachten</h1>
-      <p class="text-text-secondary">Er zijn te veel pogingen gedaan. Probeer het later opnieuw.</p>
+      <h1 class="text-h2 font-semibold">{{ t('viewer.limitedTitle') }}</h1>
+      <p class="text-text-secondary">{{ t('viewer.limitedBody') }}</p>
     </section>
 
     <section v-else-if="phase === 'error'" class="space-y-3 rounded-xl border border-danger-border bg-card p-4" role="alert" data-testid="load-error">
-      <h1 class="text-h2 font-semibold">Er ging iets mis</h1>
-      <Button type="button" variant="secondary" size="lg" class="w-full" @click="resolve">Opnieuw proberen</Button>
+      <h1 class="text-h2 font-semibold">{{ t('viewer.errorTitle') }}</h1>
+      <Button type="button" variant="secondary" size="lg" class="w-full" @click="resolve">{{ t('common.retry') }}</Button>
     </section>
 
     <section v-else-if="phase === 'arriving'" class="space-y-3 rounded-xl border border-border bg-card p-4" role="status" data-testid="arriving-state">
       <h1 class="flex items-center gap-2 text-h2 font-semibold">
         <WifiOff class="size-5 text-warning" aria-hidden="true" />
-        Bon onderweg
+        {{ t('viewer.arrivingTitle') }}
       </h1>
-      <p class="text-text-secondary">Geen verbinding. We bewaren deze bon en halen hem op zodra je weer online bent.</p>
-      <p v-if="!wallet.session.value" class="text-text-secondary">Log daarna in om hem op te slaan.</p>
+      <p class="text-text-secondary">{{ t('viewer.arrivingBody') }}</p>
+      <p v-if="!wallet.session.value" class="text-text-secondary">{{ t('viewer.arrivingLogin') }}</p>
       <Button as-child variant="secondary" size="lg" class="w-full">
         <NuxtLink :to="wallet.session.value ? '/' : { path: '/login', query: { next: `/r/${id}` } }">
-          {{ wallet.session.value ? 'Naar mijn bonnen' : 'Inloggen' }}
+          {{ wallet.session.value ? t('common.toMyReceipts') : t('common.login') }}
         </NuxtLink>
       </Button>
     </section>
@@ -219,28 +221,28 @@ onBeforeUnmount(() => clearTimeout(pollTimer));
     <section v-else-if="phase === 'pending'" class="space-y-3 rounded-xl border border-border bg-card p-4" role="status" data-testid="pending-state">
       <h1 class="flex items-center gap-2 text-h2 font-semibold">
         <Spinner class="text-primary" role="presentation" aria-hidden="true" />
-        Bon is bijna klaar
+        {{ t('viewer.pendingTitle') }}
       </h1>
-      <p class="text-text-secondary">De kassa heeft de bon nog niet doorgestuurd. We blijven het proberen; je hoeft niets te doen.</p>
+      <p class="text-text-secondary">{{ t('viewer.pendingBody') }}</p>
       <Button v-if="wallet.session.value" as-child variant="secondary" size="lg" class="w-full">
-        <NuxtLink to="/">Naar mijn bonnen</NuxtLink>
+        <NuxtLink to="/">{{ t('common.toMyReceipts') }}</NuxtLink>
       </Button>
     </section>
 
     <template v-else-if="view">
       <p v-if="takenByOther" role="alert" data-testid="taken-notice" class="mb-4 rounded-xl border border-border bg-card p-4 text-sm">
-        Deze bon is al opgeslagen in een andere portemonnee.
+        {{ t('viewer.taken') }}
       </p>
       <p v-else-if="dismissed" role="status" data-testid="dismissed-notice" class="mb-4 flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 text-sm">
-        Niet opgeslagen.
-        <Button type="button" size="lg" data-testid="reopen-sheet" @click="reopenSheet">Toch opslaan</Button>
+        {{ t('viewer.dismissed') }}
+        <Button type="button" size="lg" data-testid="reopen-sheet" @click="reopenSheet">{{ t('viewer.reopen') }}</Button>
       </p>
       <!-- the sheet is modal: keep the receipt behind it out of the tab order and the accessibility tree -->
       <div :inert="sheetOpen">
         <ReceiptView :detail="view" />
       </div>
       <div v-if="!wallet.session.value && !takenByOther" class="sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] mt-4">
-        <Button type="button" size="lg" class="w-full shadow-md" data-testid="save-to-wallet" @click="saveToWallet">Bewaar in portemonnee / Save to wallet</Button>
+        <Button type="button" size="lg" class="w-full shadow-md" data-testid="save-to-wallet" @click="saveToWallet">{{ t('viewer.saveToWallet') }}</Button>
       </div>
       <ConfirmSheet
         v-if="sheetOpen"

@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import { ReceiptTextIcon } from '@lucide/vue';
 
 definePageMeta({ layout: 'default' });
+const { t } = useLocale();
 
 type Step = 'credentials' | 'enrol' | 'verify';
 const step = ref<Step>('credentials');
@@ -64,45 +65,48 @@ async function submitCode() {
 </script>
 
 <template>
+  <div>
+  <div class="fixed right-4 top-4 z-10"><AppLocaleSwitch /></div>
   <div class="mx-auto flex min-h-screen max-w-md items-center px-4 py-8">
     <Card class="w-full gap-6 py-8">
       <CardHeader class="px-8">
         <div class="mb-4 flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground"><ReceiptTextIcon class="size-5" /></div>
-        <CardTitle class="text-2xl font-medium tracking-tight">Merchant dashboard</CardTitle>
-        <CardDescription>Sign in with your email, password and authenticator code.</CardDescription>
+        <CardTitle class="text-2xl font-medium tracking-tight">{{ t('login.title') }}</CardTitle>
+        <CardDescription>{{ t('login.description') }}</CardDescription>
       </CardHeader>
       <CardContent class="px-8">
         <form v-if="step === 'credentials'" class="space-y-6" @submit.prevent="submitCredentials">
           <div class="space-y-2">
-            <Label for="login-email">Email</Label>
+            <Label for="login-email">{{ t('login.email') }}</Label>
             <Input id="login-email" v-model="email" type="email" autocomplete="username" required data-testid="login-email" />
           </div>
           <div class="space-y-2">
-            <Label for="login-password">Password</Label>
+            <Label for="login-password">{{ t('login.password') }}</Label>
             <Input id="login-password" v-model="password" type="password" autocomplete="current-password" required data-testid="login-password" />
           </div>
-          <Button class="w-full" :disabled="busy" data-testid="login-submit">Continue</Button>
+          <Button class="w-full" :disabled="busy" data-testid="login-submit">{{ t('login.continue') }}</Button>
         </form>
 
         <form v-else class="space-y-6" @submit.prevent="submitCode">
           <div v-if="step === 'enrol'" data-testid="totp-enrol" class="space-y-3 text-sm">
-            <p class="text-muted-foreground">First sign-in: set up an authenticator app (Google Authenticator, 1Password and similar). Scan the code or enter the secret, then type the 6-digit code it shows.</p>
+            <p class="text-muted-foreground">{{ t('login.enrolIntro') }}</p>
             <div v-if="qrSvg" class="mx-auto w-40 rounded-md border bg-white p-1" v-html="qrSvg" />
             <template v-if="enrol">
-              <p>Secret: <code class="break-all rounded-sm bg-muted px-1 font-mono text-xs" data-testid="totp-secret">{{ enrol.secret }}</code></p>
-              <p>URI: <code class="break-all rounded-sm bg-muted px-1 font-mono text-xs" data-testid="totp-uri">{{ enrol.uri }}</code></p>
+              <p>{{ t('login.secret') }} <code class="break-all rounded-sm bg-muted px-1 font-mono text-xs" data-testid="totp-secret">{{ enrol.secret }}</code></p>
+              <p>{{ t('login.uri') }} <code class="break-all rounded-sm bg-muted px-1 font-mono text-xs" data-testid="totp-uri">{{ enrol.uri }}</code></p>
             </template>
           </div>
-          <p v-else class="text-sm text-muted-foreground">Enter the 6-digit code from your authenticator app.</p>
+          <p v-else class="text-sm text-muted-foreground">{{ t('login.verifyIntro') }}</p>
           <div class="space-y-2">
-            <Label for="totp-input">Code</Label>
+            <Label for="totp-input">{{ t('login.code') }}</Label>
             <Input id="totp-input" v-model="code" inputmode="numeric" autocomplete="one-time-code" pattern="\d{6}" maxlength="6" required class="tracking-widest" data-testid="totp-input" />
           </div>
-          <Button class="w-full" :disabled="busy || (step === 'enrol' && !enrol)" data-testid="totp-submit">{{ step === 'enrol' ? 'Verify and finish' : 'Verify' }}</Button>
+          <Button class="w-full" :disabled="busy || (step === 'enrol' && !enrol)" data-testid="totp-submit">{{ step === 'enrol' ? t('login.verifyFinish') : t('login.verify') }}</Button>
         </form>
 
         <AppErrorNote v-if="error" class="mt-6" data-testid="login-error">{{ error }}</AppErrorNote>
       </CardContent>
     </Card>
+  </div>
   </div>
 </template>

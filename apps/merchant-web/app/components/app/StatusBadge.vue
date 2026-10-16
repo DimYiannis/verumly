@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const props = defineProps<{ status: string }>();
+const { tx } = useLocale();
 
 const SUCCESS = ['paid', 'active', 'done', 'ready', 'completed', 'succeeded', 'enrolled'];
 const WARNING = ['presented', 'queued', 'processing', 'pending'];
@@ -8,5 +9,5 @@ const variant = computed(() => (SUCCESS.includes(props.status) ? 'success' : WAR
 </script>
 
 <template>
-  <Badge :variant="variant">{{ status }}</Badge>
+  <Badge :variant="variant">{{ tx('status', status) }}</Badge>
 </template>

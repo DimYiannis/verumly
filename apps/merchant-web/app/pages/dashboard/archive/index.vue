@@ -4,6 +4,7 @@ import { RefreshCwIcon } from '@lucide/vue';
 definePageMeta({ layout: 'dashboard', middleware: 'dashboard-auth' });
 
 interface Row { id: string; locationName: string; state: string; currentVersion: number; totalMinor: number; createdAt: string; receivedAt: string }
+const { t, tx } = useLocale();
 const PAGE = 50;
 const rows = ref<Row[]>([]);
 const error = ref('');
@@ -36,24 +37,24 @@ function page(delta: number) {
 </script>
 
 <template>
-  <AppPageHeading title="Receipt archive" description="Every receipt your terminals have signed, with all of its versions.">
-    <Button variant="outline" data-testid="archive-refresh" @click="load"><RefreshCwIcon />Refresh</Button>
+  <AppPageHeading :title="t('archive.title')" :description="t('archive.description')">
+    <Button variant="outline" data-testid="archive-refresh" @click="load"><RefreshCwIcon />{{ t('archive.refresh') }}</Button>
   </AppPageHeading>
 
   <Card>
     <CardContent>
       <form class="grid grid-cols-1 items-end gap-4 sm:grid-cols-2 lg:grid-cols-6" @submit.prevent="search">
-        <div class="space-y-2 lg:col-span-2"><Label for="archive-q">Search</Label><Input id="archive-q" v-model="filters.q" placeholder="item or receipt id" data-testid="archive-q" /></div>
+        <div class="space-y-2 lg:col-span-2"><Label for="archive-q">{{ t('common.search') }}</Label><Input id="archive-q" v-model="filters.q" :placeholder="t('archive.searchPlaceholder')" data-testid="archive-q" /></div>
         <div class="space-y-2">
-          <Label for="archive-state">State</Label>
+          <Label for="archive-state">{{ t('common.state') }}</Label>
           <AppNativeSelect id="archive-state" v-model="filters.state" data-testid="archive-state">
-            <option value="">any</option><option>presented</option><option>paid</option><option>void</option><option>open</option>
+            <option value="">{{ t('common.any') }}</option><option v-for="s in ['presented', 'paid', 'void', 'open']" :key="s" :value="s">{{ tx('status', s) }}</option>
           </AppNativeSelect>
         </div>
-        <div class="space-y-2"><Label for="archive-from">From</Label><Input id="archive-from" v-model="filters.from" type="date" data-testid="archive-from" /></div>
-        <div class="space-y-2"><Label for="archive-to">To</Label><Input id="archive-to" v-model="filters.to" type="date" data-testid="archive-to" /></div>
-        <div class="space-y-2"><Label for="archive-amount">Amount (€)</Label><Input id="archive-amount" v-model="filters.amount" placeholder="12,50" data-testid="archive-amount" /></div>
-        <div class="sm:col-span-2 lg:col-span-6"><Button data-testid="archive-search">Search</Button></div>
+        <div class="space-y-2"><Label for="archive-from">{{ t('common.from') }}</Label><Input id="archive-from" v-model="filters.from" type="date" data-testid="archive-from" /></div>
+        <div class="space-y-2"><Label for="archive-to">{{ t('common.to') }}</Label><Input id="archive-to" v-model="filters.to" type="date" data-testid="archive-to" /></div>
+        <div class="space-y-2"><Label for="archive-amount">{{ t('archive.amount') }}</Label><Input id="archive-amount" v-model="filters.amount" placeholder="12,50" data-testid="archive-amount" /></div>
+        <div class="sm:col-span-2 lg:col-span-6"><Button data-testid="archive-search">{{ t('common.search') }}</Button></div>
       </form>
     </CardContent>
   </Card>
@@ -66,7 +67,7 @@ function page(delta: number) {
         <Table data-testid="archive-table">
           <TableHeader class="bg-muted [&_th]:text-xs [&_th]:font-medium [&_th]:text-text-secondary">
             <TableRow class="hover:bg-muted">
-              <TableHead class="px-4">Time (Amsterdam)</TableHead><TableHead>Location</TableHead><TableHead>State</TableHead><TableHead>Version</TableHead><TableHead class="px-4 text-right">Total</TableHead>
+              <TableHead class="px-4">{{ t('common.time') }}</TableHead><TableHead>{{ t('common.location') }}</TableHead><TableHead>{{ t('common.state') }}</TableHead><TableHead>{{ t('archive.version') }}</TableHead><TableHead class="px-4 text-right">{{ t('common.total') }}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -77,13 +78,13 @@ function page(delta: number) {
               <TableCell class="tabular-nums">v{{ r.currentVersion }}</TableCell>
               <TableCell class="px-4 text-right tabular-nums" data-testid="archive-total">{{ euro(r.totalMinor) }}</TableCell>
             </TableRow>
-            <TableRow v-if="!rows.length && !loading" class="hover:bg-transparent"><TableCell colspan="5" class="h-[52px] text-center text-muted-foreground" data-testid="archive-empty">No receipts found.</TableCell></TableRow>
+            <TableRow v-if="!rows.length && !loading" class="hover:bg-transparent"><TableCell colspan="5" class="h-[52px] text-center text-muted-foreground" data-testid="archive-empty">{{ t('archive.empty') }}</TableCell></TableRow>
           </TableBody>
         </Table>
       </div>
       <div class="flex items-center gap-2">
-        <Button variant="outline" :disabled="offset === 0" data-testid="archive-prev" @click="page(-1)">Previous</Button>
-        <Button variant="outline" :disabled="rows.length < PAGE" data-testid="archive-next" @click="page(1)">Next</Button>
+        <Button variant="outline" :disabled="offset === 0" data-testid="archive-prev" @click="page(-1)">{{ t('archive.previous') }}</Button>
+        <Button variant="outline" :disabled="rows.length < PAGE" data-testid="archive-next" @click="page(1)">{{ t('archive.next') }}</Button>
       </div>
     </CardContent>
   </Card>

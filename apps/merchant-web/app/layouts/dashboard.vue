@@ -1,43 +1,46 @@
 <script setup lang="ts">
+import type { Component } from 'vue';
+import type { MessageKey } from '~/i18n/en';
 import { ArchiveIcon, BuildingIcon, ChartColumnIcon, DownloadIcon, LayoutDashboardIcon, LogOutIcon, MapPinIcon, MonitorSmartphoneIcon, ReceiptTextIcon, TabletSmartphoneIcon, UsersIcon } from '@lucide/vue';
 
 const session = sessionState();
+const { t, tx } = useLocale();
 const route = useRoute();
 const role = computed(() => session.value.user?.role);
-const orgName = computed(() => session.value.user?.orgName ?? 'Merchant');
+const orgName = computed(() => session.value.user?.orgName ?? t('nav.merchantFallback'));
 const initials = computed(() => (session.value.user?.email ?? '?').slice(0, 2).toUpperCase());
 
-const main = [
-  { to: '/dashboard/overview', label: 'Overview', id: 'nav-overview', icon: LayoutDashboardIcon },
-  { to: '/dashboard/reports', label: 'Reports', id: 'nav-reports', icon: ChartColumnIcon },
-  { to: '/dashboard/archive', label: 'Archive', id: 'nav-archive', icon: ArchiveIcon },
-  { to: '/dashboard/exports', label: 'Exports', id: 'nav-exports', icon: DownloadIcon },
+const main: Array<{ to: string; key: MessageKey; id: string; icon: Component }> = [
+  { to: '/dashboard/overview', key: 'nav.overview', id: 'nav-overview', icon: LayoutDashboardIcon },
+  { to: '/dashboard/reports', key: 'nav.reports', id: 'nav-reports', icon: ChartColumnIcon },
+  { to: '/dashboard/archive', key: 'nav.archive', id: 'nav-archive', icon: ArchiveIcon },
+  { to: '/dashboard/exports', key: 'nav.exports', id: 'nav-exports', icon: DownloadIcon },
 ];
 const setup = computed(() =>
-  [
-    { to: '/dashboard/terminals', label: 'Terminals', id: 'nav-terminals', icon: TabletSmartphoneIcon, show: role.value !== 'accountant' },
-    { to: '/dashboard/locations', label: 'Locations', id: 'nav-locations', icon: MapPinIcon, show: true },
-    { to: '/dashboard/users', label: 'Users', id: 'nav-users', icon: UsersIcon, show: role.value === 'owner' },
-    { to: '/dashboard/organisation', label: 'Organisation', id: 'nav-organisation', icon: BuildingIcon, show: true },
-    { to: '/simulator', label: 'Simulator', id: 'nav-simulator', icon: MonitorSmartphoneIcon, show: role.value !== 'accountant' },
-  ].filter((l) => l.show),
+  ([
+    { to: '/dashboard/terminals', key: 'nav.terminals', id: 'nav-terminals', icon: TabletSmartphoneIcon, show: role.value !== 'accountant' },
+    { to: '/dashboard/locations', key: 'nav.locations', id: 'nav-locations', icon: MapPinIcon, show: true },
+    { to: '/dashboard/users', key: 'nav.users', id: 'nav-users', icon: UsersIcon, show: role.value === 'owner' },
+    { to: '/dashboard/organisation', key: 'nav.organisation', id: 'nav-organisation', icon: BuildingIcon, show: true },
+    { to: '/simulator', key: 'nav.simulator', id: 'nav-simulator', icon: MonitorSmartphoneIcon, show: role.value !== 'accountant' },
+  ] as Array<{ to: string; key: MessageKey; id: string; icon: Component; show: boolean }>).filter((l) => l.show),
 );
 
-const PAGES: Record<string, string> = {
-  overview: 'Overview',
-  reports: 'Reports',
-  archive: 'Archive',
-  exports: 'Exports',
-  terminals: 'Terminals',
-  locations: 'Locations',
-  users: 'Users',
-  organisation: 'Organisation',
+const PAGES: Record<string, MessageKey> = {
+  overview: 'nav.overview',
+  reports: 'nav.reports',
+  archive: 'nav.archive',
+  exports: 'nav.exports',
+  terminals: 'nav.terminals',
+  locations: 'nav.locations',
+  users: 'nav.users',
+  organisation: 'nav.organisation',
 };
 const crumbs = computed(() => {
   const section = route.path.split('/').filter(Boolean)[1];
-  const label = (section && PAGES[section]) || 'Overview';
+  const label = t((section && PAGES[section]) || 'nav.overview');
   const list: Array<{ label: string; to?: string }> = [{ label: orgName.value }];
-  if (section === 'archive' && route.params.id) list.push({ label: 'Archive', to: '/dashboard/archive' }, { label: 'Receipt' });
+  if (section === 'archive' && route.params.id) list.push({ label: t('nav.archive'), to: '/dashboard/archive' }, { label: t('nav.receiptCrumb') });
   else list.push({ label });
   return list;
 });
@@ -69,8 +72,8 @@ async function logout() {
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem v-for="l in main" :key="l.to">
-              <SidebarMenuButton as-child :tooltip="l.label" :is-active="isActive(l.to)">
-                <NuxtLink :to="l.to" :data-testid="l.id"><component :is="l.icon" /><span>{{ l.label }}</span></NuxtLink>
+              <SidebarMenuButton as-child :tooltip="t(l.key)" :is-active="isActive(l.to)">
+                <NuxtLink :to="l.to" :data-testid="l.id"><component :is="l.icon" /><span>{{ t(l.key) }}</span></NuxtLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -79,8 +82,8 @@ async function logout() {
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem v-for="l in setup" :key="l.to">
-              <SidebarMenuButton as-child :tooltip="l.label" :is-active="isActive(l.to)">
-                <NuxtLink :to="l.to" :data-testid="l.id"><component :is="l.icon" /><span>{{ l.label }}</span></NuxtLink>
+              <SidebarMenuButton as-child :tooltip="t(l.key)" :is-active="isActive(l.to)">
+                <NuxtLink :to="l.to" :data-testid="l.id"><component :is="l.icon" /><span>{{ t(l.key) }}</span></NuxtLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -92,12 +95,13 @@ async function logout() {
           <Avatar class="size-8"><AvatarFallback class="text-xs">{{ initials }}</AvatarFallback></Avatar>
           <div class="min-w-0 text-xs leading-4" data-testid="whoami">
             <div class="truncate text-sm font-medium">{{ session.user?.orgName }}</div>
-            <div class="truncate text-muted-foreground">{{ session.user?.email }} ({{ role }})</div>
+            <div class="truncate text-muted-foreground">{{ session.user?.email }} ({{ role ? tx('role', role) : '' }})</div>
           </div>
         </div>
+        <div class="flex px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"><AppLocaleSwitch /></div>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Log out" data-testid="logout" @click="logout"><LogOutIcon /><span>Log out</span></SidebarMenuButton>
+            <SidebarMenuButton :tooltip="t('nav.logout')" data-testid="logout" @click="logout"><LogOutIcon /><span>{{ t('nav.logout') }}</span></SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
