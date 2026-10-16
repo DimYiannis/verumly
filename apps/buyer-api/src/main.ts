@@ -16,6 +16,8 @@ const env = loadEnv(
     VAPID_PUBLIC_KEY: z.string().optional(),
     /** accept plain-http loopback push endpoints (local tests). Off in production. */
     PUSH_ALLOW_LOOPBACK: z.stringbool().default(process.env.NODE_ENV !== 'production'),
+    /** passwordless demo sign-in as the seeded buyer. On outside production unless set; never enable it on a real deployment */
+    DEMO_MODE: z.stringbool().default(process.env.NODE_ENV !== 'production'),
     POLICY_VERSION: z.string().default('2026-10'),
   }),
 );
@@ -33,5 +35,6 @@ const app = await buildApp({
   vapidPublicKey: env.VAPID_PUBLIC_KEY ?? resolveVapid(env)?.publicKey ?? null,
   allowLoopbackPush: env.PUSH_ALLOW_LOOPBACK,
   policyVersion: env.POLICY_VERSION,
+  demoUserEmail: env.DEMO_MODE ? 'buyer@example.test' : undefined,
 });
 await app.listen({ port: env.PORT, host: env.HOST });

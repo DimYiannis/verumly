@@ -19,6 +19,29 @@ function messageFor(e: unknown): string {
   return 'Er ging iets mis. Probeer het opnieuw.';
 }
 
+const demo = ref(false);
+onMounted(async () => {
+  // demo mode: the field fills itself with the seeded buyer
+  const d = await wallet.api.demoInfo();
+  if (d.enabled && d.email) {
+    demo.value = true;
+    email.value = d.email;
+  }
+});
+
+async function demoSignIn() {
+  busy.value = true;
+  error.value = null;
+  try {
+    await wallet.demoLogin(email.value.trim().toLowerCase());
+    emit('done');
+  } catch (e) {
+    error.value = messageFor(e);
+  } finally {
+    busy.value = false;
+  }
+}
+
 async function sendCode() {
   busy.value = true;
   error.value = null;
@@ -65,6 +88,7 @@ async function verify() {
         />
       </div>
       <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-send">Stuur me een code</Button>
+      <Button v-if="demo" type="button" size="lg" variant="secondary" class="w-full" :disabled="busy" data-testid="login-demo" @click="demoSignIn">Demo: direct inloggen</Button>
     </form>
     <form v-else class="space-y-4" @submit.prevent="verify">
       <p class="text-sm text-text-secondary" data-testid="login-info">{{ info }}</p>

@@ -13,6 +13,7 @@ const error = ref('');
 const busy = ref(false);
 const enrol = ref<{ secret: string; uri: string; enrolToken: string } | null>(null);
 const qrSvg = ref('');
+const demo = ref(false);
 
 async function beginEnrol() {
   const r = await attempt(error, () => $fetch<{ secret: string; uri: string; enrolToken: string }>('/api/dashboard/totp/begin', { method: 'POST' }));
@@ -28,9 +29,26 @@ async function goto(next: Step) {
   if (next === 'enrol') await beginEnrol();
 }
 
+async function demoSignIn() {
+  busy.value = true;
+  const ok = await attempt(error, () => $fetch<unknown>('/api/dashboard/demo-login', { method: 'POST' }));
+  busy.value = false;
+  if (ok) {
+    await refreshSession();
+    await navigateTo('/dashboard');
+  }
+}
+
 onMounted(async () => {
   const s = await refreshSession();
   if (s.state === 'ready') return navigateTo('/dashboard');
+  // demo mode: the form fills itself with the seeded owner
+  const d = await $fetch<{ enabled: boolean; email?: string; password?: string }>('/api/dashboard/demo').catch(() => ({ enabled: false }) as { enabled: boolean; email?: string; password?: string });
+  if (d.enabled && s.state === 'anonymous') {
+    demo.value = true;
+    email.value = d.email ?? '';
+    password.value = d.password ?? '';
+  }
   if (s.state === 'mfa_enrol') await goto('enrol');
   if (s.state === 'mfa_verify') await goto('verify');
 });
@@ -82,6 +100,7 @@ async function submitCode() {
             <Input id="login-password" v-model="password" type="password" autocomplete="current-password" required data-testid="login-password" />
           </div>
           <Button class="w-full" :disabled="busy" data-testid="login-submit">Continue</Button>
+          <Button v-if="demo" type="button" variant="secondary" class="w-full" :disabled="busy" data-testid="login-demo" @click="demoSignIn">Sign in as the demo owner</Button>
         </form>
 
         <form v-else class="space-y-6" @submit.prevent="submitCode">
