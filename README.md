@@ -30,7 +30,7 @@ docker compose up -d          # Postgres 16 (host port 5433), S3 (adobe/s3mock :
 pnpm install
 pnpm db:migrate               # schemas, roles, row-level security, pg-boss queues
 pnpm db:seed                  # org "Café Het Plein", 200 receipts over 60 days, buyer + owner users
-pnpm dev                      # all apps
+pnpm dev                      # all apps (the wallet is built and served, not nuxt dev: the service worker only exists in a build; `pnpm --filter @lr/wallet dev:hmr` for HMR)
 ```
 
 Every app validates its environment with Zod at startup and has local-dev defaults, so no `.env` is needed locally. `.env.example` in each app lists the variables.
@@ -44,7 +44,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 pnpm test:journey             # golden journey: 6 hops over real HTTP + real Postgres
 pnpm test:privacy             # canary run: no buyer data in logs, merchant dump or responses
 pnpm eval:extraction          # recorded Qianfan output through the parser (zero false "done" gate)
-pnpm exec playwright test     # browser E2E against pnpm dev
+pnpm test:e2e                 # Playwright E2E against pnpm dev (reuses a running stack, else starts it); pnpm e2e:report copies the HTML report to docs/e2e-report
 ```
 
 When no real corpus exists in `fixtures/receipts-nl/`, the corpus tests and eval fall back to `fixtures/receipts-nl/mock/` and print `MOCK CORPUS — not a real accuracy measurement`. Every number computed from mock receipts is labelled **MOCK**.

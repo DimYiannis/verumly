@@ -2,7 +2,7 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['**/node_modules/**', '**/dist/**', '**/.nuxt/**', '**/.output/**', '**/migrations/**', 'fixtures/**', '**/test-results/**', '**/playwright-report/**'] },
+  { ignores: ['**/node_modules/**', '**/dist/**', '**/.nuxt/**', '**/.output/**', '**/migrations/**', 'fixtures/**', '**/test-results/**', '**/playwright-report/**', 'docs/e2e-report/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

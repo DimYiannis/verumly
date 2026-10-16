@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { dbEnvSchema, loadEnv, s3EnvSchema, sharedEnvSchema } from '@lr/config';
+import { dbEnvSchema, loadEnv, resolveVapid, s3EnvSchema, sharedEnvSchema } from '@lr/config';
 import { connect, makeBoss } from '@lr/db';
 import { createObjectStore } from '@lr/storage';
 import { buildApp } from './app.ts';
@@ -30,7 +30,7 @@ const app = await buildApp({
   allowedOrigin: env.RECEIPT_HOST,
   logLevel: env.LOG_LEVEL,
   s3: createObjectStore(env),
-  vapidPublicKey: env.VAPID_PUBLIC_KEY ?? null,
+  vapidPublicKey: env.VAPID_PUBLIC_KEY ?? resolveVapid(env)?.publicKey ?? null,
   allowLoopbackPush: env.PUSH_ALLOW_LOOPBACK,
   policyVersion: env.POLICY_VERSION,
 });

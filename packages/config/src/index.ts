@@ -87,3 +87,15 @@ export function loggerOptions(level: string) {
     },
   };
 }
+
+/** Development-only Web Push key pair (public on purpose, like the dashboard's dev encryption key) so push works under `pnpm dev` with no setup. */
+export const DEV_VAPID = {
+  publicKey: 'BKx1658NbGxe_ca5tgO7n31QyvcqCUb6oak6tMgWhlFLwlt1JEJAstDuBES-xI6VOpLsjsuhmOauqNzpKdF9pyw',
+  privateKey: 'hFTJp2JRQ5JR9lgLPMP0gIZL-RZpOj6D2qV1SXmrLBI',
+} as const;
+
+/** The configured VAPID pair; the development pair outside production; `null` in production when unset (push is then off). */
+export function resolveVapid(e: { VAPID_PUBLIC_KEY?: string | undefined; VAPID_PRIVATE_KEY?: string | undefined }): { publicKey: string; privateKey: string } | null {
+  if (e.VAPID_PUBLIC_KEY && e.VAPID_PRIVATE_KEY) return { publicKey: e.VAPID_PUBLIC_KEY, privateKey: e.VAPID_PRIVATE_KEY };
+  return process.env.NODE_ENV === 'production' ? null : DEV_VAPID;
+}

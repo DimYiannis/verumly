@@ -1,0 +1,22 @@
+{
+  "name": "@lr/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@lr/config": "workspace:*",
+    "@lr/crypto": "workspace:*",
+    "@lr/dashboard-core": "workspace:*",
+    "@lr/db": "workspace:*",
+    "@lr/terminal-sdk": "workspace:*",
+    "@playwright/test": "1.63.0",
+    "otpauth": "^9.0.0",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.0"
+  }
+}

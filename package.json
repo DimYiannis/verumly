@@ -17,7 +17,9 @@
     "eval:extraction": "node scripts/eval-extraction.ts",
     "leads:report": "node scripts/leads-report.ts",
     "db:migrate": "pnpm --filter @lr/db migrate",
-    "db:seed": "node scripts/seed.ts"
+    "db:seed": "node scripts/seed.ts",
+    "test:e2e": "playwright test",
+    "e2e:report": "rm -rf docs/e2e-report && cp -R playwright-report docs/e2e-report"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",
