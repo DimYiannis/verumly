@@ -1,0 +1,58 @@
+{
+  "id": "mock-contant-afronding",
+  "image": "mock-contant-afronding.png",
+  "sha256": "9bbee504f4b37074938aa63aa5eb7d0cf971aa69c1738f26cddc2d7edf1e5bfd",
+  "mock": true,
+  "merchant": {
+    "name": "Bakkerij Gouden Korst",
+    "kvk": "52345671",
+    "vatNumber": "NL345678912B01",
+    "postcode": "3811 AB"
+  },
+  "printedAt": "2026-10-25T08:10",
+  "gross": 1237,
+  "rounding": -2,
+  "vat": [
+    {
+      "rate": 9,
+      "printedBase": 1135,
+      "basis": "excl",
+      "vat": 102
+    }
+  ],
+  "payments": [
+    {
+      "method": "cash",
+      "amount": 1235
+    }
+  ],
+  "lines": [
+    {
+      "description": "Volkoren brood",
+      "qty": "1",
+      "unitPrice": 345,
+      "vatRate": 9,
+      "total": 345,
+      "kind": "item"
+    },
+    {
+      "description": "Croissant",
+      "qty": "3",
+      "unitPrice": 135,
+      "vatRate": 9,
+      "total": 405,
+      "kind": "item"
+    },
+    {
+      "description": "Boterkoek",
+      "qty": "1",
+      "unitPrice": 487,
+      "vatRate": 9,
+      "total": 487,
+      "kind": "item"
+    }
+  ],
+  "quirks": [
+    "cash-rounding"
+  ]
+}

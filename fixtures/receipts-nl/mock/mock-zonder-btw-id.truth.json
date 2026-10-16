@@ -1,0 +1,71 @@
+{
+  "id": "mock-zonder-btw-id",
+  "image": "mock-zonder-btw-id.png",
+  "sha256": "fea3325d034e51d05eddd2e68b752343899f1abba4ca4a502b31700e27e575cf",
+  "mock": true,
+  "merchant": {
+    "name": "Snackbar De Frietzak",
+    "kvk": "74567123",
+    "vatNumber": null,
+    "postcode": "2312 AB"
+  },
+  "printedAt": "2026-10-17T18:25",
+  "gross": 1190,
+  "rounding": 0,
+  "vat": [
+    {
+      "rate": 9,
+      "printedBase": 798,
+      "basis": "excl",
+      "vat": 72
+    },
+    {
+      "rate": 21,
+      "printedBase": 264,
+      "basis": "excl",
+      "vat": 56
+    }
+  ],
+  "payments": [
+    {
+      "method": "cash",
+      "amount": 1190
+    }
+  ],
+  "lines": [
+    {
+      "description": "Friet groot",
+      "qty": "1",
+      "unitPrice": 350,
+      "vatRate": 9,
+      "total": 350,
+      "kind": "item"
+    },
+    {
+      "description": "Frikandel speciaal",
+      "qty": "1",
+      "unitPrice": 280,
+      "vatRate": 9,
+      "total": 280,
+      "kind": "item"
+    },
+    {
+      "description": "Kroket",
+      "qty": "1",
+      "unitPrice": 240,
+      "vatRate": 9,
+      "total": 240,
+      "kind": "item"
+    },
+    {
+      "description": "Bier flesje",
+      "qty": "1",
+      "unitPrice": 320,
+      "vatRate": 21,
+      "total": 320,
+      "kind": "item"
+    }
+  ],
+  "quirks": [],
+  "plantedOcrError": "missing-btw-line"
+}

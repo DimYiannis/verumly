@@ -1,0 +1,105 @@
+{
+  "id": "mock-supermarkt-statiegeld-bonus",
+  "image": "mock-supermarkt-statiegeld-bonus.png",
+  "sha256": "2fd11035326fac32bb2a3cb59813e79cfda6da4a6eafb85db50a0e8e711fdb51",
+  "mock": true,
+  "merchant": {
+    "name": "Supermarkt De Hoek",
+    "kvk": "27654321",
+    "vatNumber": "NL987654329B01",
+    "postcode": "3511 KP"
+  },
+  "printedAt": "2026-10-24T11:03",
+  "gross": 1973,
+  "rounding": 0,
+  "vat": [
+    {
+      "rate": 9,
+      "printedBase": 759,
+      "basis": "excl",
+      "vat": 68
+    },
+    {
+      "rate": 21,
+      "printedBase": 906,
+      "basis": "excl",
+      "vat": 190
+    }
+  ],
+  "payments": [
+    {
+      "method": "card",
+      "amount": 1973
+    }
+  ],
+  "lines": [
+    {
+      "description": "Halfvolle melk 1L",
+      "qty": "1",
+      "unitPrice": 129,
+      "vatRate": 9,
+      "total": 129,
+      "kind": "item"
+    },
+    {
+      "description": "Volkoren brood",
+      "qty": "1",
+      "unitPrice": 249,
+      "vatRate": 9,
+      "total": 249,
+      "kind": "item"
+    },
+    {
+      "description": "Pak koffie 500g",
+      "qty": "1",
+      "unitPrice": 599,
+      "vatRate": 9,
+      "total": 599,
+      "kind": "item"
+    },
+    {
+      "description": "BONUS Pak koffie",
+      "qty": "1",
+      "unitPrice": null,
+      "vatRate": 9,
+      "total": -150,
+      "kind": "discount"
+    },
+    {
+      "description": "Cola 1,5L",
+      "qty": "2",
+      "unitPrice": 189,
+      "vatRate": 21,
+      "total": 378,
+      "kind": "item"
+    },
+    {
+      "description": "Chips paprika",
+      "qty": "1",
+      "unitPrice": 219,
+      "vatRate": 21,
+      "total": 219,
+      "kind": "item"
+    },
+    {
+      "description": "Wasmiddel",
+      "qty": "1",
+      "unitPrice": 499,
+      "vatRate": 21,
+      "total": 499,
+      "kind": "item"
+    },
+    {
+      "description": "Statiegeld fles",
+      "qty": "2",
+      "unitPrice": 25,
+      "vatRate": null,
+      "total": 50,
+      "kind": "deposit"
+    }
+  ],
+  "quirks": [
+    "statiegeld",
+    "bonus"
+  ]
+}

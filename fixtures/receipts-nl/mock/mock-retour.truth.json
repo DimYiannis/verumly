@@ -1,0 +1,42 @@
+{
+  "id": "mock-retour",
+  "image": "mock-retour.png",
+  "sha256": "67a4ef1c31807feeed8e3db956504e7dfe6dd502e13e10a20f3ba85120fc1642",
+  "mock": true,
+  "merchant": {
+    "name": "Elektro Mulder",
+    "kvk": "63456712",
+    "vatNumber": "NL456789123B01",
+    "postcode": "5611 AB"
+  },
+  "printedAt": "2026-10-26T15:20",
+  "gross": -124900,
+  "rounding": 0,
+  "vat": [
+    {
+      "rate": 21,
+      "printedBase": -103223,
+      "basis": "excl",
+      "vat": -21677
+    }
+  ],
+  "payments": [
+    {
+      "method": "card",
+      "amount": -124900
+    }
+  ],
+  "lines": [
+    {
+      "description": "Retour Koptelefoon ANC",
+      "qty": "-1",
+      "unitPrice": 124900,
+      "vatRate": 21,
+      "total": -124900,
+      "kind": "item"
+    }
+  ],
+  "quirks": [
+    "return"
+  ]
+}

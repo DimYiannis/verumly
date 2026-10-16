@@ -1,0 +1,72 @@
+{
+  "id": "mock-weegschaal",
+  "image": "mock-weegschaal.png",
+  "sha256": "a2325eed15dd7b5c06ddd6b0749edcad63c6e88413c376ea3d02a79af1cb34ea",
+  "mock": true,
+  "merchant": {
+    "name": "Kaashandel Van Dam",
+    "kvk": "41234567",
+    "vatNumber": "NL234567891B01",
+    "postcode": "2611 GP"
+  },
+  "printedAt": "2026-10-14T09:35",
+  "gross": 2289,
+  "rounding": 0,
+  "vat": [
+    {
+      "rate": 9,
+      "printedBase": 1394,
+      "basis": "incl",
+      "vat": 115
+    },
+    {
+      "rate": 21,
+      "printedBase": 895,
+      "basis": "incl",
+      "vat": 155
+    }
+  ],
+  "payments": [
+    {
+      "method": "card",
+      "amount": 2289
+    }
+  ],
+  "lines": [
+    {
+      "description": "Kaas jong belegen",
+      "qty": "0.412",
+      "unitPrice": 1490,
+      "vatRate": 9,
+      "total": 614,
+      "kind": "item"
+    },
+    {
+      "description": "Boerenkaas oud",
+      "qty": "0.287",
+      "unitPrice": 1850,
+      "vatRate": 9,
+      "total": 531,
+      "kind": "item"
+    },
+    {
+      "description": "Serranoham",
+      "qty": "0.35",
+      "unitPrice": 710,
+      "vatRate": 9,
+      "total": 249,
+      "kind": "item"
+    },
+    {
+      "description": "Wijn wit fles",
+      "qty": "1",
+      "unitPrice": 895,
+      "vatRate": 21,
+      "total": 895,
+      "kind": "item"
+    }
+  ],
+  "quirks": [
+    "weighed"
+  ]
+}

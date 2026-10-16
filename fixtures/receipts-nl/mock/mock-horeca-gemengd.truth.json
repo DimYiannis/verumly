@@ -1,0 +1,79 @@
+{
+  "id": "mock-horeca-gemengd",
+  "image": "mock-horeca-gemengd.png",
+  "sha256": "bbe5b33e28a184fd5612a17da7708e4dcee0c6be2a61a0b41098e445f40af5d0",
+  "mock": true,
+  "merchant": {
+    "name": "Café Het Plein",
+    "kvk": "34567801",
+    "vatNumber": "NL123456782B01",
+    "postcode": "1012 AB"
+  },
+  "printedAt": "2026-10-10T20:47",
+  "gross": 4380,
+  "rounding": 0,
+  "vat": [
+    {
+      "rate": 9,
+      "printedBase": 1670,
+      "basis": "excl",
+      "vat": 150
+    },
+    {
+      "rate": 21,
+      "printedBase": 2116,
+      "basis": "excl",
+      "vat": 444
+    }
+  ],
+  "payments": [
+    {
+      "method": "card",
+      "amount": 4380
+    }
+  ],
+  "lines": [
+    {
+      "description": "Koffie",
+      "qty": "2",
+      "unitPrice": 340,
+      "vatRate": 9,
+      "total": 680,
+      "kind": "item"
+    },
+    {
+      "description": "Appeltaart",
+      "qty": "1",
+      "unitPrice": 450,
+      "vatRate": 9,
+      "total": 450,
+      "kind": "item"
+    },
+    {
+      "description": "Tosti ham kaas",
+      "qty": "1",
+      "unitPrice": 690,
+      "vatRate": 9,
+      "total": 690,
+      "kind": "item"
+    },
+    {
+      "description": "Bier 0,3",
+      "qty": "3",
+      "unitPrice": 420,
+      "vatRate": 21,
+      "total": 1260,
+      "kind": "item"
+    },
+    {
+      "description": "Wijn rood",
+      "qty": "2",
+      "unitPrice": 650,
+      "vatRate": 21,
+      "total": 1300,
+      "kind": "item"
+    }
+  ],
+  "quirks": [],
+  "plantedOcrError": "digit-misread-total"
+}
