@@ -194,6 +194,7 @@ export const nl: Record<MessageKey, string> = {
   'sim.stateNone': 'geen',
   'sim.version': 'versie',
   'sim.empty': 'Leeg',
+  'sim.issue': 'Bon uitgeven',
   'sim.present': 'Tonen',
   'sim.void': 'Annuleren',
   'sim.payCard': 'Pinnen',

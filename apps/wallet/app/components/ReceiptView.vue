@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ban, CircleCheck, TriangleAlert } from '@lucide/vue';
+import { Ban } from '@lucide/vue';
 import type { ReceiptDetail } from '~/utils/api-schemas';
 import { formatDateTime, formatEuro, formatQty } from '~/utils/format';
 
@@ -16,32 +16,13 @@ const viewingOld = computed(() => shown.value.version !== latest.value.version);
 <template>
   <article class="space-y-4" data-testid="receipt-view" :data-state="shown.state" :data-version="shown.version">
     <p
-      v-if="shown.state === 'presented'"
-      role="status"
-      data-testid="presented-banner"
-      class="rounded-xl border-2 border-warning bg-warning-soft p-4 text-center text-lg font-semibold text-warning"
-    >
-      <TriangleAlert class="mx-auto mb-1 size-6" aria-hidden="true" />
-      {{ t('receipt.notFinal') }}
-      <span class="mt-1 block text-sm font-normal text-text-secondary">{{ t('receipt.notFinalBody') }}</span>
-    </p>
-    <p
-      v-else-if="shown.state === 'void'"
+      v-if="shown.state === 'void'"
       role="status"
       data-testid="void-banner"
       class="rounded-xl border-2 border-danger bg-danger-soft p-4 text-center text-lg font-semibold text-danger"
     >
       <Ban class="mx-auto mb-1 size-6" aria-hidden="true" />
       {{ t('receipt.void') }}
-    </p>
-    <p
-      v-else-if="detail.final && !viewingOld"
-      role="status"
-      data-testid="final-badge"
-      class="flex items-center justify-center gap-2 rounded-xl border border-success-border bg-success-soft p-3 font-semibold text-success"
-    >
-      <CircleCheck class="size-5" aria-hidden="true" />
-      {{ t('receipt.final') }}
     </p>
     <p v-if="viewingOld" role="status" data-testid="old-version-note" class="rounded-xl border border-border bg-muted p-3 text-center text-sm text-text-secondary">
       {{ t('receipt.oldVersion', { shown: shown.version, latest: latest.version }) }}

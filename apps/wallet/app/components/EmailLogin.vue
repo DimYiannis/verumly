@@ -33,7 +33,7 @@ async function sendCode() {
   busy.value = true;
   error.value = null;
   try {
-    if (demoEmail.value && email.value.trim().toLowerCase() === demoEmail.value) {
+    if (demoEmail.value) {
       await wallet.demoLogin(demoEmail.value);
       emit('done');
       return;
@@ -79,7 +79,7 @@ async function verify() {
           data-testid="login-email"
         />
       </div>
-      <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-send">{{ demoEmail && email.trim().toLowerCase() === demoEmail ? t('login.signIn') : t('login.sendCode') }}</Button>
+      <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-send">{{ demoEmail ? t('login.signIn') : t('login.sendCode') }}</Button>
       <Button v-if="demoEmail" type="button" size="lg" variant="secondary" class="w-full" :disabled="busy" data-testid="login-fill-demo" @click="email = demoEmail ?? ''">{{ t('login.fillDemo') }}</Button>
     </form>
     <form v-else class="space-y-4" @submit.prevent="verify">

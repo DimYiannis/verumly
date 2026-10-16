@@ -135,7 +135,6 @@ onBeforeUnmount(() => clearTimeout(debounce));
               data-testid="filter-state"
             >
               <option value="">{{ t('wallet.filterAll') }}</option>
-              <option value="presented">{{ t('wallet.filterPresented') }}</option>
               <option value="paid">{{ t('wallet.filterPaid') }}</option>
               <option value="void">{{ t('wallet.filterVoid') }}</option>
             </select>
@@ -191,9 +190,7 @@ onBeforeUnmount(() => clearTimeout(debounce));
                 <span class="block truncate font-medium">{{ r.merchantName }}</span>
                 <span class="mt-0.5 flex items-center gap-2 text-sm text-text-secondary">
                   {{ formatTime(r.createdAt, locale) }}
-                  <Badge v-if="r.state === 'presented'" variant="warning">{{ t('wallet.badgePresented') }}</Badge>
-                  <Badge v-else-if="r.state === 'void'" variant="danger">{{ t('wallet.badgeVoid') }}</Badge>
-                  <Badge v-else-if="r.final" variant="success">{{ t('wallet.badgeFinal') }}</Badge>
+                  <Badge v-if="r.state === 'void'" variant="danger">{{ t('wallet.badgeVoid') }}</Badge>
                 </span>
               </span>
               <span class="shrink-0 font-mono font-medium tabular-nums">{{ formatEuro(r.total, locale) }}</span>

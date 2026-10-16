@@ -206,6 +206,7 @@ export const en = {
   'sim.stateNone': 'none',
   'sim.version': 'version',
   'sim.empty': 'Empty',
+  'sim.issue': 'Issue receipt',
   'sim.present': 'Present',
   'sim.void': 'Void',
   'sim.payCard': 'Pay card',

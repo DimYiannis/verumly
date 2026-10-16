@@ -55,7 +55,7 @@ Reset: `docker compose down -v && docker compose up -d && pnpm db:migrate && pnp
 | dashboard: TOTP login, create terminal, key shown once, revoke | 2.1 s |
 | merchant offline: 3 offline sales all reach the dashboard archive | 2.9 s |
 
-HTML report: `docs/e2e-report/index.html`. Screenshots in `docs/e2e-screenshots/`: `qr-on-simulator`, `prebill-banner-phone`, `save-receipt-sheet`, `wallet-with-receipt`, `final-version-after-paying`, `arriving-state`, `dashboard-archive`.
+HTML report: `docs/e2e-report/index.html`. Screenshots in `docs/e2e-screenshots/`: `qr-on-simulator`, `receipt-on-phone`, `save-receipt-sheet`, `wallet-with-receipt`, `voided-receipt`, `arriving-state`, `dashboard-archive`.
 
 ### Step 1 — walking skeleton
 
@@ -417,7 +417,7 @@ All numbers are copied from output I saw. Machine: macOS arm64, Docker compose (
 3. **Merchant offline** (`merchant-offline.spec.ts`): Offline toggle, 3 card sales (koffie, appeltaart, bier), `sim-pending` = 3, the dashboard archive (second tab) is empty; toggle off → outbox drains (0 pending, 0 rejected) → archive shows exactly 3 rows, all `paid`.
 4. **Dashboard** (`dashboard.spec.ts`): TOTP enrolment then logout and login with a freshly computed code; terminal created; key (43 chars) shown once, works against merchant-api (200); gone from the DOM after dismiss and after reload, never in the list API; two-step revoke → status `revoked` → merchant-api answers **401** for that key.
 
-Screenshots (overwritten each run): `docs/e2e-screenshots/{qr-on-simulator,prebill-banner-phone,save-receipt-sheet,wallet-with-receipt,final-version-after-paying,arriving-state,dashboard-archive}.png`. Report: `playwright-report/` (git-ignored) copied to `docs/e2e-report/` by `pnpm e2e:report`.
+Screenshots (overwritten each run): `docs/e2e-screenshots/{qr-on-simulator,receipt-on-phone,save-receipt-sheet,wallet-with-receipt,voided-receipt,arriving-state,dashboard-archive}.png`. Report: `playwright-report/` (git-ignored) copied to `docs/e2e-report/` by `pnpm e2e:report`.
 
 ## Flake and development failures (all understood)
 
