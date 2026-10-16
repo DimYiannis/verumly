@@ -1,0 +1,271 @@
+{
+  "meta": {
+    "note": "Research via web search (mostly secondary sources surfaced; primary URLs listed are the authoritative places to verify). Anything not confirmed is marked 'unverified'. Not tax/legal advice.",
+    "generated": "2026-10-17"
+  },
+  "countries": {
+    "IT": {
+      "name": "Italy",
+      "receiptObligation": "Retailers/hospitality (DPR 633/1972 art. 22, 24) are exempt from issuing an invoice but must record daily takings (corrispettivi) and issue a 'documento commerciale' (replaces the old scontrino fiscale) for every sale; the customer must be handed it (consumer need not keep it). A full invoice is issued only on customer request (before/at payment). Exemptions exist by decree for some activities (e.g. certain transport, vending machines, some small activities); list in DM 10/05/2019 and later - details unverified.",
+      "digitalReceipt": "Documento commerciale may be delivered electronically (email/app) instead of paper only if the customer agrees; paper must be given if the customer does not accept electronic delivery. Exact consent wording unverified (check AdE guidance on 'documento commerciale elettronico').",
+      "mandatoryFields": "Per Provvedimento AdE 28/10/2016 (Allegato B): heading 'DOCUMENTO COMMERCIALE' (or 'documento commerciale per la gestione resi/annullo' etc.), issuer name/denominazione, VAT number (partita IVA), place of sale (address), date and time, progressive number, description/quantity of goods or services, amount per line, total, VAT rate or 'natura' code (N1-N7) per line, payment method (cash/electronic) and any change, RT serial number (matricola). Optional customer tax code (codice fiscale) for deductions (e.g. health expenses, 'documento commerciale' with CF) and lottery code. Amount thresholds: none for issuing; unverified for the minimum fields on 'fattura semplificata'.",
+      "fiscalSystem": "Registratore Telematico (RT) or the free AdE 'Documento Commerciale online' web procedure / app; all retailers under art. 22 DPR 633/72 since 1 Jan 2020 (hospitality included). Devices are fiscalised: RT is registered/'censito' with the Agenzia delle Entrate (matricola, tax code via Fatture e Corrispettivi portal); has a fiscal memory, a device certificate and signs daily totals. Software-only POS can be used only if it is an AdE-approved RT-server/web procedure (unverified for third-party app). Since 2026: mandatory logical link between the RT and every electronic payment POS (Legge 207/2024 art.1 c.74-77; AdE Provvedimento 31/10/2025 prot. 424470), declared via a web service in the Fatture e Corrispettivi portal by matching serial numbers of RT and POS; 45 days to comply for already active POS. Penalties reported 1,000-4,000 EUR (unverified).",
+      "realTimeReporting": "Daily telematic transmission of corrispettivi (totals per VAT rate) by the RT to the Agenzia delle Entrate (Sistema di Interscambio-like channel via the RT; within 12 days of the transaction legal deadline, device sends at close). Detailed receipt-line data are not transmitted. From 2026 POS payment data are cross-matched with RT data (see above).",
+      "receiptIdentifiers": "Progressive number of the documento commerciale (format NNNN-NNNN: closure number - document number, e.g. 0001-0012) and the RT serial number (matricola). No mandatory QR on the receipt, but lottery code (8 alphanumeric chars) is captured and printed/QR-shown where customer participates in the Lotteria degli Scontrini. QR code optional on some RT models - unverified.",
+      "retentionYears": "Unverified exact period for corrispettivi; practical rule: keep VAT/accounting records until the assessment period expires (DPR 600/1973 art. 22 + DPR 633/1972 art. 39), commonly cited 10 years (Civil Code art. 2220). Electronic documents must be preserved in electronic form (digital preservation, DM 17/06/2014) if issued electronically. Verify with adviser.",
+      "vat": "Currency EUR. Standard 22%. Reduced 10% (hotels, restaurants/bars, some foods, tourism), 5% (certain social/health), 4% (basic foods, books, newspapers). Zero/exempt via 'natura' codes N1-N7.",
+      "other": "Lotteria degli scontrini: since 1 Jan 2021 the RT must ask for the customer's lottery code (8 alphanumeric) for electronic payments and transmit it with the receipt; the merchant must not refuse, and with a cashier error entering it. Tips: no specific rule found (voluntary tips not part of VAT base if truly voluntary - unverified). Cash rounding: unverified (Italy has used 5-cent cash rounding from 1 Jan 2026 per a transposition - unverified). Language: Italian expected for fiscal fields (unverified for other languages). VAT ID format: ^IT[0-9]{11}$ (codice fiscale legal entities 11 digits; natural persons 16 alphanumeric ^[A-Z]{6}[0-9]{2}[A-Z][0-9]{2}[A-Z][0-9]{3}[A-Z]$). Business must register: partita IVA, ATECO code, RT serial number / authorisation on AdE portal.",
+      "settingsNeeded": [
+        {"key": "vatNumber", "label": "Partita IVA", "type": "text", "required": true, "validation": "^IT[0-9]{11}$ or 11 digits", "help": "Printed on every documento commerciale."},
+        {"key": "taxCode", "label": "Codice fiscale", "type": "text", "required": false, "validation": "^([0-9]{11}|[A-Z]{6}[0-9]{2}[A-Z][0-9]{2}[A-Z][0-9]{3}[A-Z])$", "help": "Legal entity (11 digits) or sole trader (16 chars)."},
+        {"key": "legalName", "label": "Denominazione / ragione sociale", "type": "text", "required": true, "validation": "non-empty", "help": "Legal name as registered."},
+        {"key": "storeAddress", "label": "Sede/ubicazione punto vendita", "type": "text", "required": true, "validation": "non-empty", "help": "Address of the point of sale."},
+        {"key": "rtSerialNumber", "label": "Matricola Registratore Telematico (RT)", "type": "text", "required": true, "validation": "alphanumeric, device-specific (typically 10-16 chars) - unverified", "help": "Serial number of the registered RT, required for the till and POS linking."},
+        {"key": "fiscalMode", "label": "Fiscal channel", "type": "select", "required": true, "validation": "options: RT_hardware, AdE_web_procedure, RT_server_software", "help": "Which AdE-approved channel issues the documento commerciale."},
+        {"key": "posLinked", "label": "POS linked to RT in AdE portal", "type": "boolean", "required": true, "validation": "true expected from 2026", "help": "Mandatory association since 2026."},
+        {"key": "lotteryEnabled", "label": "Receipt lottery code capture", "type": "boolean", "required": true, "validation": "default true", "help": "Ask customer for lottery code on electronic payments."},
+        {"key": "defaultVatRate", "label": "Default VAT rate", "type": "select", "required": true, "validation": "options: 22,10,5,4,0(N-codes)", "help": "Hospitality typically 10%."},
+        {"key": "digitalReceiptConsent", "label": "Require customer consent for e-receipt", "type": "boolean", "required": true, "validation": "default true", "help": "Paper must be given if customer declines digital."}
+      ],
+      "confidence": "medium",
+      "adviserVerify": "Exact scope/dates of RT-POS link in 2026, electronic documento commerciale consent wording, retention period for corrispettivi, whether third-party app/SaaS tills qualify as RT-server, cash rounding rules, tip VAT treatment, exemptions list.",
+      "sources": [
+        "https://www.agenziaentrate.gov.it/portale/web/guest/schede/comunicazioni/corrispettivi-telematici",
+        "https://www.agenziaentrate.gov.it/portale/documenti-commerciali",
+        "https://www.normattiva.it/uri-res/N2Ls?urn:nir:presidente.repubblica:decreto:1972-10-26;633",
+        "https://www.agenziaentrate.gov.it/portale/web/guest/lotteria-degli-scontrini",
+        "https://lentepubblica.it/cittadini-e-imprese/2026-multa-4000-euro-per-chi-non-collega-pos-registratore-telematico/ (secondary)"
+      ],
+      "lastChecked": "2026-10-17"
+    },
+    "ES": {
+      "name": "Spain",
+      "receiptObligation": "Real Decreto 1619/2012 (Reglamento de facturacion): retail/hospitality sales to consumers - the seller must issue a ticket/factura simplificada normally; a full invoice must be issued if the customer is a business/professional and requests it, or when required by VAT regulations. Simplified invoice (factura simplificada, ex-'ticket') allowed up to EUR 400 (VAT incl.) in general and up to EUR 3,000 for retail, hospitality, transport and other listed sectors (art. 4); for retail sales to consumers a ticket is not mandatory as a factura but the till record is (unverified nuance: retailers must provide a 'justificante'). Exemptions in art. 3 (e.g. some exempt financial/insurance services).",
+      "digitalReceipt": "Electronic invoices are valid if the recipient has consented (art. 9-10 RD 1619/2012: acceptance by the recipient, expressly or tacitly). A national rule requiring digital-by-default tickets could not be confirmed (Ley 7/2022 de residuos search found no such rule) - unverified.",
+      "mandatoryFields": "Simplified invoice (art. 7 RD 1619/2012): series and number (sequential), issue date, date of operation if different, issuer NIF and name/razon social, description of goods/services (type of operation), tax rate applied or the mention 'IVA incluido', total consideration. If the customer needs it for deductions: recipient NIF/address and tax amount broken down (full invoice art. 6). Additional fields from Verifactu (see below).",
+      "fiscalSystem": "VERIFACTU / invoicing software compliance (Ley 11/2021 anti-fraud; RD 1007/2023; Orden HAC/1177/2024): invoicing software must guarantee integrity, traceability, hash-chained invoice records, event log and either (a) VERI*FACTU mode: send each invoice record to AEAT in real time, QR code + text 'VERI*FACTU' on the invoice; or (b) non-verifiable mode: keep records, signed electronically, available on request. Applies to all taxpayers using computerised invoicing systems (including retail tills) except those on SII (immediate supply of VAT info) and those under the Basque TicketBAI regime (Alava, Bizkaia, Gipuzkoa; own QR + TBAI identifier, sent to the provincial treasury) and Navarra (own regime - unverified). Software producers must make software compliant and issue a responsible declaration (software producer deadline passed in 2025). Taxpayer use deadlines postponed by Real Decreto-ley 15/2025 (BOE 3 Dec 2025): 1 Jan 2027 for Corporate Income Tax payers (companies), 1 Jul 2027 for others (autonomos/IRPF, etc.). No till registration with AEAT for the hardware; the software must carry a declaration; the taxpayer's use of VERI*FACTU is opted via census declaration (modelo 036/037) - unverified.",
+      "realTimeReporting": "VERI*FACTU mode: near-real-time sending of each invoice record (registro de facturacion) to AEAT (Agencia Tributaria) via the AEAT web service; non-verifiable mode: no real-time sending. Basque Country: TicketBAI sent to provincial tax authority (Batuz in Bizkaia). SII for large taxpayers (> EUR 6M turnover / REDEME): within 4 days.",
+      "receiptIdentifiers": "Sequential invoice number + series (no gaps), QR code (VERI*FACTU URL to AEAT verification service) with text 'VERI*FACTU' (verifiable mode only) per Orden HAC/1177/2024 (QR size 30-40 mm, error correction level M). Invoice hash 'huella' stored in record (not required on printout). TicketBAI: TBAI identifier + QR.",
+      "retentionYears": "Unverified single answer: invoices and records 4 years for tax (prescription, LGT art. 66) and 6 years for commercial records (Codigo de Comercio art. 30); VAT regulation requires keeping invoices for the period of limitation (up to 10 years for some capital goods/real estate). Electronic invoices must be kept in electronic format guaranteeing integrity/legibility (art. 19-20 RD 1619/2012).",
+      "vat": "Currency EUR. IVA general 21%; reduced 10% (hospitality, restaurants, hotels, most foods, passenger transport); super-reduced 4% (bread, milk, basic foods, books). Special 2025-2026 food-VAT relief measures expired - unverified. Territorial: Canary Islands IGIC (7% general, 3% reduced), Ceuta/Melilla IPSI - different regimes.",
+      "other": "Tips: voluntary tips are not part of taxable base (unverified) - propinas treated separately. Cash rounding: no legal rounding rule (Spain keeps 1 and 2 cent coins) - unverified. Language: any language allowed but AEAT may require Spanish/co-official translation. NIF/VAT ID format: ES + 9 chars: ^ES[A-Z0-9][0-9]{7}[A-Z0-9]$ (NIF for companies letter+7 digits+control; DNI 8 digits+letter; NIE X/Y/Z+7 digits+letter). Business must register: NIF, IAE heading, Verifactu/non-Verifactu choice and software name/version.",
+      "settingsNeeded": [
+        {"key": "nif", "label": "NIF / CIF", "type": "text", "required": true, "validation": "^[A-Z0-9][0-9]{7}[A-Z0-9]$", "help": "Without country prefix; prefix ES in VAT ID."},
+        {"key": "legalName", "label": "Razon social / nombre", "type": "text", "required": true, "validation": "non-empty", "help": "Issuer name on the invoice."},
+        {"key": "address", "label": "Domicilio fiscal / establecimiento", "type": "text", "required": true, "validation": "non-empty", "help": "Required on full invoice; recommended on ticket."},
+        {"key": "taxRegime", "label": "Tax territory", "type": "select", "required": true, "validation": "options: Peninsula/Baleares (IVA), Canarias (IGIC), Ceuta/Melilla (IPSI), Pais Vasco (TicketBAI), Navarra", "help": "Determines whether Verifactu or TicketBAI applies."},
+        {"key": "verifactuMode", "label": "Verifactu mode", "type": "select", "required": true, "validation": "options: VERIFACTU (send to AEAT), NO_VERIFACTU (local), TICKETBAI, SII_EXEMPT", "help": "Mandatory from 2027-01-01 (companies) / 2027-07-01 (others)."},
+        {"key": "invoiceSeries", "label": "Invoice series", "type": "text", "required": true, "validation": "[A-Za-z0-9/-]{1,20}", "help": "Sequential numbering per series, no gaps."},
+        {"key": "ticketMode", "label": "Ticket type", "type": "select", "required": true, "validation": "options: factura_simplificada, factura_completa_on_request", "help": "Simplified invoice up to EUR 400 (3,000 for retail/hospitality)."},
+        {"key": "defaultVatRate", "label": "Default VAT rate", "type": "select", "required": true, "validation": "options: 21,10,4,0 (exempt)", "help": "Hospitality typically 10%."},
+        {"key": "digitalReceiptConsent", "label": "Customer accepts electronic invoice", "type": "boolean", "required": true, "validation": "default true", "help": "Recipient acceptance needed for electronic invoices."}
+      ],
+      "confidence": "medium",
+      "adviserVerify": "Final use dates for Verifactu (RDL 15/2025: 2027-01-01 companies / 2027-07-01 others) and any further delay, ticket-vs-invoice rule for B2C retail, Navarra/Basque regimes, digital default tickets (none confirmed), retention (4 vs 6 years), food VAT measures.",
+      "sources": [
+        "https://www.boe.es/buscar/act.php?id=BOE-A-2012-14696",
+        "https://www.boe.es/buscar/act.php?id=BOE-A-2023-24840",
+        "https://www.boe.es/buscar/act.php?id=BOE-A-2024-22138",
+        "https://www.boe.es/buscar/act.php?id=BOE-A-2025-24446",
+        "https://sede.agenciatributaria.gob.es/Sede/iva/sistemas-informaticos-facturacion-verifactu.html"
+      ],
+      "lastChecked": "2026-10-17"
+    },
+    "PT": {
+      "name": "Portugal",
+      "receiptObligation": "Always: Código do IVA art. 36 - invoice (or simplified invoice/fatura-recibo) must be issued for every supply, including to consumers; consumer may ask for NIF on the invoice. Simplified invoice allowed for retail/hospitality up to EUR 1,000 (consumer B2C) (art. 40 CIVA). Exemptions (art. 40/other) for some small taxpayers/special regimes - unverified list.",
+      "digitalReceipt": "Electronic invoices accepted if the recipient accepts (DL 28/2019 and Decreto-Lei 123/2018 sets electronic invoice acceptance); PDF from certified software currently valid without qualified e-signature through 2026; one source says QES will be required from 1 Jan 2027 for non-EDI e-invoices (unverified - check).",
+      "mandatoryFields": "Simplified invoice (art. 40 CIVA): issuer name, address, NIF; document type, series and sequential number (with ATCUD); date; description of goods/services; quantity; VAT rate (or 'IVA incluido'); total with VAT; customer NIF if asked. Full invoice adds customer name/address/NIF, VAT amount per rate, exemption reason where applicable. Document must carry the certification text of software ('Processado por programa certificado n.º XXX/AT').",
+      "fiscalSystem": "Certified invoicing software (Portaria 363/2010, DL 28/2019, Portaria 195/2020, Portaria 302/2016 updated): all taxpayers issuing invoices via software must use software certified by the Autoridade Tributária (AT) with an assigned certificate number; some small taxpayers exempt (turnover below EUR 100,000, no accounting required, etc. - unverified). The document must carry hash (4 characters of signature), certificate number, ATCUD and QR code. No fiscal printer required; till software is certified, not the hardware. Tills must have software certified (registration of the till itself with AT is not required).",
+      "realTimeReporting": "Monthly SAF-T (PT) invoicing file (billing) submitted by the 5th of next month via e-Fatura portal; invoices communicated to AT (Comunicação de faturas). Optional/real-time by webservice. SAF-T accounting annual file mandatory from FY2027 (unverified). Authority: Autoridade Tributária e Aduaneira (AT).",
+      "receiptIdentifiers": "ATCUD (unique document code = series validation code + sequential number, e.g. ABCD1234-1) mandatory since 1 Jan 2023 on all documents; QR code (Portaria 195/2020, fields A-R: seller NIF, buyer NIF, country, doc type, status, date, number, ATCUD, VAT breakdown, total, hash 4 chars, certificate number) required on every document issued by certified software; series must be registered with AT (e-Fatura portal/webservice).",
+      "retentionYears": "10 years (CIVA art. 52 and CIRC/CIRS: 12 years for some tax-related accounting records; commercial code 10 years). Electronic archive allowed if integrity and legibility are ensured.",
+      "vat": "Currency EUR. Mainland: standard 23%, intermediate 13% (restaurants/prepared food, some foods), reduced 6% (basic foods, books, etc.). Azores: 16/9/4%; Madeira: 22/12/5%.",
+      "other": "Tips: no specific VAT rule found (voluntary tips outside taxable base - unverified). Cash rounding: Portugal applies 5-cent rounding by cash (Law no rounding obligation - unverified). Language: Portuguese required on documents in Portugal (consumer protection) - unverified for other languages. NIF/VAT ID format: ^PT[0-9]{9}$ (starts 1,2,3 individuals; 5 companies; 6 public bodies; 45 non-residents; 70/71 etc. inheritances). Business must register: NIF, software certification number, document series with AT, optional CAE activity code.",
+      "settingsNeeded": [
+        {"key": "nif", "label": "NIF (VAT number)", "type": "text", "required": true, "validation": "^[0-9]{9}$ (with mod-11 check digit)", "help": "Printed with 'PT' prefix on EU invoices."},
+        {"key": "legalName", "label": "Firma / nome", "type": "text", "required": true, "validation": "non-empty", "help": "Issuer name."},
+        {"key": "address", "label": "Morada", "type": "text", "required": true, "validation": "non-empty", "help": "Issuer address on invoice."},
+        {"key": "softwareCertNumber", "label": "AT certified software number", "type": "text", "required": true, "validation": "^[0-9]{1,5}$ (assigned by AT)", "help": "Printed as 'Processado por programa certificado n.º XXXX/AT'."},
+        {"key": "invoiceSeries", "label": "Document series", "type": "text", "required": true, "validation": "^[A-Za-z0-9]{1,35}$ + registered series validation code", "help": "Series must be registered with AT to obtain the ATCUD validation code."},
+        {"key": "seriesValidationCode", "label": "Series validation code (ATCUD)", "type": "text", "required": true, "validation": "^[A-Z0-9]{8,}$", "help": "Returned by AT on series registration."},
+        {"key": "taxRegion", "label": "VAT region", "type": "select", "required": true, "validation": "options: mainland, Azores, Madeira", "help": "Determines VAT rates (23/13/6; 16/9/4; 22/12/5)."},
+        {"key": "defaultVatRate", "label": "Default VAT rate", "type": "select", "required": true, "validation": "per region", "help": "Restaurants typically 13%."},
+        {"key": "exemptFromCertification", "label": "Exempt from certified software", "type": "boolean", "required": true, "validation": "default false", "help": "Only for small taxpayers qualifying under law."},
+        {"key": "digitalReceiptConsent", "label": "Customer accepts electronic invoice", "type": "boolean", "required": true, "validation": "default true", "help": "Recipient acceptance is a condition for electronic invoices."}
+      ],
+      "confidence": "medium",
+      "adviserVerify": "QES requirement from 2027-01-01 for PDF e-invoices; SAF-T accounting FY2027; simplified invoice threshold; exemption from certified software; retention period; whether till apps need per-version AT certification.",
+      "sources": [
+        "https://info.portaldasfinancas.gov.pt/pt/apoio_contribuinte/Faturacao/Paginas/default.aspx",
+        "https://info.portaldasfinancas.gov.pt/pt/apoio_contribuinte/Faturacao/Paginas/ATCUD.aspx",
+        "https://diariodarepublica.pt/dr/detalhe/portaria/195-2020-140346403",
+        "https://diariodarepublica.pt/dr/legislacao-consolidada/decreto-lei/2019-116041846",
+        "https://www.zoneandco.com/articles/e-invoicing-portugal-compliance-guide (secondary)"
+      ],
+      "lastChecked": "2026-10-17"
+    },
+    "GR": {
+      "name": "Greece",
+      "receiptObligation": "Always: every retail sale/service to a consumer must be documented by a retail receipt (apodeixi lianikis) from a fiscal device/system, issued at the time of sale (KFD/Law 4308/2014 ELP, Law 4174/2013 art. 54, Law 5073/2023 transferring to myDATA). The consumer must take the receipt and keep it for inspections nearby; fines for seller (and consumer - tbc: unverified).",
+      "digitalReceipt": "Electronic retail receipts are allowed via AADE-certified software/devices and e-invoicing providers; AADE has a dedicated model for electronic receipts delivered via email/app/QR to consumer (unverified detail on consumer consent). B2C retail receipts can be issued via fiscal cash register (FIM), fiscal software (ΦΗΜ/ΠΗΜ certified), or issued as e-receipt through certified providers. Consent condition: unverified.",
+      "mandatoryFields": "Retail receipt (ΥΠ.ΟΙΚ. A.1155/2018 and A.1119/2020 and later AADE decisions): seller name, address, ΑΦΜ (tax number) and DOY, receipt/serial number (series & AA), date and time, description/quantity of items, price per item, VAT rate per line, VAT amount, total, payment method, fiscal device ID (ΦΗΜ) mark, MARK (myDATA unique registration number) and QR code. Thresholds: unverified.",
+      "fiscalSystem": "Fiscal Cash Registers (ΦΗΜ - φορολογικός ηλεκτρονικός μηχανισμός) or certified fiscal software (ΠΗΜ - 'ΠΛΗΡΟΦΟΡΙΑΚΟ' system) and certified e-invoicing providers; devices must be certified by AADE and registered on the AADE fiscal-device registry; devices are 'fiscalised' by registered technician/seller with serial number linked to the business (ΦΗΜ registry). Applies to all retail businesses except exempt categories (e.g. small farmers, some taxi, some professionals - unverified). POS (EFT/POS) terminals must be registered in the AADE POS registry and linked to the ΦΗΜ/ERP so that card payment amount equals the receipt; interconnection legally required (Law 4887/2022; timetables after 2023 - timeline unverified). Sources indicate AADE intensifying checks on POS-cash register-myDATA links in 2026.",
+      "realTimeReporting": "myDATA (AADE) - e-books platform: income (sales) data must be transmitted for each retail receipt: via the fiscal device/software directly to AADE ('real-time' for e-invoicing and retail receipts through provider). B2B e-invoicing mandatory via myDATA/Peppol: large (turnover > EUR 1M in 2023) from 2 Feb 2026 (some sources: 2 Mar 2026 with a transition to 3 May 2026), others from 1 Oct 2026; e-transport reporting from 12 Oct 2026; invoice-line classification from 1 Jan 2027 (secondary sources, conflicting, unverified). Authority: AADE (Independent Authority for Public Revenue).",
+      "receiptIdentifiers": "MARK (unique myDATA registration number, 15 digits) and UID, plus QR code with link to AADE verification, the ΦΗΜ serial number, and sequential number (series+AA) printed on each fiscal document. Exact QR payload specification: see AADE technical specs (unverified).",
+      "retentionYears": "5 years after the end of the fiscal year (Greek Code of Tax Procedure 4987/2022 art. 36: 5 years; extended up to 20 years in tax-evasion cases); for e-invoices stored electronically. Law 4308/2014: books and records 5 years (unverified exact 5 vs 10).",
+      "vat": "Currency EUR. Standard 24%; reduced 13% (food, hospitality services, beverages non-alcohol, hotels), 6% (books, medicines, theatre); 4% (reduced for certain). Island regimes (Aegean islands) 30% discount reduced rates: 17% /9%/4% (reduced VAT rates in selected islands - discount phasing out; verify).",
+      "other": "Tips: not part of VAT base if truly voluntary (unverified). Cash rounding: unverified. Language: Greek required for receipts (unverified; Greek and English allowed - unverified). VAT ID format: ^EL[0-9]{9}$ (ΑΦΜ 9 digits; note prefix 'EL' not 'GR'). Business must register: ΑΦΜ + ΔΟΥ (tax office), ΚΑΔ activity codes, ΦΗΜ/ΠΗΜ device serial numbers, POS terminals in AADE registry, myDATA credentials/provider authorisation.",
+      "settingsNeeded": [
+        {"key": "afm", "label": "AFM (tax number)", "type": "text", "required": true, "validation": "^[0-9]{9}$", "help": "Prefix EL for VAT ID."},
+        {"key": "doy", "label": "DOY (tax office)", "type": "text", "required": true, "validation": "4-digit DOY code", "help": "Printed on receipt."},
+        {"key": "legalName", "label": "Business name", "type": "text", "required": true, "validation": "non-empty", "help": "Issuer name."},
+        {"key": "address", "label": "Branch address / establishment number", "type": "text", "required": true, "validation": "non-empty", "help": "Establishment (branch) number registered with AADE."},
+        {"key": "branchNumber", "label": "Branch number (εγκατάσταση)", "type": "text", "required": true, "validation": "^[0-9]{1,4}$", "help": "0 = headquarters."},
+        {"key": "fiscalDeviceId", "label": "Fiscal device / provider ID", "type": "text", "required": true, "validation": "alphanumeric device registry ID", "help": "ΦΗΜ/ΠΗΜ serial or certified-provider ID."},
+        {"key": "myDataUser", "label": "myDATA subscription key", "type": "text", "required": false, "validation": "alphanumeric (secret)", "help": "Needed when sending directly (non-provider)."},
+        {"key": "posRegistered", "label": "POS terminals registered with AADE", "type": "boolean", "required": true, "validation": "must be true", "help": "AADE POS registry."},
+        {"key": "defaultVatRate", "label": "Default VAT rate", "type": "select", "required": true, "validation": "options: 24,13,6,17,9,4,0", "help": "Hospitality typically 13%."},
+        {"key": "digitalReceiptConsent", "label": "Customer agrees e-receipt", "type": "boolean", "required": true, "validation": "default true", "help": "Unverified whether consent is legally required."}
+      ],
+      "confidence": "low",
+      "adviserVerify": "Whether the legacy ΦΗΜ requirement is replaced by fiscal software/e-receipt rules in 2026, e-receipt consent, exact B2B timeline (Feb/Mar/Oct 2026), POS integration timetable, retention (5 vs 10 years), island VAT discount, field list and QR spec.",
+      "sources": [
+        "https://www.aade.gr/en/mydata",
+        "https://www.aade.gr/epiheiriseis/forologikes-ypiresies/mitroa/mitroo-forologikon-mihanismon",
+        "https://www.aade.gr/en/mydata/legislation",
+        "https://www.powergame.gr/forologia/283314/telos-stis-apodeixeis-mono-apo-pos-aftomati-diavivasi-stin-aade/ (secondary)",
+        "https://edicomgroup.com/de/einvoicing/griechenland (secondary)"
+      ],
+      "lastChecked": "2026-10-17"
+    },
+    "MT": {
+      "name": "Malta",
+      "receiptObligation": "Always: VAT Act (Cap. 406) art. 75 and Thirteenth Schedule: retailers and food caterers (and other persons making supplies to non-registered persons) must issue a fiscal receipt for every supply; since 2026 guidance (13 Jul 2026) this includes VAT-exempt Article 11 SMEs, for B2B and B2C. Exemptions in the Thirteenth Schedule (some categories) - details unverified.",
+      "digitalReceipt": "Unverified: fiscal receipts are usually printed by a fiscal cash register; MTCA allows computerised/electronic POS systems and (reportedly) manual receipts; e-receipt consent rules not found - unverified.",
+      "mandatoryFields": "Fiscal receipt: supplier name, address and VAT number (for Article 11: 'EXP' immediately before VAT number), date, sequential receipt number, description/quantity, price, VAT rate (or category letters), total, tax-free amounts marked 'E' or 'Exempt' for exempt supplies; Thirteenth Schedule sub-items 13(2)(a)(i),(iv). Exact full list unverified; check MTCA guidance.",
+      "fiscalSystem": "Fiscal cash register / POS meeting MTCA requirements (Fiscal Receipting). The Malta fiscal regime is not a certified-fiscal-memory/online reporting system; receipts issued by approved cash registers. Compliance via Fiscal Receipting Regime; MTCA Guidance Notes (cash registers and VAT receipts). Registration of the till with the tax authority: unverified (MTCA keeps a list of approved cash registers - unverified).",
+      "realTimeReporting": "None found. Malta has no e-invoicing mandate (as at 30 Sep 2026 per secondary source), no real-time reporting of B2C receipts to MTCA; the tax authority is studying e-invoicing/real-time reporting (no date). Treat as unverified but likely none.",
+      "receiptIdentifiers": "No QR code or fiscal code required (unverified). Sequential receipt number required.",
+      "retentionYears": "Unverified in sources found. Malta VAT Act art. 49: records and documents kept for 6 years after the end of the year (commonly cited) - verify.",
+      "vat": "Currency EUR. Standard 18%; reduced 7% (accommodation), 5% (confectionery, electricity, some items), 12% (accommodation under certain conditions - Malta's 12%: accommodation, 7%?) - exact reduced rates: unverified. Food and restaurants: standard 18% (restaurants/catering at 18%; hotel accommodation 7%).",
+      "other": "Tips: unverified. Cash rounding: Malta rounds cash payments to nearest 5 cents (official Central Bank guidance) - unverified in law. Language: English and Maltese both official - fine. VAT ID format: ^MT[0-9]{8}$. Business must register: VAT number (or Article 11 status), fiscal cash register registration/approved device. Article 11 SMEs: 'EXP' prefix.",
+      "settingsNeeded": [
+        {"key": "vatNumber", "label": "VAT number", "type": "text", "required": true, "validation": "^MT[0-9]{8}$", "help": "Printed on receipt; for Article 11 exempt SMEs prefix 'EXP'."},
+        {"key": "legalName", "label": "Business name", "type": "text", "required": true, "validation": "non-empty", "help": "Issuer name."},
+        {"key": "address", "label": "Business address", "type": "text", "required": true, "validation": "non-empty", "help": "Issuer address."},
+        {"key": "article11", "label": "Article 11 exempt SME", "type": "boolean", "required": true, "validation": "true => print EXP before VAT no. and mark lines 'E'/'Exempt'", "help": "VAT-exempt small businesses must still issue fiscal receipts (July 2026 guidance)."},
+        {"key": "defaultVatRate", "label": "Default VAT rate", "type": "select", "required": true, "validation": "options: 18,7,5,0,exempt", "help": "Restaurants 18%; accommodation 7%."},
+        {"key": "receiptSeries", "label": "Receipt number prefix", "type": "text", "required": false, "validation": "[A-Za-z0-9-]{0,10}", "help": "Sequential receipt numbering."},
+        {"key": "digitalReceiptConsent", "label": "Customer agrees e-receipt", "type": "boolean", "required": false, "validation": "default true", "help": "Legal consent rule unverified."}
+      ],
+      "confidence": "low",
+      "adviserVerify": "Primary text of MTCA guidance of 13 Jul 2026, mandatory field list, whether e-receipts are valid without paper, any approved-cash-register list, rates (18/7/5), retention, any planned 2027 real-time reporting.",
+      "sources": [
+        "https://cfr.gov.mt/en/vat/Pages/default.aspx",
+        "https://legislation.mt/eli/cap/406/eng",
+        "https://pwc.com/mt/en/publications/vat/invoices-and-fiscal-receipts.html",
+        "https://www.fiscal-requirements.com/news/5845-malta-issues-new-guidance-on-fiscal-receipts-for-vat-exempt-smes (secondary)",
+        "https://lookuptax.com/tax-changes/malta/fiscal-receipt-art11-sme-2026 (secondary)"
+      ],
+      "lastChecked": "2026-10-17"
+    },
+    "CY": {
+      "name": "Cyprus",
+      "receiptObligation": "Always: every sale must be recorded and a receipt issued through an approved Electronic Tax Register (ETR) / fiscal electronic mechanism (Decision 224/2010 and Regulation on Fiscal Electronic Mechanisms); fine for failing to issue a receipt. Exemptions by law for certain activities (unverified).",
+      "digitalReceipt": "Unverified: no source found confirming electronic receipts as a substitute for printed receipts from the fiscal device. Software-only POS reportedly not permitted without EMS-certified fiscal hardware.",
+      "mandatoryFields": "Unverified exact list. Fiscal receipt from ETR: seller name, VAT number, date and time, receipt number, items/total, VAT, fiscal logo/serial number. Verify with Tax Department.",
+      "fiscalSystem": "Hardware ETR / Fiscal Electronic Mechanism certified by the Department of Electrical & Mechanical Services (EMS), with a public list of approved models; fiscalisation (setup of tax memory) and maintenance only by EMS-listed technicians; applies to retailers/hospitality (sectors per Decision 224/2010 and Tax Dept Circulars: retail, restaurants, etc.). Till registration with tax authority: unverified.",
+      "realTimeReporting": "None found: no real-time or periodic receipt transmission to the Tax Department found. E-invoicing B2G mandatory (Law 89(I)/2019), B2B voluntary; ViDA/EU rules expected later - no dates (unverified).",
+      "receiptIdentifiers": "Fiscal receipt number and ETR serial/fiscal logo from the fiscal mechanism; no QR code or hash requirement found.",
+      "retentionYears": "6 years (VAT Law 95(I)/2000 art. 3? - unverified: commonly cited as 6 years for VAT records; verify).",
+      "vat": "Currency EUR. Standard 19%; reduced 9% (restaurants/catering, hotels, some goods), 5% (some food? books, newspapers, medicines... ), 3% (hotel accommodation special). Exact rates must be verified: standard 19%, reduced 9%, 5%, 3% (unverified detail).",
+      "other": "Tips: unverified. Cash rounding: Cyprus applies 5-cent rounding for cash (Central Bank of Cyprus) - unverified. Language: Greek/English both accepted - unverified. VAT ID format: ^CY[0-9]{8}[A-Z]$ (8 digits + letter). Business must register: VAT number (TIC/VAT registration with Tax Department), ETR device registered with EMS/licensed technician (maintenance contract).",
+      "settingsNeeded": [
+        {"key": "vatNumber", "label": "VAT number", "type": "text", "required": true, "validation": "^CY[0-9]{8}[A-Z]$", "help": "Printed on fiscal receipt."},
+        {"key": "tic", "label": "Tax Identification Code (TIC)", "type": "text", "required": false, "validation": "^[0-9]{8}[A-Z]$", "help": "Business tax id."},
+        {"key": "legalName", "label": "Business name", "type": "text", "required": true, "validation": "non-empty", "help": "Issuer name."},
+        {"key": "address", "label": "Business address", "type": "text", "required": true, "validation": "non-empty", "help": "Point of sale address."},
+        {"key": "etrSerial", "label": "ETR / fiscal mechanism serial number", "type": "text", "required": true, "validation": "alphanumeric, unverified format", "help": "EMS-certified fiscal device."},
+        {"key": "defaultVatRate", "label": "Default VAT rate", "type": "select", "required": true, "validation": "options: 19,9,5,3,0", "help": "Hospitality typically 9%."},
+        {"key": "digitalReceiptConsent", "label": "Customer agrees e-receipt", "type": "boolean", "required": false, "validation": "default true", "help": "Legal status of e-receipt unverified."}
+      ],
+      "confidence": "low",
+      "adviserVerify": "Whether e-receipts are legal alongside ETR; mandatory fields; registration of ETRs with Tax Department; VAT rates (esp. reduced); retention; any 2026-27 real-time reporting plan; sectors covered by ETR duty.",
+      "sources": [
+        "https://www.mof.gov.cy/mof/tax/taxdep.nsf/index_en/index_en?opendocument",
+        "https://www.mcit.gov.cy/mcit/ems/ems.nsf/index_en/index_en",
+        "https://www.fiscal-requirements.com/news/4859-fiscalization-system-in-cyprus (secondary)"
+      ],
+      "lastChecked": "2026-10-17"
+    },
+    "HR": {
+      "name": "Croatia",
+      "receiptObligation": "Always: Zakon o fiskalizaciji u prometu gotovinom (cash fiscalisation, NN 133/12, 115/16 and later; replaced/extended by Zakon o fiskalizaciji 2025 - unverified numbering): every cash/card sale requires a fiscalised receipt (racun) issued to the buyer. Since 1 Jan 2026 (Fiskalizacija 2.0) fiscalisation applies to all B2C receipts regardless of payment method (including bank transfer, PayPal/Apple Pay) and all items. B2B domestic invoices must be e-invoices (structured XML) from 1 Jan 2026 for VAT payers and for all businesses from 1 Jan 2027 (secondary sources).",
+      "digitalReceipt": "Receipt may be issued electronically (email) instead of paper; buyer consent not clearly required - unverified (traditional receipt acceptable under B2C rules; check Porezna uprava FAQ).",
+      "mandatoryFields": "OIB of issuer, issue date and time (hour and minute), receipt number (number-business premise-cash register: broj racuna / oznaka poslovnog prostora / oznaka naplatnog uredjaja), VAT status of issuer, items and amounts, VAT breakdown per rate, total, payment method, operator OIB/designation, ZKI (security code of issuer), JIR (unique receipt identifier from the tax administration) and QR code. Offline fallback: receipt without JIR but with ZKI and QR.",
+      "fiscalSystem": "Fiskalizacija (CIS - Central Information System of the Porezna uprava): the till software creates ZKI (MD5/RSA signature with the business's fiscal certificate), sends the receipt to CIS, receives JIR; certificate (FINA fiscalisation certificate) required; business premises (poslovni prostori) must be registered with CIS. Applies to all B2C retail and hospitality. Software-based tills permitted (no certified hardware), but software must meet technical spec; separate software reportedly needed for B2C vs B2B/B2G.",
+      "realTimeReporting": "Real-time transmission of each fiscalised receipt to Porezna uprava (CIS) at the moment of issuance (response with JIR within seconds); Fiskalizacija 2.0 extends to e-invoice clearance (B2B/B2G) and e-reporting.",
+      "receiptIdentifiers": "JIR (unique receipt identifier, UUID format 8-4-4-4-12), ZKI (32 hex characters), and QR code (since 2013: URL/payload with JIR+date+amount) printed on every receipt; sequential receipt number with premise and register codes.",
+      "retentionYears": "11 years for accounting documents (Accounting Act) - unverified; VAT records: 11 years per Croatian VAT Act (Zakon o PDV-u) - verify; fiscalisation: keep copies of receipts for 11 years.",
+      "vat": "Currency EUR (since 1 Jan 2023). Standard 25%; reduced 13% (hospitality services in restaurants? - accommodation 13%, catering 13% (food and non-alcoholic beverages in catering 13%? ) unverified detail), 5% (bread, milk, books, medicines), 0%. Hospitality: since 2023 food services in restaurants at 13%; alcoholic beverages 25% - unverified.",
+      "other": "Tips: unverified. Cash rounding: Croatia uses 5-cent rounding for cash? - unverified. Language: Croatian required for receipts (Law on consumer protection) - unverified. VAT ID format: ^HR[0-9]{11}$ (OIB, 11 digits with ISO 7064 check digit). Business must register: OIB, business premises registration in CIS, fiscal certificate from FINA, cash register ID, and (2.0) AS4/MPS access point / MIKROeRACUN for e-invoices.",
+      "settingsNeeded": [
+        {"key": "oib", "label": "OIB", "type": "text", "required": true, "validation": "^[0-9]{11}$ (ISO 7064 MOD 11,10 check)", "help": "Tax ID; VAT ID = HR + OIB."},
+        {"key": "legalName", "label": "Business name", "type": "text", "required": true, "validation": "non-empty", "help": "Issuer name."},
+        {"key": "address", "label": "Business premise address", "type": "text", "required": true, "validation": "non-empty", "help": "Registered premise (poslovni prostor)."},
+        {"key": "premiseCode", "label": "Oznaka poslovnog prostora", "type": "text", "required": true, "validation": "^[A-Za-z0-9]{1,20}$", "help": "Registered with CIS."},
+        {"key": "registerCode", "label": "Oznaka naplatnog uredjaja", "type": "text", "required": true, "validation": "^[0-9]{1,20}$", "help": "Cash register number."},
+        {"key": "vatSystem", "label": "VAT payer", "type": "boolean", "required": true, "validation": "true/false", "help": "Non-VAT payers print 'PDV nije obracunat po cl. 90'."},
+        {"key": "fiscalCertificate", "label": "Fiscal certificate (FINA .p12)", "type": "text", "required": true, "validation": "file upload + password", "help": "Needed to compute ZKI and sign requests to CIS."},
+        {"key": "operatorOib", "label": "Operator OIB", "type": "text", "required": true, "validation": "^[0-9]{11}$", "help": "Cashier identification."},
+        {"key": "defaultVatRate", "label": "Default VAT rate", "type": "select", "required": true, "validation": "options: 25,13,5,0", "help": "Hospitality typically 13%/25%."},
+        {"key": "digitalReceiptConsent", "label": "Customer accepts e-receipt", "type": "boolean", "required": false, "validation": "default true", "help": "Legal condition unverified."}
+      ],
+      "confidence": "medium",
+      "adviserVerify": "Fiskalizacija 2.0 changes in effect from 1 Jan 2026 (what exactly changed for tills and receipts; QR payload; offline rules), e-receipt consent, retention periods, hospitality VAT split, 2027 extension to all businesses.",
+      "sources": [
+        "https://porezna.gov.hr/fiskalizacija",
+        "https://porezna-uprava.gov.hr/hr/fiskalizacija/4",
+        "https://narodne-novine.nn.hr/clanci/sluzbeni/2012_11_133_2840.html",
+        "https://www.vatupdate.com/2026/01/08/croatias-e-invoicing-fiscalization-e-reporting-requirements/ (secondary)",
+        "https://invoicedataextraction.com/blog/croatia-fiscal-receipt-requirements (secondary)"
+      ],
+      "lastChecked": "2026-10-17"
+    },
+    "SI": {
+      "name": "Slovenia",
+      "receiptObligation": "Always: ZDavPR (Zakon o davcnem potrjevanju racunov, in force 2016) - every invoice/receipt for cash sales must be issued to the buyer; for cash payments the receipt must be fiscally confirmed with FURS in real time. Non-cash/B2B invoices are outside the confirmation requirement. Exemptions: some activities (e.g. sale of newspapers by vending, taxis? ... unverified) and 'low-volume' exemption (< EUR 50,000? - unverified).",
+      "digitalReceipt": "Electronic receipts accepted; paper not mandatory; buyer consent condition unverified. B2B e-invoicing mandatory from 1 Jan 2028 (ZIERDED, Official Gazette 85/2025, adopted 23 Oct 2025; postponed from June 2026); paper invoices still allowed for B2C.",
+      "mandatoryFields": "VAT Act (ZDDV-1) art. 82 and ZDavPR: issuer name, address, tax ID (davcna stevilka, 8 digits), date and time of issue, sequential invoice number (premise-register-number), description/quantity, price, VAT rate and amount, total, payment method, cashier tax ID (operator), ZOI (protective mark of the issuer), EOR (unique invoice ID) and QR code. Thresholds: unverified (simplified invoice for under EUR 100? unverified).",
+      "fiscalSystem": "Fiscal verification of invoices (davcno potrjevanje racunov - FURS): cash invoices are signed with a business-premise digital certificate (ZOI computed locally, confirmed online by FURS giving EOR). Certified tills are not required; any software meeting FURS technical spec; business premises must be registered with FURS (prijava poslovnega prostora) and a digital certificate for tax confirmation obtained (SIGOV-CA / SI-TRUST); Miniblagajna free app/FURS service available. Applies to all sellers receiving cash payments (cash incl.); card payments are not subject (verify exact scope). Certificate expiry waves in Dec 2025/Jan 2026 noted by FURS.",
+      "realTimeReporting": "Real-time (online) transmission of cash invoices to FURS for confirmation at issuance (response EOR). B2B e-invoicing from 1 Jan 2028 (e-SLOG, EN 16931) with no clearance/real-time reporting to FURS (reporting removed).",
+      "receiptIdentifiers": "ZOI (32 hex chars protective mark of issuer), EOR (unique invoice identifier, UUID format), QR code (contains ZOI + tax ID + date/time + amount; ISO type per FURS spec), invoice number format 'premise-register-number'. Unverified details.",
+      "retentionYears": "10 years (ZDDV-1 art. 140: VAT invoices; accounting law 10 years) - unverified exactness; keep in original (electronic) form.",
+      "vat": "Currency EUR. Standard 22%; reduced 9.5% (food, drinks non-alcoholic, hotel accommodation, books); 5% for some (books, newspapers) - verify (Slovenia has 22%, 9.5% and 5%). Restaurants: food 9.5%, alcohol 22%.",
+      "other": "Tips: unverified. Cash rounding: Slovenia no legal obligation - unverified. Language: Slovenian (and Italian/Hungarian in bilingual areas) - unverified. VAT ID format: ^SI[0-9]{8}$ (8 digits, last is check digit). Business must register: davcna stevilka, VAT status, business premises (poslovni prostor) with FURS, digital certificate for confirmation, cash register ID.",
+      "settingsNeeded": [
+        {"key": "taxNumber", "label": "Davcna stevilka", "type": "text", "required": true, "validation": "^[0-9]{8}$", "help": "VAT ID = SI + tax number."},
+        {"key": "legalName", "label": "Business name", "type": "text", "required": true, "validation": "non-empty", "help": "Issuer name."},
+        {"key": "address", "label": "Business premise address", "type": "text", "required": true, "validation": "non-empty", "help": "Registered premise."},
+        {"key": "premiseId", "label": "Business premise ID (oznaka poslovnega prostora)", "type": "text", "required": true, "validation": "^[A-Za-z0-9]{1,20}$", "help": "Registered with FURS."},
+        {"key": "registerId", "label": "Cash register ID (oznaka naprave)", "type": "text", "required": true, "validation": "^[A-Za-z0-9]{1,20}$", "help": "Part of invoice number."},
+        {"key": "fursCertificate", "label": "FURS tax confirmation certificate", "type": "text", "required": true, "validation": "file upload + password", "help": "Needed to compute ZOI and sign requests; renew before expiry."},
+        {"key": "operatorTaxNumber", "label": "Operator tax number", "type": "text", "required": true, "validation": "^[0-9]{8}$", "help": "Cashier identification."},
+        {"key": "vatPayer", "label": "VAT payer", "type": "boolean", "required": true, "validation": "true/false", "help": "Non-payers print exemption note."},
+        {"key": "defaultVatRate", "label": "Default VAT rate", "type": "select", "required": true, "validation": "options: 22,9.5,5,0", "help": "Hospitality food 9.5%."},
+        {"key": "digitalReceiptConsent", "label": "Customer accepts e-receipt", "type": "boolean", "required": false, "validation": "default true", "help": "Legal condition unverified."}
+      ],
+      "confidence": "low",
+      "adviserVerify": "Scope of fiscal verification (cash only vs. also card), exact mandatory fields and ZOI/EOR/QR spec, exemptions, retention, 2026 amendments (none found), VAT reduced rates, 2028 B2B e-invoicing impacts.",
+      "sources": [
+        "https://www.fu.gov.si/davcno_potrjevanje_racunov/",
+        "https://www.fu.gov.si/fileadmin/Internet/Poslovni_dogodki/Kratke_informacije_glede_obveznosti_do_FURS_za_pravno_osebo.pdf",
+        "https://www.pisrs.si/pregledPredpisa?id=ZAKO7122",
+        "https://www.ey.com/en_si/technical/ey-slovenia-tax-alerts/tax-news-november-2025 (secondary)",
+        "https://lookuptax.com/docs/einvoicing/zierded-einvoicing-slovenia (secondary)"
+      ],
+      "lastChecked": "2026-10-17"
+    }
+  }
+}

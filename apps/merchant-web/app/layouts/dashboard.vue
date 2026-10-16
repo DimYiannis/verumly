@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component } from 'vue';
 import type { MessageKey } from '~/i18n/en';
-import { ArchiveIcon, BuildingIcon, ChartColumnIcon, DownloadIcon, LayoutDashboardIcon, LogOutIcon, MapPinIcon, MonitorSmartphoneIcon, ReceiptTextIcon, TabletSmartphoneIcon, UsersIcon } from '@lucide/vue';
+import { ArchiveIcon, BuildingIcon, ChartColumnIcon, DownloadIcon, LayoutDashboardIcon, LogOutIcon, MapPinIcon, MonitorSmartphoneIcon, PaletteIcon, ReceiptTextIcon, TabletSmartphoneIcon, UsersIcon } from '@lucide/vue';
 
 const session = sessionState();
 const { t, tx } = useLocale();
@@ -22,6 +22,7 @@ const setup = computed(() =>
     { to: '/dashboard/locations', key: 'nav.locations', id: 'nav-locations', icon: MapPinIcon, show: true },
     { to: '/dashboard/users', key: 'nav.users', id: 'nav-users', icon: UsersIcon, show: role.value === 'owner' },
     { to: '/dashboard/organisation', key: 'nav.organisation', id: 'nav-organisation', icon: BuildingIcon, show: true },
+    { to: '/dashboard/template', key: 'nav.template', id: 'nav-template', icon: PaletteIcon, show: role.value !== 'accountant' },
     { to: '/simulator', key: 'nav.simulator', id: 'nav-simulator', icon: MonitorSmartphoneIcon, show: role.value !== 'accountant' },
   ] as Array<{ to: string; key: MessageKey; id: string; icon: Component; show: boolean }>).filter((l) => l.show),
 );
@@ -35,6 +36,7 @@ const PAGES: Record<string, MessageKey> = {
   locations: 'nav.locations',
   users: 'nav.users',
   organisation: 'nav.organisation',
+  template: 'nav.template',
 };
 const crumbs = computed(() => {
   const section = route.path.split('/').filter(Boolean)[1];

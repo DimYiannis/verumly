@@ -66,6 +66,13 @@ Users from `pnpm db:seed`: dashboard `owner@example.test` / `owner-dev-password`
 
 `DEMO_MODE` is on outside production unless set, and off in production. When on, both login screens are stubs: a "fill in the demo account" button fills the form, and signing in skips the TOTP code (dashboard) and the emailed code (wallet). The routes answer 404 when it is off. **The Playwright E2E starts its own stack with `DEMO_MODE=false`** so the TOTP flow stays covered. If you run E2E against a stack you started yourself, start it with `DEMO_MODE=false` too.
 
+## Countries, legal setup and receipt templates
+
+- `packages/compliance` (`@lr/compliance`): per-country receipt law research (31 countries: EU, UK, CH, NO, IS) as data: obligation, digital receipts, mandatory fields, fiscal system, retention, VAT, plus the settings a merchant must give. Raw research is in `docs/legal-research/*.json`; `pnpm --filter @lr/compliance build-data` regenerates `src/data/countries.json`. It is **not legal advice and not reviewed by a tax adviser**; confidence differs per country (see each entry). Do not present it as verified law.
+- Business setup (`/dashboard/organisation`): the owner declares a country; the form shows that country's identity labels/patterns and legal settings, stored in `organizations.country`, `kvk_number` (= company registry number of that country) and `organizations.compliance`.
+- Receipt design (`/dashboard/template`): a Canva-like editor; the template (`organizations.receipt_template`, zod `receiptTemplate` in `@lr/schema`) is drawn by `packages/ui/src/ReceiptTemplate.vue` in both the designer and the wallet. Blocks that carry legally required content (`LOCKED_BLOCK_TYPES`) cannot be removed or hidden. Static text only, inline raster logo only.
+- **Known limit:** the receipt format (CRF), the terminal SDK and the receipt math are still Netherlands-only (EUR, 21/9/0 % VAT, KvK/BTW-id formats). An organisation that declares another country can save its setup but cannot issue receipts yet. Generalising CRF is the next step (see `docs/ISSUES.md`).
+
 ## Frontend conventions (design system copied from Salespore)
 
 - Tailwind 4 + shadcn-vue (reka-ui), icons from `@lucide/vue`, font Outfit (JetBrains Mono for amounts and technical values).

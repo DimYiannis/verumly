@@ -1,0 +1,12 @@
+{
+  "name": "@lr/compliance",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "build-data": "node scripts/build-data.mjs",
+    "typecheck": "tsc -p .",
+    "test": "vitest run --passWithNoTests"
+  }
+}
