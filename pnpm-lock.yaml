@@ -323,6 +323,9 @@ importers:
 
   apps/merchant-web:
     dependencies:
+      '@lr/compliance':
+        specifier: workspace:*
+        version: link:../../packages/compliance
       '@lr/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -553,6 +556,8 @@ importers:
         specifier: ^8.11.0
         version: 8.23.1
 
+  packages/compliance: {}
+
   packages/config:
     dependencies:
       zod:
@@ -582,6 +587,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.0.0
         version: 3.1152.0
+      '@lr/compliance':
+        specifier: workspace:*
+        version: link:../compliance
       '@lr/config':
         specifier: workspace:*
         version: link:../config
@@ -724,7 +732,14 @@ importers:
         specifier: ^6.0.0
         version: 6.2.5
 
-  packages/ui: {}
+  packages/ui:
+    dependencies:
+      '@lr/schema':
+        specifier: workspace:*
+        version: link:../schema
+      vue:
+        specifier: ^3.5.0
+        version: 3.5.44(typescript@6.0.3)
 
 packages:
 
