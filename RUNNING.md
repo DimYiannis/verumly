@@ -160,7 +160,22 @@ docker compose down -v              # delete ALL local data (database, S3, mail)
 Only the database moves; S3 (`adobe/s3mock`), Mailpit and everything else stay local. `pnpm test`, `pnpm test:privacy` and `pnpm test:e2e` are **local-only**: they create and drop databases (they refuse to run when `PG_ADMIN_URL` is set) and `test:privacy` uses `docker exec pg_dump`.
 
 1. Create the project (Frankfurt), turn off the Data API, and download the CA certificate (Settings → Database).
-2. Copy `.env.supabase.example` to `.env.supabase` (git-ignored) and fill in the five connection strings and four role passwords. Use pooler usernames (`merchant_api.<project-ref>`, …). Ports: transaction pooler 6543 for merchant-api, buyer-api and dashboard; session pooler 5432 (or direct) for the worker and the admin.
+2. Create `.env.supabase` in the repo root (git-ignored) with these variables. Set all five URLs or none. The URL, not the code, carries SSL: use `sslmode=verify-full` with an absolute `sslrootcert` path, never `no-verify`. Pooler usernames are `<role>.<project-ref>`; URL-encode special characters in passwords. Each `*_DB_PASSWORD` must equal the password inside its URL (migrate sets it with `ALTER ROLE`).
+   ```sh
+   PG_DATABASE=postgres
+   # migrations, seed, check: session pooler (5432) or direct, never 6543
+   PG_ADMIN_URL=postgres://postgres.<ref>:<pw>@<host>:5432/postgres?sslmode=verify-full&sslrootcert=/abs/ca.crt
+   # merchant-api, buyer-api, dashboard: transaction pooler (6543)
+   MERCHANT_API_DB_URL=postgres://merchant_api.<ref>:<pw>@<host>:6543/postgres?sslmode=verify-full&sslrootcert=/abs/ca.crt
+   BUYER_API_DB_URL=postgres://buyer_api.<ref>:<pw>@<host>:6543/postgres?sslmode=verify-full&sslrootcert=/abs/ca.crt
+   DASHBOARD_DB_URL=postgres://dashboard.<ref>:<pw>@<host>:6543/postgres?sslmode=verify-full&sslrootcert=/abs/ca.crt
+   # worker: session pooler (5432) or direct, never 6543
+   WORKER_DB_URL=postgres://worker.<ref>:<pw>@<host>:5432/postgres?sslmode=verify-full&sslrootcert=/abs/ca.crt
+   MERCHANT_API_DB_PASSWORD=...
+   BUYER_API_DB_PASSWORD=...
+   WORKER_DB_PASSWORD=...
+   DASHBOARD_DB_PASSWORD=...
+   ```
 3. Load it into the shell (the apps do not read .env files):
    ```sh
    set -a; source .env.supabase; set +a

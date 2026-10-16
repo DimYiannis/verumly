@@ -7,11 +7,11 @@ The database moves to Supabase Postgres in Frankfurt (eu-central-1); the apps ar
 | # | State | What changed |
 | --- | --- | --- |
 | 1 | done in code, **not yet run against the real project** | `PG_ADMIN_URL`, `MERCHANT_API_DB_URL`, `BUYER_API_DB_URL`, `WORKER_DB_URL`, `DASHBOARD_DB_URL` (`packages/config`): used verbatim, SSL via URL params. Partial sets are refused. Unit-tested; `sslmode=verify-full&sslrootcert=…` verified against a throwaway TLS Postgres (correct CA connects with `ssl = true`; wrong CA is rejected with "unable to verify the first certificate"). |
-| 2 | done (docs) | Pooler usernames go in the URLs; documented in `.env.supabase.example` and `RUNNING.md`. |
+| 2 | done (docs) | Pooler usernames go in the URLs; documented in `RUNNING.md`. |
 | 3 | done in code (guard + audit) | A warning is logged if the worker URL or the admin URL uses port 6543. Audit of the apps on 6543: no named prepared statements, no LISTEN (pg-boss `useListenNotify` defaults to false), no plain SET; every `set_config` is transaction-local (`withOrg`) and pg-boss only takes `pg_advisory_xact_lock`. The only session-level lock is the migration advisory lock, which runs on the admin URL. |
 | 4 | partly done | `db:migrate` skips `ensureDatabase` when `PG_ADMIN_URL` is set and uses it for the advisory lock; `createTestDb`, `ensureDatabase` and `dropDatabase` refuse ("tests run only against the local Docker Postgres"). **Open: running `0001_roles_rls.sql` as the Supabase `postgres` user (CREATEROLE, `REVOKE ALL ON SCHEMA public FROM PUBLIC`) is not verified.** |
 | 5 | done in code, **not yet run against the real project** | `pnpm check:supabase` (`scripts/check-supabase.ts`). Checked locally with a positive control and a negative control (a deliberate grant to `anon` turns three checks to FAIL). |
-| 6 | partly done | `.env.supabase.example`, `.env.supabase` in `.gitignore`, `RUNNING.md` section. **Open:** the Supabase Postgres major version is not known yet; `docker-compose.yml` still uses 16. |
+| 6 | done | `.env.supabase` in `.gitignore`; `RUNNING.md` section lists the variables. The project runs PostgreSQL 17.11, so `docker-compose.yml` and CI use `postgres:17`; the full local suite passed on 17.11. |
 | 7 | open | Production settings are untouched. |
 
 ## 1. SSL

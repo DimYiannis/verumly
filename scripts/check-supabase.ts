@@ -87,7 +87,7 @@ async function roleReadsBuyer(env: ReturnType<typeof loadEnv<typeof dbEnvSchema>
 
 const env = loadEnv(dbEnvSchema);
 if (!usesDbUrls(env)) {
-  console.error('FAIL  no Supabase connection strings in the environment (PG_ADMIN_URL and the four *_DB_URL variables). See .env.supabase.example.');
+  console.error('FAIL  no Supabase connection strings in the environment (PG_ADMIN_URL and the four *_DB_URL variables). See "Run against Supabase" in RUNNING.md.');
   process.exit(1);
 }
 
