@@ -48,8 +48,32 @@ The only reason to stop is a missing external prerequisite you cannot create you
 v2 §17 is met. It must have been run, not just written. In particular:
 
 - `pnpm lint && pnpm typecheck && pnpm test && pnpm build` passes from a clean clone.
-- `pnpm test:journey`, `pnpm eval:extraction` and Playwright (against `pnpm dev`) pass.
+- `pnpm test:journey` and `pnpm eval:extraction` pass.
+- The final Playwright check (§6a) passes. It is the last thing you run.
 - `docs/FINDINGS.md` has a Verification log, the receipt-format mismatches, the extraction table (MOCK-labelled), the threat list and the "Open" list.
+
+## 6a. Final Playwright check (mandatory, run last)
+
+After the last code change, run the full Playwright suite once more from a clean state. Earlier green runs don't count.
+
+1. Reset: `docker compose down -v && docker compose up -d && pnpm db:migrate && pnpm db:seed`.
+2. Start the apps with `pnpm dev`, then run `pnpm test:e2e` (Playwright). Use these Playwright config settings: `trace: 'on'`, `screenshot: 'on'`, `video: 'retain-on-failure'` and `reporter: [['html', { open: 'never' }], ['list']]`.
+3. The run must cover every scenario in v2 §16.G:
+   - buyer journey in the `iPhone 13` device context
+   - buyer offline → "Arriving" → claim completes
+   - merchant offline toggle → 3 sales → archive
+   - dashboard TOTP → terminal key shown once → revoke
+4. Commit the HTML report to `docs/e2e-report/` and one screenshot per key step to `docs/e2e-screenshots/`:
+   - QR on the simulator
+   - pre-bill banner on the phone
+   - "Bon opslaan?" sheet
+   - wallet with the receipt
+   - final version after paying
+   - "Arriving" state
+   - dashboard archive
+5. Record the exact command, the pass/fail counts and the duration in the Verification log.
+
+If a scenario fails, fix the cause and rerun the whole suite; don't rerun only the failing test. If you can't fix it, record it under "Open" with the trace file path.
 
 ## 7. Handoff back
 
@@ -58,6 +82,7 @@ Your last commit must include a section at the end of `docs/FINDINGS.md` called 
 - what works end to end, with the test that proves each item;
 - what is partial or broken, and why;
 - every departure from v2, with a link to its entry in `DECISIONS.md`;
-- the exact commands a reviewer should run to reproduce your results.
+- the exact commands a reviewer should run to reproduce your results, including the final Playwright check;
+- the path to the Playwright report and screenshots.
 
 A separate reviewer will check your work against v2, starting from the Verification log and the commit history.
