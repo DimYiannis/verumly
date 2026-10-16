@@ -1,7 +1,8 @@
 import { createServer } from 'node:net';
 import { Writable } from 'node:stream';
 import type { FastifyInstance } from 'fastify';
-import { connect, makeBoss, type DbHandle, type PgBoss } from '@lr/db';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { connect, makeBoss, tables, type DbHandle, type PgBoss } from '@lr/db';
 import { createTestDb, type TestDb } from '@lr/db/testing';
 import { createLocation, createOrg, createTerminal, type ProvisionedTerminal } from '@lr/db/provision';
 import { adminDbUrl } from '@lr/config';
@@ -52,8 +53,7 @@ export interface Stack {
 export async function startStack(opts: { startMerchant?: boolean; claimWindowDays?: number } = {}): Promise<Stack> {
   const testDb = await createTestDb('journey');
   const admin = new pg.Pool({ connectionString: adminDbUrl(testDb.env), max: 4 });
-  const { drizzle } = await import('drizzle-orm/node-postgres');
-  const adminDb = drizzle(admin);
+  const adminDb = drizzle(admin, { schema: tables });
   const org = await createOrg(adminDb, { legalName: 'Café Het Plein B.V.', kvkNumber: '12345678', vatNumber: 'NL123456789B01' });
   const loc = await createLocation(adminDb, org.id, 'Café Het Plein');
   const terminal = await createTerminal(adminDb, { orgId: org.id, locationId: loc.id, label: 'Kassa 1' });

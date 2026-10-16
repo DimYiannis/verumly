@@ -95,8 +95,14 @@ export async function ingestVersion(db: Db, ctx: TerminalCtx, input: IngestInput
         if (e.audit) await audit(db, ctx, e.audit.event, crf.receiptId, e.audit.detail, input.requestId);
         return e.outcome;
       }
-      // concurrent insert of the same (receiptId, version) or key: re-run once, it will now see the winner
-      if (isUniqueViolation(e) && attempt < 2) continue;
+      // concurrent insert of the same (receiptId, version) or key: re-run, it will now see the winner
+      if (isUniqueViolation(e)) {
+        if (attempt < 2) continue;
+        // Still colliding after re-reading: the receipt id belongs to a receipt this organisation cannot see
+        // (row-level security hides it), i.e. another organisation's. Never a 500, never an overwrite.
+        await audit(db, ctx, 'idempotency_conflict', crf.receiptId, { version: crf.version, reason: 'receipt_id_taken' }, input.requestId);
+        return fail(409, 'idempotency_conflict');
+      }
       throw e;
     }
   }
@@ -115,6 +121,18 @@ async function store(tx: Tx, ctx: TerminalCtx, input: IngestInput, contentHash: 
   });
   const idemConflict = () =>
     new Conflict(fail(409, 'idempotency_conflict'), { event: 'idempotency_conflict', detail: { version: crf.version } });
+
+  // Lock the receipt row first so a concurrent writer of the same receipt finishes before the replay checks below
+  // run; otherwise a retried request racing its twin sees "version already exists" too late and gets a version_gap.
+  const [current] = await tx
+    .select({
+      currentVersion: tables.receipts.currentVersion,
+      state: tables.receipts.state,
+      terminalId: tables.receipts.terminalId,
+    })
+    .from(tables.receipts)
+    .where(eq(tables.receipts.id, crf.receiptId))
+    .for('update');
 
   // 1. same Idempotency-Key from this terminal
   const [byKey] = await tx
@@ -141,17 +159,7 @@ async function store(tx: Tx, ctx: TerminalCtx, input: IngestInput, contentHash: 
     return ok('replayed', false);
   }
 
-  // 3. new version: lifecycle + gap checks
-  const [current] = await tx
-    .select({
-      currentVersion: tables.receipts.currentVersion,
-      state: tables.receipts.state,
-      terminalId: tables.receipts.terminalId,
-    })
-    .from(tables.receipts)
-    .where(eq(tables.receipts.id, crf.receiptId))
-    .for('update');
-
+  // 3. new version: lifecycle + gap checks (`current` was read above)
   if (input.create) {
     if (current) throw new Conflict(fail(409, 'version_gap', { detail: { expected: current.currentVersion + 1 } }));
     const t = checkTransition(null, crf.state, ctx.country);
@@ -209,6 +217,7 @@ async function store(tx: Tx, ctx: TerminalCtx, input: IngestInput, contentHash: 
         unitPriceMinor: l.unitPrice,
         vatRate: l.vatRate,
         totalMinor: l.total,
+        category: l.category,
       })),
     );
   }

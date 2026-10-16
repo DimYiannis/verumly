@@ -13,10 +13,11 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:journey": "node scripts/journey.ts",
+    "test:privacy": "node scripts/privacy-canary.ts",
     "eval:extraction": "node scripts/eval-extraction.ts",
     "leads:report": "node scripts/leads-report.ts",
     "db:migrate": "pnpm --filter @lr/db migrate",
-    "db:seed": "pnpm --filter @lr/db seed"
+    "db:seed": "node scripts/seed.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",
@@ -28,8 +29,8 @@
     "@lr/merchant-api": "workspace:*",
     "@lr/receipt-nl": "workspace:*",
     "@lr/schema": "workspace:*",
+    "@lr/storage": "workspace:*",
     "@lr/terminal-sdk": "workspace:*",
-    "@node-rs/argon2": "^2.2.2",
     "@playwright/test": "1.63.0",
     "@types/node": "^22.0.0",
     "@types/pg": "^8.11.0",
@@ -40,6 +41,7 @@
     "turbo": "^2.11.8",
     "typescript": "6.0.3",
     "typescript-eslint": "^8.71.2",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "zod": "^4.0.0"
   }
 }
