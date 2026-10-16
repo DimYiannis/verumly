@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { loggerOptions } from '@lr/config';
 import { sha256Hex, verifyBytes } from '@lr/crypto';
 import { QUEUES, tables, withOrg, type Db, type NotifyVersionJob, type PgBoss } from '@lr/db';
-import { addVersionBody, batchBody, createReceiptBody, uuidV7String } from '@lr/schema';
+import { addVersionBody, batchBody, createReceiptBody, merchantOpenApi, uuidV7String } from '@lr/schema';
 import { ingestVersion, type IngestOutcome, type TerminalCtx } from './ingest.ts';
 
 export interface AppDeps {
@@ -89,6 +89,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   };
 
   app.get('/healthz', async () => ({ ok: true }));
+  const openApi = merchantOpenApi();
+  app.get('/docs', async () => openApi);
 
   app.register(async (api) => {
     const r = api.withTypeProvider<ZodTypeProvider>();

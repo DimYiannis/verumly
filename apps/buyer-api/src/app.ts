@@ -4,6 +4,7 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { loggerOptions } from '@lr/config';
+import { buyerOpenApi } from '@lr/schema';
 import type { AppDeps } from './context.ts';
 import { authRoutes } from './routes/auth.ts';
 import { meRoutes } from './routes/me.ts';
@@ -44,6 +45,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(rateLimit, { global: false });
 
   app.get('/healthz', async () => ({ ok: true }));
+  const openApi = buyerOpenApi();
+  app.get('/docs', async () => openApi);
   await app.register(resolveRoutes(deps));
   await app.register(authRoutes(deps));
   await app.register(meRoutes(deps));
