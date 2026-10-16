@@ -100,7 +100,7 @@ export function httpExtractor(opts: HttpExtractorOptions): Extractor {
       const mime = sniffMime(bytes);
       if (!mime) throw new PermanentExtractionError('unsupported_file', 'file is not a JPEG, PNG, WebP or PDF');
       if (mime === 'application/pdf') {
-        // vLLM's chat endpoint takes images; PDF rasterisation is not implemented (see docs/decisions/worker.md)
+        // vLLM's chat endpoint takes images; PDF rasterisation is not implemented (see docs/DECISIONS.md)
         throw new PermanentExtractionError('pdf_unsupported', 'PDF extraction needs page rasterisation, which is not implemented');
       }
       const dataUrl = `data:${mime};base64,${Buffer.from(bytes).toString('base64')}`;

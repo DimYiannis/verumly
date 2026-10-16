@@ -72,7 +72,7 @@ export function evaluate(corpus: Corpus): EvalReport {
 
 const pct = (a: { correct: number; total: number }) => (a.total === 0 ? 'n/a' : `${((100 * a.correct) / a.total).toFixed(0)}%`);
 
-/** Markdown tables (also pasted into docs/findings/corpus.md). */
+/** Markdown tables (also pasted into docs/FINDINGS.md). */
 export function formatReport(report: EvalReport): string {
   const label = report.kind === 'mock' ? ' (**MOCK**)' : '';
   const out: string[] = [];
