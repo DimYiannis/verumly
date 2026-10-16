@@ -1,6 +1,6 @@
 # Architecture
 
-One Postgres 16 database split into schemas with separate roles. The merchant side and the buyer side never read each other's data. The only person ↔ receipt link is `buyer.claims`.
+One Postgres 17 database split into schemas with separate roles. The merchant side and the buyer side never read each other's data. The only person ↔ receipt link is `buyer.claims`.
 
 ## Components and database roles
 

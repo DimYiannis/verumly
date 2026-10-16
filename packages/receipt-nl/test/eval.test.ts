@@ -6,6 +6,9 @@ import { evaluate, formatReport } from '../../../scripts/lib/eval.ts';
 const corpus = loadCorpus();
 const report = evaluate(corpus);
 
+// CPU-bound sweep (thousands of parses); the default 5 s limit trips on a busy machine. The assertion is unchanged.
+const STRESS_TIMEOUT_MS = 120_000;
+
 describe('D. extraction eval on recorded Qianfan outputs', () => {
   it('evaluates every truth file that has a recording', () => {
     console.log(`${corpus.kind === 'mock' ? 'MOCK CORPUS — not a real accuracy measurement\n' : ''}${formatReport(report)}`);
@@ -65,7 +68,7 @@ describe('D. gate holds under single-digit OCR corruption', () => {
         if (wrong(parseExtraction({ markdown: '', kie }))) falseDone.push(`kie-alone ${kie.length}`);
       }
       expect(falseDone).toEqual([]);
-    });
+    }, STRESS_TIMEOUT_MS);
   }
 
   it('the recorded printedAt agrees with the truth (DST handled on both sides of the October switch)', () => {

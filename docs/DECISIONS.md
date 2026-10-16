@@ -356,3 +356,7 @@ Not built in this run, by design:
 - Social features
 - Data products
 - ERP connectors
+
+## Postgres 17
+
+The Supabase project runs PostgreSQL 17.11, so `docker-compose.yml` and the CI service use `postgres:17` (was 16). The full local suite was re-run on a fresh 17.11 volume. One CPU-bound test in `packages/receipt-nl` (the single-digit-corruption sweep) exceeded vitest's default 5 s limit on a loaded machine; it now has an explicit 120 s timeout. Its assertion is unchanged.
