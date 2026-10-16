@@ -55,7 +55,7 @@ You can also use any other address in the wallet, for example `me@example.test`.
 
 The dashboard login only works if the seed ran. If it doesn't recognise the owner, run `pnpm db:seed` first.
 
-> **UI wording may change.** An agent is converting the UI text to English, so button and label wording in this guide (e.g. "Bewaar in portemonnee", "Opslaan", "Bon opslaan?") may change slightly while it works. The logins and the flow stay the same.
+> **The UI is now English-only.** The demo logins are unchanged: `buyer@example.test` in the wallet (code from Mailpit) and `owner@example.test` / `owner-dev-password` on the dashboard.
 
 ## 3. The demo flow (laptop only, no phone needed)
 
@@ -80,13 +80,13 @@ The dashboard login only works if the seed ran. If it doesn't recognise the owne
 ### Step 4: Open the receipt as the buyer
 1. Copy the URL under the QR.
 2. Open it in a **different browser profile or an incognito window**, so the buyer's session stays separate from the shop owner's. For a phone-shaped view, turn on Chrome DevTools → device toolbar → iPhone.
-3. The receipt shows with a yellow **"Geen definitieve bon / Not a final receipt"** banner. Note that the `#secret` part is gone from the address bar.
+3. The receipt shows with a yellow **"Not a final receipt — this is the bill, the final receipt follows after payment"** banner. Note that the `#secret` part is gone from the address bar.
 
 ### Step 5: Save it to the wallet
-1. Click **Bewaar in portemonnee / Save to wallet**.
+1. Click **Save to wallet**.
 2. Enter an email address: any new address creates an account, or use `buyer@example.test`.
 3. Open Mailpit at http://localhost:8025, copy the 6-digit code, and enter it.
-4. The **"Bon opslaan?"** sheet shows the merchant, total and time. Click **Opslaan**. The receipt is now in the wallet.
+4. The **"Save this receipt?"** sheet shows the shop, total and time. Click **Save to wallet**; **Not mine** closes it without saving. The receipt is now in the wallet.
 
 ### Step 6: Change and pay (cashier)
 1. Back in the simulator: add an item, then **Present** again (this creates version 2). Then click **Pay card** or **Pay cash**. Pay cash rounds the total to 5 cents.
