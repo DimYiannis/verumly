@@ -19,10 +19,11 @@ export interface ExtractUploadJob {
 export interface ExportJob {
   exportId: string;
 }
+/** All fields optional: the cron job sends `{}` (every org, last 3 Amsterdam days). */
 export interface RollupDailyJob {
-  orgId: string;
-  from: string;
-  to: string;
+  orgId?: string;
+  from?: string;
+  to?: string;
 }
 
 /** pg-boss lives in its own schema so audit_log stays append-only for every role (see DECISIONS.md). */

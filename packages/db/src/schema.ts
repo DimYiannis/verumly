@@ -106,6 +106,10 @@ export const receiptLines = merchant.table(
     unitPriceMinor: integer('unit_price_minor').notNull(),
     vatRate: smallint('vat_rate'),
     totalMinor: integer('total_minor').notNull(),
+    /** from the terminal if it sent one, else filled by the worker's `categorise` job */
+    category: text('category'),
+    /** health-related (apotheek/drogist); never shown in insights or exports of categories */
+    sensitive: boolean('sensitive').notNull().default(false),
   },
   (t) => [primaryKey({ columns: [t.receiptId, t.lineNo] })],
 );
@@ -156,6 +160,9 @@ export const exportsTable = merchant.table('exports', {
   periodTo: date('period_to', { mode: 'string' }).notNull(),
   status: text('status').notNull().default('queued'),
   s3Key: text('s3_key'),
+  /** presigned GET url, valid until `expiresAt` (24 h) */
+  url: text('url'),
+  expiresAt: ts('expires_at'),
   createdAt: ts('created_at').notNull().defaultNow(),
 });
 

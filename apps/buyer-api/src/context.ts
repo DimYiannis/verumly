@@ -1,4 +1,5 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { ObjectStore } from '@lr/storage';
 import type { Db, PgBoss } from '@lr/db';
 
 export interface Mailer {
@@ -16,15 +17,14 @@ export interface AppDeps {
   logStream?: NodeJS.WritableStream;
   /** per-IP requests/minute on public resolver routes (v2 §10: 30) */
   resolveRatePerMinute?: number;
-  s3?: S3Deps;
-}
-
-export interface S3Deps {
-  bucket: string;
-  presignPut(key: string, contentType: string): Promise<string>;
-  head(key: string): Promise<{ size: number } | null>;
-  get(key: string): Promise<Uint8Array>;
-  remove(key: string): Promise<void>;
+  /** object storage for uploads; routes needing it answer 503 when absent */
+  s3?: ObjectStore;
+  /** VAPID public key served to the wallet; null/absent: push is not configured */
+  vapidPublicKey?: string | null;
+  /** version string stored with every consent row */
+  policyVersion?: string;
+  /** accept plain-http loopback push endpoints (local tests); false in production */
+  allowLoopbackPush?: boolean;
 }
 
 export interface Session {

@@ -2,7 +2,7 @@ import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
 import pg from 'pg';
 import { PgBoss } from 'pg-boss';
-import { roleDbUrl, type DbEnv, type DbRole } from '@lr/config';
+import { adminDbUrl, roleDbUrl, type DbEnv, type DbRole } from '@lr/config';
 import * as schema from './schema.ts';
 import { BOSS_SCHEMA } from './queues.ts';
 
@@ -23,6 +23,16 @@ export interface DbHandle {
 export function connect(role: DbRole, env: DbEnv, opts: { max?: number } = {}): DbHandle {
   const pool = new pg.Pool({ connectionString: roleDbUrl(role, env), max: opts.max ?? 10 });
   // a dead idle client must not crash the process
+  pool.on('error', () => {});
+  return { db: drizzle(pool, { schema }), pool, close: () => pool.end() };
+}
+
+/**
+ * A connection as the database owner (no role restrictions, RLS bypassed). Only for provisioning: the seed, test fixtures
+ * and onboarding scripts. Services always connect as their own role.
+ */
+export function connectAdmin(env: DbEnv, opts: { max?: number } = {}): DbHandle {
+  const pool = new pg.Pool({ connectionString: adminDbUrl(env), max: opts.max ?? 4 });
   pool.on('error', () => {});
   return { db: drizzle(pool, { schema }), pool, close: () => pool.end() };
 }
@@ -49,3 +59,4 @@ export function makeBoss(role: DbRole, env: DbEnv, opts: { supervise?: boolean; 
   boss.on('error', () => {});
   return boss;
 }
+export * from './matching.ts';

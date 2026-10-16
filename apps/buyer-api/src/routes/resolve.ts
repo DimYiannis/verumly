@@ -7,9 +7,17 @@ import { checkSecret, claimedBy, isFinal, loadVersions, toPreview } from '../rec
 export function resolveRoutes(deps: AppDeps) {
   return async (app: FastifyInstance) => {
     const r = app.withTypeProvider<ZodTypeProvider>();
-    const rate = { rateLimit: { max: deps.resolveRatePerMinute ?? 30, timeWindow: '1 minute' } };
+    // One limiter shared by both public routes: v2 §10 says 30 requests/min per IP. Giving each route its own
+    // `config.rateLimit` would create a separate counter per route (60/min per IP in total).
+    const limit = app.createRateLimit({ max: deps.resolveRatePerMinute ?? 30, timeWindow: '1 minute' });
+    r.addHook('onRequest', async (req, reply) => {
+      const res = await limit(req);
+      if (!res.isAllowed && res.isExceeded) {
+        return reply.code(429).header('retry-after', res.ttlInSeconds).send({ error: 'too_many_requests' });
+      }
+    });
 
-    r.post('/v1/resolve/secret', { config: rate, schema: { body: resolveBody } }, async (req, reply) => {
+    r.post('/v1/resolve/secret', { schema: { body: resolveBody } }, async (req, reply) => {
       const res = await checkSecret(deps.db, req.body.receiptId, req.body.secret);
       if (res.kind === 'pending') return { status: 'pending' as const };
       if (res.kind === 'limited') return reply.code(429).send({ error: 'too_many_requests' });
@@ -18,7 +26,7 @@ export function resolveRoutes(deps: AppDeps) {
       return { status: 'ok' as const, preview: toPreview(res.receipt, claimed) };
     });
 
-    r.post('/v1/resolve/view', { config: rate, schema: { body: resolveBody } }, async (req, reply) => {
+    r.post('/v1/resolve/view', { schema: { body: resolveBody } }, async (req, reply) => {
       const res = await checkSecret(deps.db, req.body.receiptId, req.body.secret);
       if (res.kind === 'pending') return { status: 'pending' as const };
       if (res.kind === 'limited') return reply.code(429).send({ error: 'too_many_requests' });

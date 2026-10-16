@@ -3,14 +3,33 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "build": "tsc -p .", "typecheck": "tsc -p .", "test": "vitest run --passWithNoTests" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "typecheck": "tsc -p .",
+    "test": "vitest run --passWithNoTests"
+  },
   "dependencies": {
     "@lr/config": "workspace:*",
     "@lr/crypto": "workspace:*",
     "@lr/db": "workspace:*",
     "@lr/receipt-nl": "workspace:*",
     "@lr/schema": "workspace:*",
-    "drizzle-orm": "^0.45.4"
+    "drizzle-orm": "^0.45.4",
+    "@node-rs/argon2": "^2.0.0",
+    "otpauth": "^9.0.0",
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/s3-request-presigner": "^3.0.0",
+    "pdfmake": "^0.3.0",
+    "zod": "^4.0.0",
+    "pg-boss": "^12.38.0"
+  },
+  "devDependencies": {
+    "@lr/terminal-sdk": "workspace:*",
+    "pg": "^8.13.0",
+    "@types/pg": "^8.11.0",
+    "vitest": "^5.0.5"
   }
 }

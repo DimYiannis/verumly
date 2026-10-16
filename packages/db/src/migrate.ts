@@ -38,8 +38,25 @@ export async function dropDatabase(env: DbEnv, name: string): Promise<void> {
   }
 }
 
-/** Apply drizzle migrations, set role passwords from env, install pg-boss and grant job-table access. */
+const MIGRATE_LOCK_KEY = 727_274_001;
+
+/**
+ * Roles are cluster-wide, so two migrations running at once (parallel test files, each with its own database)
+ * race on CREATE/ALTER ROLE ("tuple concurrently updated"). An advisory lock on the maintenance database serialises them.
+ */
 export async function migrate(env: DbEnv): Promise<void> {
+  const lock = new pg.Client({ connectionString: adminDbUrl({ ...env, PG_DATABASE: 'postgres' }) });
+  await lock.connect();
+  try {
+    await lock.query('select pg_advisory_lock($1)', [MIGRATE_LOCK_KEY]);
+    await applyMigrations(env);
+  } finally {
+    await lock.end(); // closing the session releases the lock
+  }
+}
+
+/** Apply drizzle migrations, set role passwords from env, install pg-boss and grant job-table access. */
+async function applyMigrations(env: DbEnv): Promise<void> {
   const pool = new pg.Pool({ connectionString: adminDbUrl(env), max: 2 });
   try {
     await drizzleMigrate(drizzle(pool), { migrationsFolder });

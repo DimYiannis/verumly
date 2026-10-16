@@ -16,7 +16,6 @@
     "typecheck": "tsc -p .",
     "generate": "drizzle-kit generate",
     "migrate": "node src/migrate.ts",
-    "seed": "node src/seed.ts",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
