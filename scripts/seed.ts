@@ -33,7 +33,7 @@ export const SEED = {
   ownerEmail: 'owner@example.test',
   ownerPassword: 'owner-dev-password',
   buyerEmail: 'buyer@example.test',
-  terminalLabels: ['Kassa 1', 'Kassa 2'],
+  terminalLabels: ['Till 1', 'Till 2'],
   receiptTarget: 200,
   days: 60,
   claimedTarget: 30,
@@ -327,7 +327,7 @@ async function seedOfficialReceipt(adminDb: Db, merchantDb: Db, e: CorpusEntry, 
   const [has] = await adminDb.select({ n: count() }).from(tables.receipts).where(eq(tables.receipts.orgId, org.id));
   if ((has?.n ?? 0) > 0) return;
   const location = await ensureLocation(adminDb, org.id, m.name ?? 'Corpus merchant', (m.postcode ?? '1000AA').replace(/\s/g, ''));
-  const t = await createTerminal(adminDb, { orgId: org.id, locationId: location.id, label: 'Kassa 1' });
+  const t = await createTerminal(adminDb, { orgId: org.id, locationId: location.id, label: 'Till 1' });
   const api = await buildMerchantApi({ db: merchantDb, boss: { send: async () => null }, claimWindowDays: 90, logLevel: 'warn' });
   const printed = new Date(truthPrintedAtUtc(e.truth)!);
   const sdk = new TerminalSdk({

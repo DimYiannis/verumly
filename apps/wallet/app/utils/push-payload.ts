@@ -9,7 +9,7 @@ export interface PushPayload {
   final: boolean;
 }
 
-const FALLBACK: PushPayload = { title: 'Bonnen', body: 'Je hebt een nieuwe update.', receiptId: null, version: null, final: false };
+const FALLBACK: PushPayload = { title: 'Receipts', body: 'You have a new update.', receiptId: null, version: null, final: false };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;

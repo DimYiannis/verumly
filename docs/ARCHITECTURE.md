@@ -55,7 +55,7 @@ sequenceDiagram
   T->>M: POST /v1/receipts (Bearer, X-Signature, Idempotency-Key)
   M->>M: verify signature, validate CRF, lifecycle, store version (RLS)
   W->>B: retry resolve/view
-  B-->>W: receipt + banner "Geen definitieve bon"
+  B-->>W: receipt + banner "Not a final receipt"
   W->>B: POST /v1/me/claims (session token, secret in body)
   B->>B: sha256(secret) constant-time check, INSERT claims (PK receipt_id)
   T->>M: POST version 2 (paid)
@@ -93,7 +93,7 @@ flowchart LR
   P --> V{checks + printed totals agree?}
   V -- yes --> D[done]
   V -- no --> N[needs_review: user corrects]
-  D --> M{KvK / BTW-id belongs to an org and an unclaimed receipt has the same gross within 30 min?}
+  D --> M{KvK / VAT ID belongs to an org and an unclaimed receipt has the same gross within 30 min?}
   M -- yes --> MR[matched_receipt_id: offer replace]
   M -- no --> L[upsert lead by merchant_key; status new at LEAD_THRESHOLD uploaders]
 ```

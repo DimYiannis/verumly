@@ -9,8 +9,8 @@ export function smtpMailer(opts: { host: string; port: number; from: string }): 
       await transport.sendMail({
         from: opts.from,
         to,
-        subject: `Je inlogcode / Your login code: ${code}`,
-        text: `Je inlogcode is ${code}. Deze is 10 minuten geldig.\nYour login code is ${code}. It is valid for 10 minutes.`,
+        subject: `Your login code: ${code}`,
+        text: `Your login code is ${code}. It is valid for 10 minutes.`,
       });
     },
   };

@@ -130,14 +130,14 @@ describe('seed (v2 §15)', () => {
 });
 
 describe('export job vs the seed, recomputed independently', () => {
-  it('accountant CSV: BTW per day and rate, rubriek 1a/1b, and the period totals match the oracle to the cent', async () => {
+  it('accountant CSV: VAT per day and rate, VAT return box 1a/1b, and the period totals match the oracle to the cent', async () => {
     const exp = oracle(seeded.planned);
     const days = Object.keys(exp.byDay).sort();
     const from = days[0]!;
     const to = days[days.length - 1]!;
     const csv = await runExportJob('btw_csv', from, to);
     const rows = csv.trim().split('\n').map((l) => l.split(','));
-    expect(rows[0]).toEqual(['scope', 'period', 'rubriek', 'rate', 'gross_cents', 'net_cents', 'vat_cents', 'receipts']);
+    expect(rows[0]).toEqual(['scope', 'period', 'vat_return_box', 'rate', 'gross_cents', 'net_cents', 'vat_cents', 'receipts']);
 
     const dayRows = rows.filter((r) => r[0] === 'day');
     const expectedDayRows = days.flatMap((d) => [21, 9].filter((rate) => exp.byDay[d]?.[rate]).map((rate) => [d, rate, exp.byDay[d]![rate]!] as const));
@@ -148,7 +148,7 @@ describe('export job vs the seed, recomputed independently', () => {
       expect(row![2]).toBe(rate === 21 ? '1a' : '1b');
       expect(row!.slice(4).map(Number)).toEqual([e.gross, e.net, e.vat, e.receipts]);
     }
-    // period totals per rubriek
+    // period totals per VAT return box
     for (const rate of [21, 9]) {
       const total = expectedDayRows.filter(([, r]) => r === rate).reduce((s, [, , e]) => ({ gross: s.gross + e.gross, net: s.net + e.net, vat: s.vat + e.vat, receipts: s.receipts + e.receipts }), { gross: 0, net: 0, vat: 0, receipts: 0 });
       const row = rows.find((r) => r[0] === 'period' && r[3] === String(rate));

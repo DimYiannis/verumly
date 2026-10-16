@@ -13,8 +13,8 @@ export interface ExportOutcome {
 
 /**
  * Build the CSV for a queued `merchant.exports` row, upload it to S3 and store a presigned link valid for 24 hours.
- * `sales_csv`: one row per paid/void receipt. `btw_csv`: accountant file, BTW per day and rate plus period totals per
- * rubriek (1a = 21%, 1b = 9%, 1e = 0% / out of scope). Failures mark the row `failed` and rethrow for the retry.
+ * `sales_csv`: one row per paid/void receipt. `btw_csv`: accountant file, VAT per day and rate plus period totals per
+ * VAT return box (1a = 21%, 1b = 9%, 1e = 0% / out of scope). Failures mark the row `failed` and rethrow for the retry.
  */
 export async function runExport(ctx: WorkerCtx, job: ExportJob): Promise<ExportOutcome> {
   const [row] = await ctx.db.select().from(tables.exportsTable).where(eq(tables.exportsTable.id, job.exportId));

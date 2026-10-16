@@ -82,8 +82,8 @@ describe('notify-version', () => {
 
     const p2 = JSON.parse(decryptWebPush(sub.browser, first!.body));
     const p3 = JSON.parse(decryptWebPush(sub.browser, second!.body));
-    expect(p2).toEqual({ title: 'Bon bijgewerkt', body: 'Café Het Plein: je bon is bijgewerkt (nog niet definitief).', receiptId: r.receiptId, version: 2, final: false });
-    expect(p3).toEqual({ title: 'Bon definitief', body: 'Café Het Plein: je bon is betaald en definitief.', receiptId: r.receiptId, version: 3, final: true });
+    expect(p2).toEqual({ title: 'Receipt updated', body: 'Café Het Plein: your receipt was updated (not final yet).', receiptId: r.receiptId, version: 2, final: false });
+    expect(p3).toEqual({ title: 'Receipt final', body: 'Café Het Plein: your receipt is paid and final.', receiptId: r.receiptId, version: 3, final: true });
     // the payload carries no amounts or lines
     expect(JSON.stringify(p3)).not.toMatch(/\d,\d\d|€/);
   });
@@ -149,7 +149,7 @@ describe('notify-version', () => {
     const voidRes = await submit(ww.w.merchant, org, { ...buildCrf({ receiptId: r.receiptId, version: 3, state: 'void', org, voidOf: r.receiptId }) });
     expect(voidRes.status).toBe(201);
     await notifyVersion(ww.ctx, { receiptId: r.receiptId, version: 3, state: 'void' });
-    expect(JSON.parse(decryptWebPush(sub.browser, push.requests[0]!.body))).toMatchObject({ title: 'Bon vervallen', version: 3, final: true });
+    expect(JSON.parse(decryptWebPush(sub.browser, push.requests[0]!.body))).toMatchObject({ title: 'Receipt voided', version: 3, final: true });
 
     push.requests.length = 0;
     const saved = ww.ctx.vapid;

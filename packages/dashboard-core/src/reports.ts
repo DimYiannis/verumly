@@ -44,11 +44,11 @@ export async function vatByDay(db: Db, orgId: string, from: string, to: string):
   });
 }
 
-/** Aangifte omzetbelasting rubrieken: 1a = 21%, 1b = 9%, 1e = 0% / outside scope. */
+/** VAT return boxes: 1a = 21%, 1b = 9%, 1e = 0% / outside scope. */
 export const RUBRIEK: Record<21 | 9 | 0, string> = { 21: '1a', 9: '1b', 0: '1e' };
 
 export function vatCsv(rows: VatDayRow[]): string {
-  const lines = ['date,rubriek,rate,gross_cents,net_cents,vat_cents,receipts'];
+  const lines = ['date,vat_return_box,rate,gross_cents,net_cents,vat_cents,receipts'];
   for (const r of rows) lines.push([r.day, RUBRIEK[r.rate], r.rate, r.gross, r.net, r.vat, r.receipts].join(','));
   return `${lines.join('\n')}\n`;
 }

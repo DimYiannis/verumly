@@ -18,7 +18,7 @@ Found during the build and still open (details in the per-area sections below):
 7. **Accept-match is a claim without the secret** (v2 §11 design): limited to unclaimed receipts with the same total in a 30-minute window, but not abuse-tested.
 8. The `http` extractor was only run against a stub, never a real Qianfan endpoint; PDF and HEIC uploads are refused by it (`pdf_unsupported`, `unsupported_file`).
 9. **Not verified by this repo:** a real phone camera scanning the QR; real push delivery to a device (push was received and decrypted by a local endpoint); iOS/Safari (the `iPhone 13` descriptor runs on Chromium; no WebKit installed); `notificationclick`; browser PUT to S3 (needs a CORS rule for RECEIPT_HOST); the wallet's upload, insights, consents, export and delete-account UIs end to end (uploads were exercised with mocks in the wallet smoke; the API side is tested against real Postgres/S3).
-10. No real corpus exists: the §5 per-rate BTW rounding rule is untested against real receipts, and the extraction accuracy numbers are **MOCK**. `known-misfits.json` is `[]` because no mock receipt genuinely misfits.
+10. No real corpus exists: the §5 per-rate VAT rounding rule is untested against real receipts, and the extraction accuracy numbers are **MOCK**. `known-misfits.json` is `[]` because no mock receipt genuinely misfits.
 11. `scripts/journey.ts` hop 6 calls `@lr/dashboard-core` in-process rather than the dashboard over HTTP (the dashboard over HTTP is covered by Playwright scenarios 3 and 4). See DECISIONS.
 12. Per-process in-memory limiters (resolver per-IP, dashboard login/TOTP: 20 per IP per 5 minutes, so more than two E2E runs in 5 minutes against one running stack can trip it); MFA lockout is per process; TOTP replay is not prevented; the production CSP keeps `'unsafe-inline'` for scripts; the wallet sets no CSP.
 13. RLS trusts `app.org_id`, which a connection can set itself: it guards against application bugs, not a compromised merchant-api/dashboard process.
@@ -55,14 +55,14 @@ Reset: `docker compose down -v && docker compose up -d && pnpm db:migrate && pnp
 | dashboard: TOTP login, create terminal, key shown once, revoke | 2.1 s |
 | merchant offline: 3 offline sales all reach the dashboard archive | 2.9 s |
 
-HTML report: `docs/e2e-report/index.html`. Screenshots in `docs/e2e-screenshots/`: `qr-on-simulator`, `prebill-banner-phone`, `bon-opslaan-sheet`, `wallet-with-receipt`, `final-version-after-paying`, `arriving-state`, `dashboard-archive`.
+HTML report: `docs/e2e-report/index.html`. Screenshots in `docs/e2e-screenshots/`: `qr-on-simulator`, `prebill-banner-phone`, `save-receipt-sheet`, `wallet-with-receipt`, `final-version-after-paying`, `arriving-state`, `dashboard-archive`.
 
 ### Step 1 — walking skeleton
 
 | Command | Result |
 | --- | --- |
 | `pnpm --filter @lr/crypto test` | PASS — 17 passed, 0 failed (RFC 8032 §7.1: 5 vectors × public key/signature/verify; RFC 8785: 6 cyberphone data files; UUIDv7 bits; secrets; sign/verify) |
-| `pnpm test:journey` | PASS — 6 hops (1 offline create + QR, 2 pending, 3 flush + preview, 4 Mailpit login + claim + wallet, 5 v3 paid final + 2 notify-version jobs, 6 archive + BTW 9% 680/624/56 and 21% 389/321/68) |
+| `pnpm test:journey` | PASS — 6 hops (1 offline create + QR, 2 pending, 3 flush + preview, 4 Mailpit login + claim + wallet, 5 v3 paid final + 2 notify-version jobs, 6 archive + VAT 9% 680/624/56 and 21% 389/321/68) |
 | `pnpm lint` | PASS — no output, exit 0 |
 | `pnpm typecheck` | PASS — 14 tasks successful |
 | `pnpm test` | PASS — 14 tasks successful (only `@lr/crypto` has tests at this step) |
@@ -109,7 +109,7 @@ The sections below were written by the agent that built each area.
 
 ## Corpus misfits (Test C)
 
-`fixtures/receipts-nl/known-misfits.json` is `[]`. Actual misfits on the mock corpus: **none** (MOCK). This says nothing about real receipts: the mock numbers were written under the §5 rule, so agreement with the rule is by construction. The check that matters (does the printed BTW on real kassabonnen follow per-rate rounding, or per-line?) is **still open** until real `*.truth.json` files arrive; Test C will report it as `vat:<rate>` misfits.
+`fixtures/receipts-nl/known-misfits.json` is `[]`. Actual misfits on the mock corpus: **none** (MOCK). This says nothing about real receipts: the mock numbers were written under the §5 rule, so agreement with the rule is by construction. The check that matters (does the printed VAT on real kassabonnen follow per-rate rounding, or per-line?) is **still open** until real `*.truth.json` files arrive; Test C will report it as `vat:<rate>` misfits.
 
 ## Line-kind coverage (Test C)
 
@@ -121,7 +121,7 @@ The sections below were written by the agent that built each area.
 | cash rounding | `mock-contant-afronding` (12,37 → −0,02) | covered |
 | return | `mock-retour` (−1 × 1.249,00) | covered |
 
-Uncovered: none on mock. Not covered by any receipt (mock or otherwise): 0% BTW rows, multi-payment receipts, tips, receipts with a `printedBase` basis `incl` on a deposit, drogist/apotheek lines, photos (the mock PNGs are clean renders, so Qianfan on real photos is untested).
+Uncovered: none on mock. Not covered by any receipt (mock or otherwise): 0% VAT rows, multi-payment receipts, tips, receipts with a `printedBase` basis `incl` on a deposit, drogist/apotheek lines, photos (the mock PNGs are clean renders, so Qianfan on real photos is untested).
 
 ## Extraction eval (Test D / `pnpm eval:extraction`) — **MOCK**
 
@@ -132,7 +132,7 @@ MOCK CORPUS — not a real accuracy measurement. Recorded outputs are simulated 
 | merchant key | 6 | 6 | 100% |
 | date/time | 6 | 6 | 100% |
 | gross | 5 | 6 | 83% |
-| BTW per rate | 5 | 6 | 83% |
+| VAT per rate | 5 | 6 | 83% |
 | payment method | 6 | 6 | 100% |
 | line count | 6 | 6 | 100% |
 
@@ -145,19 +145,19 @@ Status: 4 done, 2 needs_review, **0 false done** (gate holds).
 | mock-retour | – | done | – |
 | mock-supermarkt-statiegeld-bonus | – | done | – |
 | mock-weegschaal | – | done | – |
-| mock-zonder-btw-id | 9% BTW row missing | needs_review | `vat_missing_rate` |
+| mock-zonder-btw-id | 9% VAT row missing | needs_review | `vat_missing_rate` |
 
-The 83% on gross and BTW per rate are the two planted receipts: the parser reports the misread gross (and the missing BTW row) as read, but refuses to call them `done`, which is what the gate wants.
+The 83% on gross and VAT per rate are the two planted receipts: the parser reports the misread gross (and the missing VAT row) as read, but refuses to call them `done`, which is what the gate wants.
 
 ### Gate stress test (MOCK)
 
-For each of the 6 recorded answers every digit was deleted or replaced by each of the 9 other digits, in three sweeps (KIE corrupted with markdown intact; markdown corrupted with KIE intact; KIE corrupted with no markdown). No mutant reached `done` with a gross or per-rate BTW different from the truth (test `gate holds under single-digit OCR corruption`, 6 cases). Mutants that stay `done` are in fields the arithmetic cannot check (e.g. a digit in the date, KvK or bon number), so the gate says nothing about those fields; the date/time and merchant-key accuracy above is therefore only as good as the OCR.
+For each of the 6 recorded answers every digit was deleted or replaced by each of the 9 other digits, in three sweeps (KIE corrupted with markdown intact; markdown corrupted with KIE intact; KIE corrupted with no markdown). No mutant reached `done` with a gross or per-rate VAT different from the truth (test `gate holds under single-digit OCR corruption`, 6 cases). Mutants that stay `done` are in fields the arithmetic cannot check (e.g. a digit in the date, KvK or bon number), so the gate says nothing about those fields; the date/time and merchant-key accuracy above is therefore only as good as the OCR.
 
 ## Open
 
 - Real-corpus numbers (accuracy, per-rate vs per-line rounding, photo OCR quality) do not exist yet. Everything above is MOCK.
 - `tools/qianfan/serve.md` and `colab_extract.ipynb` were not executed (no GPU/Colab here). Only their prompts and the fixed decoding flag are test-checked.
-- Merchant, date and KvK/BTW-id digits are not covered by any arithmetic check; a single misread digit there still yields `done` (the BTW-id has a format check only, per v2 §5).
+- Merchant, date and KvK/VAT ID digits are not covered by any arithmetic check; a single misread digit there still yields `done` (the VAT ID has a format check only, per v2 §5).
 
 
 ## Findings: integration tests, privacy canary, hardening
@@ -235,7 +235,7 @@ Also found while testing and fixed in test support only: `scripts/lib/harness.ts
 | Shared or forwarded receipt link | `threats.test.ts › someone else holding the link …`; `resolve.test.ts › exposes nothing buyer-side` | After the owner claims, a second user gets `409` and the receipt does not enter their wallet (`/v1/me/receipts/:id` → 404). **But `/v1/resolve/view` keeps returning the full receipt (lines, totals, versions) to anyone holding the link, forever** (with `claimed: true`); the response carries no user id or e-mail. Behaviour is as v1 specified for the resolver; whether the read-only view should stop after a claim is a product decision. Open |
 | Secret left in browser history / share sheet | not covered here (wallet E2E) | Server side only: the secret never appears in a URL path or query, only in POST bodies and the URL fragment; logs verified secret-free (`apps/*/test/logging.test.ts`) and canary shows it nowhere on the merchant side |
 | Claim race | `claims.test.ts › claim race` | 16 parallel claimers: one 201, fifteen 409 `already_claimed`, exactly one row (`buyer.claims.receipt_id` is the primary key), one `claim` audit entry. Same user from 8 devices: one 201, seven 200 |
-| Terminal clock backdating | `threats.test.ts › the claim window runs from the server received_at …` | `claimable_until = received_at + CLAIM_WINDOW_DAYS` using the **server** clock for terminal receipts dated 2020-01-01, 2099-01-01 and now alike (90 days to 6 decimals). A 2020-dated receipt is claimable today. **`createdAt` is stored exactly as sent**: no check against the server clock, no skew bound, so a terminal (or one with a wrong clock) decides the date the buyer sees, how the receipt sorts in the wallet and which `from`/`to` filter it matches (tested). Whether the dashboard archive, reports and BTW export bucket by this terminal date was not tested here. Open: v2 left the choice undecided; a bound such as ±24 h would be a product decision |
+| Terminal clock backdating | `threats.test.ts › the claim window runs from the server received_at …` | `claimable_until = received_at + CLAIM_WINDOW_DAYS` using the **server** clock for terminal receipts dated 2020-01-01, 2099-01-01 and now alike (90 days to 6 decimals). A 2020-dated receipt is claimable today. **`createdAt` is stored exactly as sent**: no check against the server clock, no skew bound, so a terminal (or one with a wrong clock) decides the date the buyer sees, how the receipt sorts in the wallet and which `from`/`to` filter it matches (tested). Whether the dashboard archive, reports and VAT export bucket by this terminal date was not tested here. Open: v2 left the choice undecided; a bound such as ±24 h would be a product decision |
 | Versions signed offline before a key was revoked | `terminal-sdk/test/server.test.ts › threat: …` | Revocation is checked at upload time, not signing time. A revoked terminal's queued versions get **`401 unauthorized`**: single upload path → item dead-lettered; batch path → (after fix 5) the 401 batch is retried item by item and all are dead-lettered; before the fix the queue retried for ever. Versions the server accepted *before* the revoke stay (not retroactive). A claimed receipt whose later versions were refused stays at its last version: the buyer sees the presented pre-bill, `final: false`. A replacement terminal cannot continue it (`404`: appends must come from the receipt's own terminal). The refused attempts leave **no audit entry** (revocation fails before signature checking) |
 | Free text that could carry identifiers | `merchant-api/test/freetext.test.ts`; `terminal-sdk/test/mapping.test.ts` | Server: every unknown key (`notes`, `customerName`, `loyaltyCard`, `pan`, `email`, `phone`, … at top level and nested) → 400, nothing stored; description > 80 characters → 400; `fiscal.extra` ≤ 10 keys × 80 characters. **Residual channels the server does not inspect and tests pin as stored-as-sent:** `lines[].description`, `sku`, `category`, `fiscal.extra` values, `documentNumber`, `merchant.name`. The SDK scrubs masked PANs and ≥ 8-digit runs from descriptions, masked PANs from `sku`/`category`; a **name typed into the description cannot be detected** (`Taart voor Jan Jansen` is kept) and a 6-digit BIN prefix of a partly masked PAN survives |
 
@@ -280,10 +280,10 @@ All commands run from the repo root against the docker-compose Postgres (5433), 
 ### What the tests prove (all against real Postgres + S3 + Mailpit where relevant)
 
 - **Upload → done** (presign, real PUT to S3, `complete`, `extract-upload`, status endpoint with draft); **needs_review → PATCH → done**; another user gets 404 on read/complete/patch; `complete` before the PUT is 409; a file over 10 MB is deleted and the upload fails `bad_size`; unknown media/oversize requests are 400; no recording → `failed: no_recorded_extraction`; transient error rethrown, final attempt → `failed: extractor_unavailable`.
-- **Match → accept-match**: same KvK/BTW-id, same gross, within ±30 min, unclaimed → `matched_receipt_id`; accept-match creates a `photo_match` claim, the upload becomes `replaced`, accepting again is idempotent. No match for wrong gross (±1 cent), 31 minutes either side, `open` receipts, or a receipt someone else claimed (409 on accept). A total corrected by the buyer can create the match.
-- **Leads**: keyed by `kvk:` when the BTW-id is missing, `vat:` otherwise; the same user twice counts once; the second distinct user reaches `LEAD_THRESHOLD=2` → `new`; a known organisation (by BTW-id, or by KvK only) is never a lead; 6 concurrent uploaders are all counted; `leads:report` prints no names, keys, postcodes or user ids.
+- **Match → accept-match**: same KvK/VAT ID, same gross, within ±30 min, unclaimed → `matched_receipt_id`; accept-match creates a `photo_match` claim, the upload becomes `replaced`, accepting again is idempotent. No match for wrong gross (±1 cent), 31 minutes either side, `open` receipts, or a receipt someone else claimed (409 on accept). A total corrected by the buyer can create the match.
+- **Leads**: keyed by `kvk:` when the VAT ID is missing, `vat:` otherwise; the same user twice counts once; the second distinct user reaches `LEAD_THRESHOLD=2` → `new`; a known organisation (by VAT ID, or by KvK only) is never a lead; 6 concurrent uploaders are all counted; `leads:report` prints no names, keys, postcodes or user ids.
 - **Retention**: deleting an account → 204, all sessions and subscriptions gone at once, sign-in refused, audit entry without the user id; day 29 nothing hard-deleted; day 31 user, claims, uploads, consents, email codes, the S3 object and lead-uploader rows are gone and the lead count recomputed, **merchant receipts and their versions remain**, other users untouched. Receipts past `retention_years` (1 vs 7) are deleted with versions, lines, claims and idempotency keys; newer ones stay. Expired codes/sessions, old `resolve_failures` and abandoned uploads are pruned, fresh rows stay.
-- **Export matches the seed, recomputed independently**: the test runs the real seed on a fresh database, then computes BTW per Amsterdam day and rate from the seed plan with its own arithmetic (no `@lr` code; round-half-up per receipt and rate) and compares it to the `btw_csv` the `export` job uploaded to S3 and the test fetched through the 24 h link: every day row (rubriek 1a/1b, gross/net/vat/receipts) and the period totals agree to the cent; void and presented receipts are absent. The `sales_csv` has one row per paid/void receipt and its gross and rounding totals match. `daily_rollups` equal the oracle per day (gross, BTW per rate, paid count, void count) and re-running replaces rows.
+- **Export matches the seed, recomputed independently**: the test runs the real seed on a fresh database, then computes VAT per Amsterdam day and rate from the seed plan with its own arithmetic (no `@lr` code; round-half-up per receipt and rate) and compares it to the `btw_csv` the `export` job uploaded to S3 and the test fetched through the 24 h link: every day row (rubriek 1a/1b, gross/net/vat/receipts) and the period totals agree to the cent; void and presented receipts are absent. The `sales_csv` has one row per paid/void receipt and its gross and rounding totals match. `daily_rollups` equal the oracle per day (gross, VAT per rate, paid count, void count) and re-running replaces rows.
 - **notify-version**: exactly one request per version per subscription to a local HTTP push endpoint; headers `content-encoding: aes128gcm`, `authorization: vapid t=…, k=<public key>`, `ttl`, a per-version `topic`; the body has no readable receipt text and **decrypts with the browser-side private key** (RFC 8291 implemented in the test) to `{title, body, receiptId, version, final}`; v2 says "nog niet definitief" (`final:false`), v3 `paid` says definitief (`final:true`); void says vervallen. 410 and 404 delete only that subscription; 503 keeps it and fails the job; only the owner's subscriptions are used; no claim → nothing; no VAPID → skipped; logs contain no endpoint, key or text. The pg-boss loop test shows a job sent by `merchant_api` is delivered as one push.
 - **Categoriser**: 12 keyword cases, apotheek vs drogist rules, table consistency; the job fills null categories, keeps the terminal's, flags health lines, and a second run changes 0 lines.
 - **Extractor**: HTTP extractor against a stub OpenAI-compatible server sends both fixed prompts with `temperature 0` and a base64 data URL, takes the revision from the response; 4xx permanent, 5xx retryable, PDF and unknown bytes refused with a code; recorded extractor reads `<sha>.qianfan.json` and falls back to `mock/`.
@@ -296,7 +296,7 @@ All commands run from the repo root against the docker-compose Postgres (5433), 
 - **Real push delivery is unverified**: pushes were received by a local HTTP endpoint and decrypted with the right key, not by FCM/APNs/Mozilla. Behaviour of real push services (e.g. their handling of the `Topic` header) is untested.
 - **Browser PUT to S3 is untested** and the bucket needs a CORS rule for `RECEIPT_HOST`; the S3 mock does not enforce the signed `Content-Length`, so the real-S3 size enforcement is only covered by the `complete` size check.
 - Export files stay in S3 after the 24 h link expires (needs a lifecycle rule, a deployment decision). Daily rollups are kept after their receipts are deleted by retention.
-- **Accept-match is a claim without the secret.** An attacker who photographs (or fabricates) a receipt of a merchant whose KvK/BTW-id they know, with the right total and time, can claim an unclaimed official receipt. It is the design in v2 §11; the exposure is limited to receipts that are unclaimed, in the 30-minute window and have exactly that total. Not covered by a test of abuse; a candidate for the threat list.
+- **Accept-match is a claim without the secret.** An attacker who photographs (or fabricates) a receipt of a merchant whose KvK/VAT ID they know, with the right total and time, can claim an unclaimed official receipt. It is the design in v2 §11; the exposure is limited to receipts that are unclaimed, in the 30-minute window and have exactly that total. Not covered by a test of abuse; a candidate for the threat list.
 - No per-process upload throttle on the presign endpoint beyond the 50/hour database count; `@fastify/rate-limit` is per process (as documented for the buyer API).
 - The three "Known open issues" in v2 are untouched.
 
@@ -319,14 +319,14 @@ All commands run from the repo root against the docker-compose Postgres (5433), 
 
 Receipts created through the real `@lr/terminal-sdk` (`receiptHost` = `http://localhost:3001`, `presented`, 2×Koffie 9% + Bier 21%).
 
-1. Logged out, open `/r/<id>#<secret>` → `presented-banner` reads "Geen definitieve bon / Not a final receipt", 2 `receipt-line`s, `save-to-wallet`, **no** `confirm-sheet`. `location.hash` is `''` and `page.url()` has no `#`. No captured request URL contains the secret.
-2. Save → `/login?next=/r/<id>` → email code read from Mailpit → back on `/r/<id>` with the "Bon opslaan?" sheet showing Café Het Plein, € 10,69, time.
-3. Save → `/receipts/<id>?saved=1`, banner + 2 BTW rows. Wallet `/` lists 1 `receipt-item`.
+1. Logged out, open `/r/<id>#<secret>` → `presented-banner` reads "Not a final receipt — this is the bill, the final receipt follows after payment", 2 `receipt-line`s, `save-to-wallet`, **no** `confirm-sheet`. `location.hash` is `''` and `page.url()` has no `#`. No captured request URL contains the secret.
+2. Save → `/login?next=/r/<id>` → email code read from Mailpit → back on `/r/<id>` with the "Save this receipt?" sheet showing Café Het Plein, € 10.69, time.
+3. Save → `/receipts/<id>?saved=1`, banner + 2 VAT rows. Wallet `/` lists 1 `receipt-item`.
 4. (prod) service worker controls the page; context offline → `/receipts/<id>` renders from the service-worker shell + IndexedDB (`cached-notice`, `offline-badge`, 2 lines).
 5. (prod) offline, open a second receipt link → `arriving-state` (fragment stripped); `/` shows 1 `arriving-item`. Back online (`setOffline(false)` + `online` event) → the pending claim completes, no arriving items, wallet has 2 receipts.
 6. (prod) SDK pays v3 cash → `/receipts/<id>` shows `final-badge`, no banner, rounding line, version history.
 7. (prod) CDP `ServiceWorker.deliverPushMessage` with the worker's payload shape → the SW shows exactly one notification with title/body/tag=receiptId/data.
-8. Add-receipt UI: file chosen → presign → PUT → complete → poll → `needs_review` correction form pre-filled (merchant, `19,99`) → PATCH → `match-offer` "Officiële bon gevonden — vervangen?" → `accept-match` → `/receipts/<id>`. **The upload endpoints were mocked with Playwright `page.route`** (the throwaway stack has no S3 or worker); this checks the UI, not buyer-api/S3/worker.
+8. Add-receipt UI: file chosen → presign → PUT → complete → poll → `needs_review` correction form pre-filled (merchant, `19,99`) → PATCH → `match-offer` "Official receipt found — replace?" → `accept-match` → `/receipts/<id>`. **The upload endpoints were mocked with Playwright `page.route`** (the throwaway stack has no S3 or worker); this checks the UI, not buyer-api/S3/worker.
 9. No console errors other than `Failed to load resource` caused by the deliberate offline phase.
 
 Screenshots (not committed): `/tmp/wallet-smoke/{1-banner-readonly,2-confirm-sheet,3-saved-detail,4-wallet,5-offline-saved,6-arriving,7-arrived,8-final,9-correction-form,10-match-offer}.png`.
@@ -368,14 +368,14 @@ All commands run from the repo root against the docker-compose Postgres (5433), 
 ### Browser smoke (throwaway script, removed afterwards)
 
 Fresh migrated database, owner created with `createMerchantUser`, then in Chromium:
-login → TOTP enrol (otpauth URI + secret shown, code from `otpauth`) → archive; terminals page: generate keypair, create terminal, API key shown (43 chars), gone after dismiss and after reload, revoke (two-step) → status `revoked`; simulator: "Set up demo terminal" → 2×koffie + bier → Present → QR rendered at 576×576 px (1280×900 window) with the URL as text → Pay cash (rounding €0,01, total €10,70) → outbox drains to 0; Offline toggle on → 3 card sales queued → off → outbox drains; archive shows 4 receipts, the oldest has 2 versions, PDF download is `application/pdf` starting `%PDF-`; reports show the day row (4 receipts, €25,54 gross, €21,72 net, €3,82 BTW, rounding €0,01); an export request is `queued`; users, organisation (KvK shown) and locations pages load; logout. Console errors: none. Server side of the same run: 4 receipts (v2 + three v1), audit rows `terminal_key_created` ×2 and `terminal_key_revoked` ×1.
+login → TOTP enrol (otpauth URI + secret shown, code from `otpauth`) → archive; terminals page: generate keypair, create terminal, API key shown (43 chars), gone after dismiss and after reload, revoke (two-step) → status `revoked`; simulator: "Set up demo terminal" → 2×koffie + bier → Present → QR rendered at 576×576 px (1280×900 window) with the URL as text → Pay cash (rounding €0,01, total €10,70) → outbox drains to 0; Offline toggle on → 3 card sales queued → off → outbox drains; archive shows 4 receipts, the oldest has 2 versions, PDF download is `application/pdf` starting `%PDF-`; reports show the day row (4 receipts, €25,54 gross, €21,72 net, €3,82 VAT, rounding €0,01); an export request is `queued`; users, organisation (KvK shown) and locations pages load; logout. Console errors: none. Server side of the same run: 4 receipts (v2 + three v1), audit rows `terminal_key_created` ×2 and `terminal_key_revoked` ×1.
 
 ### What the automated tests cover
 
 - **Auth:** wrong password and unknown email both fail; TOTP enrol (wrong first code does not enrol; seed stored encrypted `v1.…`, never plaintext); verify path on the next login; password-only session is not an actor; pre-MFA expiry at 10 min, full session 12 h (injected clock); token stored as sha256; logout; enrolment token bound to its session; 5 wrong codes delete the session and write `dashboard_mfa_failed` without the email; sessions resolve only to their own org; KeyProvider round trip, wrong-length key rejected, tampered ciphertext rejected.
 - **Roles:** the permission table; accountant gets reads + export request and `ForbiddenError` from every write/user/terminal function; manager can run locations but not org settings or users; last owner cannot be demoted/deleted; cross-org user ids are `not_found`. Same matrix checked again over HTTP (accountant 403s).
 - **Terminals:** key returned once, only `sha256` stored (checked in the DB row and in the list output), public key validated (6 bad shapes), other org's location refused, revoke sets `revoked_at` (seen through merchant-api's `authenticate_terminal`), both audit events present without the key, and a revoked key makes merchant-api answer 401 to the browser-path SDK (dead-lettered, not retried).
-- **Reports:** seven sales built with the real terminal SDK and hand-computed expected values (daily and monthly rows, BTW per rate with per-receipt rounding, cash rounding +1, a void, a presented-only bill excluded, an Amsterdam midnight boundary: 23:30 UTC on 31 March counts on 1 April); other org's sale never appears; `vatByDay` agrees.
+- **Reports:** seven sales built with the real terminal SDK and hand-computed expected values (daily and monthly rows, VAT per rate with per-receipt rounding, cash rounding +1, a void, a presented-only bill excluded, an Amsterdam midnight boundary: 23:30 UTC on 31 March counts on 1 April); other org's sale never appears; `vatByDay` agrees.
 - **Archive/RLS:** filters (text, amount, date, state), versions, PDF bytes; org A cannot see org B by search, by id, or by raw SQL; no org context shows zero rows; the `dashboard` role cannot `SELECT` any `buyer.*` table (7 tables).
 - **Exports:** request enqueues `export` with `{exportId}`; link appears only for `done` + `s3_key` with `X-Amz-Expires=86400`; other org sees none; kind/period validated.
 - **IndexedDbStore:** the OutboxStore contract (Memory and IDB), reopen persistence with increasing `seq`, atomic commit (a failing second write leaves no receipt and no outbox row), and a real `TerminalSdk` queueing offline then flushing in one batch.
@@ -412,12 +412,12 @@ All numbers are copied from output I saw. Machine: macOS arm64, Docker compose (
 
 ## What each scenario proves (all PASS in the runs above)
 
-1. **Buyer journey on a phone** (`buyer-journey.spec.ts`): owner created in the DB, dashboard login with TOTP enrolment, demo terminal set up in the simulator, 2×Koffie + Bier presented (€10,69), QR URL read from `sim-qr-url`; a second context with the `iPhone 13` descriptor opens it: `presented-banner` "Geen definitieve bon", 2 lines, no confirm sheet while logged out, `location.hash === ''` and no `#` in the URL; Save → login → code from Mailpit → `confirm-sheet` (merchant name, `10,69`) → save → `/receipts/<id>` (no fragment) → wallet list shows the receipt (`data-state=presented`). A push subscription with real generated keys is registered; the simulator pays (card): the server holds v2 `paid`; the wallet after reload shows `final-badge`, `data-state=paid`, `data-version=2`, no banner. The local push endpoint received **exactly 1** request (re-checked after a 6 s quiet window), `Content-Encoding: aes128gcm`, no merchant name / amount / receipt id in the ciphertext, and RFC 8291 decryption yields `{receiptId, version: 2, final: true}` with exactly the keys `title, body, receiptId, version, final`.
+1. **Buyer journey on a phone** (`buyer-journey.spec.ts`): owner created in the DB, dashboard login with TOTP enrolment, demo terminal set up in the simulator, 2×Koffie + Bier presented (€10.69), QR URL read from `sim-qr-url`; a second context with the `iPhone 13` descriptor opens it: `presented-banner` "Not a final receipt", 2 lines, no confirm sheet while logged out, `location.hash === ''` and no `#` in the URL; Save → login → code from Mailpit → `confirm-sheet` (merchant name, `10,69`) → save → `/receipts/<id>` (no fragment) → wallet list shows the receipt (`data-state=presented`). A push subscription with real generated keys is registered; the simulator pays (card): the server holds v2 `paid`; the wallet after reload shows `final-badge`, `data-state=paid`, `data-version=2`, no banner. The local push endpoint received **exactly 1** request (re-checked after a 6 s quiet window), `Content-Encoding: aes128gcm`, no merchant name / amount / receipt id in the ciphertext, and RFC 8291 decryption yields `{receiptId, version: 2, final: true}` with exactly the keys `title, body, receiptId, version, final`.
 2. **Buyer offline** (`buyer-offline.spec.ts`): receipt 1 saved online (SDK till → merchant-api); service worker controls the page; `setOffline(true)`; opening receipt 2's link shows `arriving-state` with the fragment stripped; `/` shows the offline badge, 1 `arriving-item` (id of receipt 2) and the saved receipt; the saved receipt renders from cache (`cached-notice`, 1 line, merchant name); `setOffline(false)` **without reload** → 0 arriving items, 2 receipts in the list, offline badge gone.
 3. **Merchant offline** (`merchant-offline.spec.ts`): Offline toggle, 3 card sales (koffie, appeltaart, bier), `sim-pending` = 3, the dashboard archive (second tab) is empty; toggle off → outbox drains (0 pending, 0 rejected) → archive shows exactly 3 rows, all `paid`.
 4. **Dashboard** (`dashboard.spec.ts`): TOTP enrolment then logout and login with a freshly computed code; terminal created; key (43 chars) shown once, works against merchant-api (200); gone from the DOM after dismiss and after reload, never in the list API; two-step revoke → status `revoked` → merchant-api answers **401** for that key.
 
-Screenshots (overwritten each run): `docs/e2e-screenshots/{qr-on-simulator,prebill-banner-phone,bon-opslaan-sheet,wallet-with-receipt,final-version-after-paying,arriving-state,dashboard-archive}.png`. Report: `playwright-report/` (git-ignored) copied to `docs/e2e-report/` by `pnpm e2e:report`.
+Screenshots (overwritten each run): `docs/e2e-screenshots/{qr-on-simulator,prebill-banner-phone,save-receipt-sheet,wallet-with-receipt,final-version-after-paying,arriving-state,dashboard-archive}.png`. Report: `playwright-report/` (git-ignored) copied to `docs/e2e-report/` by `pnpm e2e:report`.
 
 ## Flake and development failures (all understood)
 
@@ -439,7 +439,7 @@ Screenshots (overwritten each run): `docs/e2e-screenshots/{qr-on-simulator,prebi
 
 | Capability | Proof |
 | --- | --- |
-| Receipt journey: offline create + QR, pending, upload, Mailpit login, claim, wallet, v3 paid final, `notify-version` enqueued, archive, BTW per rate | `pnpm test:journey` (6 hops); also vitest wrapper in `apps/merchant-api/test` |
+| Receipt journey: offline create + QR, pending, upload, Mailpit login, claim, wallet, v3 paid final, `notify-version` enqueued, archive, VAT per rate | `pnpm test:journey` (6 hops); also vitest wrapper in `apps/merchant-api/test` |
 | Outside oracles: RFC 8032 §7.1 (5 vectors), RFC 8785 (6 cyberphone files), UUIDv7 bits | `pnpm --filter @lr/crypto test` (17) |
 | Dutch corpus rules, line kinds, misfit list in both directions | `pnpm --filter @lr/receipt-nl test` (173), **MOCK** corpus |
 | Extraction eval, zero false `done` gate | `pnpm eval:extraction` (**MOCK**: 4 done, 2 needs_review, 0 false done) |

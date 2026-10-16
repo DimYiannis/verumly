@@ -18,7 +18,7 @@ export function pdfRoutes(deps: AppDeps) {
       const pdf = await renderReceiptPdf(receipt.crf, { final: isFinal(receipt) });
       return reply
         .header('content-type', 'application/pdf')
-        .header('content-disposition', `attachment; filename="bon-${receipt.id.slice(0, 8)}.pdf"`)
+        .header('content-disposition', `attachment; filename="receipt-${receipt.id.slice(0, 8)}.pdf"`)
         .send(Buffer.from(pdf));
     });
   };

@@ -11,6 +11,6 @@ export default dashboardHandler('archive.read', async ({ event, actor, ctx }) =>
   const v = r?.versions.find((x) => x.version === (version ?? r.currentVersion));
   if (!r || !v) throw createError({ statusCode: 404, statusMessage: 'receipt not found' });
   const pdf = await receiptPdf(v.crf);
-  setResponseHeaders(event, { 'content-type': 'application/pdf', 'content-disposition': `attachment; filename="bon-${id.slice(0, 8)}-v${v.version}.pdf"` });
+  setResponseHeaders(event, { 'content-type': 'application/pdf', 'content-disposition': `attachment; filename="receipt-${id.slice(0, 8)}-v${v.version}.pdf"` });
   return Buffer.from(pdf);
 });

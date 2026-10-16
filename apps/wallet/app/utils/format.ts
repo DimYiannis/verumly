@@ -6,20 +6,20 @@ const TZ = 'Europe/Amsterdam';
 const BCP47: Record<Locale, string> = { nl: 'nl-NL', en: 'en-GB' };
 const euros: Partial<Record<Locale, Intl.NumberFormat>> = {};
 
-export function formatEuro(cents: number, locale: Locale = 'nl'): string {
+export function formatEuro(cents: number, locale: Locale = 'en'): string {
   const fmt = (euros[locale] ??= new Intl.NumberFormat(BCP47[locale], { style: 'currency', currency: 'EUR' }));
   return fmt.format(cents / 100);
 }
 
-export function formatQty(qty: string, locale: Locale = 'nl'): string {
+export function formatQty(qty: string, locale: Locale = 'en'): string {
   return locale === 'nl' ? qty.replace('.', ',') : qty;
 }
 
-export function formatTime(iso: string, locale: Locale = 'nl'): string {
+export function formatTime(iso: string, locale: Locale = 'en'): string {
   return new Intl.DateTimeFormat(BCP47[locale], { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 }
 
-export function formatDateTime(iso: string, locale: Locale = 'nl'): string {
+export function formatDateTime(iso: string, locale: Locale = 'en'): string {
   return new Intl.DateTimeFormat(BCP47[locale], { timeZone: TZ, day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 }
 
@@ -28,7 +28,7 @@ export function dayKey(iso: string): string {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: TZ }).format(new Date(iso));
 }
 
-export function formatDayHeading(key: string, today: Date = new Date(), locale: Locale = 'nl'): string {
+export function formatDayHeading(key: string, today: Date = new Date(), locale: Locale = 'en'): string {
   const todayKey = dayKey(today.toISOString());
   const yesterdayKey = dayKey(new Date(today.getTime() - 86_400_000).toISOString());
   if (key === todayKey) return messages[locale]['day.today'];
@@ -78,7 +78,7 @@ export function centsFromInput(value: string): number | null {
 export function inputFromCents(cents: number | null): string {
   if (cents === null) return '';
   const abs = Math.abs(cents);
-  return `${cents < 0 ? '-' : ''}${Math.floor(abs / 100)},${String(abs % 100).padStart(2, '0')}`;
+  return `${cents < 0 ? '-' : ''}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;
 }
 
 function amsterdamOffsetMs(utcMs: number): number {
