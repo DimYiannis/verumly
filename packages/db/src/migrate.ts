@@ -2,7 +2,7 @@ import { migrate as drizzleMigrate } from 'drizzle-orm/node-postgres/migrator';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { PgBoss } from 'pg-boss';
-import { adminDbUrl, dbEnvSchema, DB_ROLES, loadEnv, type DbEnv } from '@lr/config';
+import { adminDbUrl, dbEnvSchema, DB_ROLES, loadEnv, sessionModeWarning, usesDbUrls, type DbEnv } from '@lr/config';
 import { BOSS_SCHEMA, QUEUES } from './queues.ts';
 
 const migrationsFolder = new URL('../migrations', import.meta.url).pathname;
@@ -14,8 +14,14 @@ const PASSWORD_KEY = {
   dashboard: 'DASHBOARD_DB_PASSWORD',
 } as const;
 
+/** Tests create and drop databases; that must never happen on a hosted (connection-string) database. */
+export function assertLocalOnly(env: DbEnv): void {
+  if (usesDbUrls(env)) throw new Error('tests run only against the local Docker Postgres');
+}
+
 /** Create `name` if missing (connects to the maintenance DB). Returns true when created. */
 export async function ensureDatabase(env: DbEnv, name: string): Promise<boolean> {
+  assertLocalOnly(env);
   const c = new pg.Client({ connectionString: adminDbUrl({ ...env, PG_DATABASE: 'postgres' }) });
   await c.connect();
   try {
@@ -29,6 +35,7 @@ export async function ensureDatabase(env: DbEnv, name: string): Promise<boolean>
 }
 
 export async function dropDatabase(env: DbEnv, name: string): Promise<void> {
+  assertLocalOnly(env);
   const c = new pg.Client({ connectionString: adminDbUrl({ ...env, PG_DATABASE: 'postgres' }) });
   await c.connect();
   try {
@@ -90,7 +97,15 @@ async function applyMigrations(env: DbEnv): Promise<void> {
 
 if (import.meta.main) {
   const env = loadEnv(dbEnvSchema);
-  await ensureDatabase(env, env.PG_DATABASE);
-  await migrate(env);
-  console.log(`migrated ${env.PG_DATABASE} on ${env.PG_HOST}:${env.PG_PORT}`);
+  if (usesDbUrls(env)) {
+    // Hosted (Supabase): one database, nothing to create; every connection uses PG_ADMIN_URL.
+    const warning = sessionModeWarning('PG_ADMIN_URL', adminDbUrl(env));
+    if (warning) console.warn(`WARNING: ${warning}`);
+    await migrate(env);
+    console.log('migrated the database configured by PG_ADMIN_URL');
+  } else {
+    await ensureDatabase(env, env.PG_DATABASE);
+    await migrate(env);
+    console.log(`migrated ${env.PG_DATABASE} on ${env.PG_HOST}:${env.PG_PORT}`);
+  }
 }

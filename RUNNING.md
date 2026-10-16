@@ -155,6 +155,27 @@ docker compose stop                 # stop the containers, keep data
 docker compose down -v              # delete ALL local data (database, S3, mail); re-run migrate + seed after
 ```
 
+## Run against Supabase (instead of the local Docker Postgres)
+
+Only the database moves; S3 (`adobe/s3mock`), Mailpit and everything else stay local. `pnpm test`, `pnpm test:privacy` and `pnpm test:e2e` are **local-only**: they create and drop databases (they refuse to run when `PG_ADMIN_URL` is set) and `test:privacy` uses `docker exec pg_dump`.
+
+1. Create the project (Frankfurt), turn off the Data API, and download the CA certificate (Settings → Database).
+2. Copy `.env.supabase.example` to `.env.supabase` (git-ignored) and fill in the five connection strings and four role passwords. Use pooler usernames (`merchant_api.<project-ref>`, …). Ports: transaction pooler 6543 for merchant-api, buyer-api and dashboard; session pooler 5432 (or direct) for the worker and the admin.
+3. Load it into the shell (the apps do not read .env files):
+   ```sh
+   set -a; source .env.supabase; set +a
+   ```
+4. Migrate, seed, check, run:
+   ```sh
+   pnpm db:migrate               # idempotent; does not create databases when PG_ADMIN_URL is set
+   pnpm db:seed
+   pnpm check:supabase           # roles unprivileged, anon/authenticated locked out, merchant roles cannot read buyer data
+   pnpm dev --env-mode=loose     # Turborepo must pass the shell variables to the apps
+   ```
+5. Do the demo flow above.
+
+To go back to local, open a new shell (or `unset` the variables) and run `docker compose up -d` as before. If only some of the five URL variables are set, every app refuses to start and names the missing ones.
+
 ## 7. Troubleshooting
 
 | Symptom | Cause and fix |

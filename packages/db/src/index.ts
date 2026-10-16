@@ -2,7 +2,7 @@ import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
 import pg from 'pg';
 import { PgBoss } from 'pg-boss';
-import { adminDbUrl, roleDbUrl, type DbEnv, type DbRole } from '@lr/config';
+import { adminDbUrl, roleDbUrl, sessionModeWarning, type DbEnv, type DbRole } from '@lr/config';
 import * as schema from './schema.ts';
 import { BOSS_SCHEMA } from './queues.ts';
 
@@ -20,7 +20,19 @@ export interface DbHandle {
   close(): Promise<void>;
 }
 
+/** The worker holds long-lived pg-boss sessions: warn (once per process) if it was pointed at a transaction pooler. */
+let warnedWorker = false;
+function warnWorkerPooler(role: DbRole, env: DbEnv): void {
+  if (role !== 'worker' || warnedWorker) return;
+  const w = sessionModeWarning('WORKER_DB_URL', roleDbUrl(role, env));
+  if (w) {
+    warnedWorker = true;
+    console.warn(`WARNING: ${w}`);
+  }
+}
+
 export function connect(role: DbRole, env: DbEnv, opts: { max?: number } = {}): DbHandle {
+  warnWorkerPooler(role, env);
   const pool = new pg.Pool({ connectionString: roleDbUrl(role, env), max: opts.max ?? 10 });
   // a dead idle client must not crash the process
   pool.on('error', () => {});
@@ -47,6 +59,7 @@ export async function withOrg<T>(db: Db, orgId: string, fn: (tx: Tx) => Promise<
 
 /** A pg-boss instance for sending (and, in the worker, processing) jobs. Schema is created by `migrate`. */
 export function makeBoss(role: DbRole, env: DbEnv, opts: { supervise?: boolean; schedule?: boolean } = {}): PgBoss {
+  warnWorkerPooler(role, env);
   const boss = new PgBoss({
     connectionString: roleDbUrl(role, env),
     schema: BOSS_SCHEMA,

@@ -326,6 +326,16 @@ Hop 6 reads the archive and VAT report through `@lr/dashboard-core` (`searchArch
 
 - A real phone camera scanning the QR, real push delivery to a device (the worker POSTs to a local endpoint that decrypts), iOS/Safari/WebKit, the service worker's `notificationclick` (no CDP call to click a notification), PWA install, the upload/photo flow in the wallet UI, insights, settings, and the accountant/manager browser UI.
 
+## Database connection variables (Supabase)
+
+- **One full connection string per role plus one for the admin** (`PG_ADMIN_URL`, `MERCHANT_API_DB_URL`, `BUYER_API_DB_URL`, `WORKER_DB_URL`, `DASHBOARD_DB_URL`). When set, a URL is used verbatim, so SSL parameters and pooler usernames (`role.<project-ref>`) belong to the operator. Reason: Supabase needs SSL and role-specific usernames, which the local `PG_*` builder cannot express.
+- **All five or none.** If any is set and another is missing, `adminDbUrl`/`roleDbUrl` throw and name the missing variables, so every app refuses to start. This is slightly stricter than the task asked (it also refuses a role URL without the admin URL), to avoid one role going to Supabase and another to localhost.
+- With no variable set, URLs are built from `PG_*` exactly as before; local dev is unchanged.
+- SSL verification is delegated to `pg`: `sslmode=verify-full&sslrootcert=/abs/path/ca.crt` verifies the chain and host. TLS verification is never disabled. (This `pg` version treats `sslmode=require` as an alias for `verify-full`, with a warning.)
+- Tests never touch a hosted database: `createTestDb`, `ensureDatabase` and `dropDatabase` throw "tests run only against the local Docker Postgres" when `PG_ADMIN_URL` is set.
+- The worker and the admin are warned at startup (no URL, no secrets in the message) if they point at port 6543 (transaction pooler).
+- Role passwords are still set by `migrate` from the `*_DB_PASSWORD` variables, which must equal the passwords inside the URLs.
+
 ## Deferred (v2 §17)
 
 Not built in this run, by design:
