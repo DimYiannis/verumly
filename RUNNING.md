@@ -103,6 +103,27 @@ The dashboard login only works if the seed ran. If it doesn't recognise the owne
 - **Settings:** consents (all off by default), push opt-in, data export, delete account, logout.
 - **Add receipt (photo):** upload a photo of a paper receipt. Extraction uses the recorded mock outputs (`EXTRACTOR=recorded`); a real Qianfan server is not wired in. **Browser upload to the local S3 mock has not been verified** and may fail; the API side is tested.
 
+### Billing (demo payments)
+
+Merchants pay a monthly or annual subscription; buyers stay free. **Only the demo payment provider exists (`BILLING_PROVIDER=demo`): no money moves**, and every payment page says so. Card numbers and CVC are never stored; only a label such as `Card •••• 4242` is kept.
+
+- **Plans** (prices excl. 21% BTW, B2B): Starter €19/month or €190/year (1 location, 2 active terminals), Business €49/month or €490/year (unlimited). Annual = 2 months free. Every organisation starts with a 14-day Business trial (created on first use).
+- **Where:** Dashboard → **Billing** (owner changes, accountant reads, manager has no access). Choosing a plan opens the checkout page `/billing/checkout/<id>`.
+- **Seeded:** "Café Het Plein" is on Business monthly with `Card •••• 4242` and 2 paid invoices.
+- **Demo test inputs** (also shown on the checkout page):
+
+| Input | Result |
+|---|---|
+| Card `4242 4242 4242 4242` | paid; renewals succeed |
+| Card `4000 0000 0000 0341` | first payment succeeds, **renewals fail** (shows "Payment failed") |
+| Card `4000 0000 0000 0002` | declined |
+| iDEAL, any bank (ABN AMRO, ING, Rabobank, ASN Bank, bunq, Knab, SNS, Triodos) | paid |
+| iDEAL, bank `Demo: weigeren` | declined |
+
+  Any expiry in the future (`MM/YY`), any 3-digit CVC.
+- **Renewals** run in the worker (`billing-renewals`, every 15 minutes). To show them live, the Billing page has **Simulate renewal now** (when `DEMO_MODE` is on, or `BILLING_SIMULATE_RENEWAL=true`): it ends the current period now and renews this organisation at once. With card 0341 the renewal fails and the "Payment failed" banner appears; **Pay now with another method** fixes it.
+- **Plan changes** on an active plan take effect at the next renewal (no proration) and can be undone; **Cancel** stops the plan at the end of the period and can be resumed until then. A failed renewal is retried once a day and the plan stops after 7 days. When the plan is inactive, adding locations and terminals is refused (everything else, including receipt ingest and the archive, keeps working).
+
 ## 4. Demo with a real phone (QR scanned by the phone camera)
 
 The phone has to reach two services over **HTTPS**: the wallet and the buyer API. Push notifications and offline mode only work over HTTPS. The easiest way is two Cloudflare quick tunnels.

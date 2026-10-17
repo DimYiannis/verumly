@@ -21,7 +21,7 @@ apps/buyer-api      Fastify, public resolver + buyer API                    :400
 apps/worker         pg-boss jobs: extraction, push, rollups, export, retention
 apps/merchant-web   Nuxt: /dashboard + /simulator                           :3000
 apps/wallet         Nuxt PWA: /r viewer + buyer wallet                      :3001
-packages/           schema crypto db terminal-sdk config dashboard-core receipt-nl storage ui
+packages/           schema crypto db terminal-sdk config dashboard-core receipt-nl storage ui billing
 docs/               ARCHITECTURE, API, DECISIONS, FINDINGS, ISSUES
 ```
 
@@ -85,6 +85,12 @@ Users from `pnpm db:seed`: dashboard `owner@example.test` / `owner-dev-password`
 
 - `/dashboard/reports` is a report builder: period presets, group by (day, week, month, weekday, hour, location, terminal, payment method, VAT rate, category), selectable metrics, filters (location, terminal, payment), compare with the previous period, chart + table, CSV and print. Setups can be saved as named **views** shared in the organisation (`merchant.report_views`, RLS by org, migration 0007); "Daily sales" and "VAT return" are built in.
 - Engine: `packages/dashboard-core/src/report-builder.ts` (`runReport`, one SQL statement over the latest version of every `paid`/`void` receipt, Amsterdam days); contract in `packages/schema/src/reports.ts`. Grouping by payment, VAT rate or category counts parts of a receipt, so some metrics do not apply there (the API says which in `notes`).
+
+## Billing (merchant subscriptions, demo payments)
+
+- Merchants pay Starter (€19/month, €190/year: 1 location, 2 active terminals) or Business (€49/month, €490/year: unlimited), prices excl. 21% BTW; buyers stay free. 14-day Business trial, created lazily per organisation. **Demo payment provider only: no money moves**; never store card numbers or CVC (only a label like `Card •••• 4242`).
+- Pure rules (plans, BTW, Amsterdam period math, limits, demo test cards, `PaymentProvider`) in `packages/billing`; checkout, changes, renewals, invoices and enforcement in `packages/dashboard-core/src/billing.ts`; tables `merchant.subscriptions`, `billing_mandates`, `payment_sessions`, `invoices` (migration 0008, dashboard and worker only); worker job `billing-renewals` every 15 minutes; pages `/dashboard/billing` and `/billing/checkout/<id>`.
+- Billing never blocks receipt ingest or reading the archive: only adding locations and terminals is refused (402 `plan_inactive` / `plan_limit`). Test inputs and the "Simulate renewal now" button: `RUNNING.md` "Billing (demo payments)".
 
 ## UI book (implemented)
 
