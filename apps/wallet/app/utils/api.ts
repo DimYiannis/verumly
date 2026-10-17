@@ -95,7 +95,15 @@ export function createApi(opts: ApiOptions) {
     createUpload: (contentType: UploadContentType, size: number) => json(s.presignResult, '/v1/me/uploads', { method: 'POST', body: { contentType, size } }),
     completeUpload: (id: string) => json(s.completeResult, `/v1/me/uploads/${id}/complete`, { method: 'POST' }),
     getUpload: (id: string) => json(s.uploadStatus, `/v1/me/uploads/${id}`),
-    listUploads: () => json(s.uploadList, '/v1/me/uploads'),
+    listUploads: (filters: { category?: string } = {}) => json(s.uploadList, '/v1/me/uploads', { query: { ...filters } }),
+    /** the buyer's own category per line (`null` = let the rules decide again); allowed on done and needs_review uploads */
+    setUploadCategories: (id: string, lines: Array<{ index: number; category: string | null }>) =>
+      json(s.uploadStatus, `/v1/me/uploads/${id}/categories`, { method: 'PUT', body: { lines } }),
+    /** the photo goes through buyer-api (bearer header), so the caller turns the blob into an object URL */
+    uploadPhoto: async (id: string) => (await send(`/v1/me/uploads/${id}/photo`, {})).blob(),
+    deleteUpload: async (id: string) => {
+      await send(`/v1/me/uploads/${id}`, { method: 'DELETE' });
+    },
     patchUpload: (id: string, corrections: { merchantName?: string; printedAt?: string; gross?: number; lines?: s.UploadDraft['lines'] }) =>
       json(s.uploadStatus, `/v1/me/uploads/${id}`, { method: 'PATCH', body: corrections }),
     acceptMatch: (id: string) => json(s.acceptMatchResult, `/v1/me/uploads/${id}/accept-match`, { method: 'POST' }),

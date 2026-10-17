@@ -11,6 +11,7 @@
     "@lr/crypto": "workspace:*",
     "@lr/dashboard-core": "workspace:*",
     "@lr/db": "workspace:*",
+    "@lr/storage": "workspace:*",
     "@lr/terminal-sdk": "workspace:*",
     "@playwright/test": "1.63.0",
     "otpauth": "^9.0.0",

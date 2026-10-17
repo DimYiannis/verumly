@@ -539,6 +539,9 @@ importers:
       '@lr/db':
         specifier: workspace:*
         version: link:../packages/db
+      '@lr/storage':
+        specifier: workspace:*
+        version: link:../packages/storage
       '@lr/terminal-sdk':
         specifier: workspace:*
         version: link:../packages/terminal-sdk

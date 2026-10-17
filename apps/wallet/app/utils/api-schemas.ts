@@ -50,6 +50,7 @@ export const pushSubscriptionResult = z.object({ id: z.string() });
 export const insights = z.object({
   perMonth: z.array(z.object({ month: z.string(), total: z.number() })),
   perCategory: z.array(z.object({ category: z.string(), total: z.number() })),
+  vatPerRate: z.array(z.object({ rate: z.number(), vat: z.number() })),
   topMerchants: z.array(z.object({ merchantName: z.string(), total: z.number(), count: z.number() })),
 });
 export type Insights = z.infer<typeof insights>;

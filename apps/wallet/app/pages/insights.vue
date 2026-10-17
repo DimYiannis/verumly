@@ -16,6 +16,12 @@ function monthLabel(month: string): string {
   return (m && t('insights.months').split(',')[Number(m[1]) - 1]) || month;
 }
 
+/** Always the three Dutch rates, in this order, also when a rate has no VAT yet. */
+const VAT_RATES = [21, 9, 0] as const;
+const vatItems = computed(() =>
+  VAT_RATES.map((rate) => ({ label: t('insights.vatRate', { rate }), value: data.value?.vatPerRate.find((v) => v.rate === rate)?.vat ?? 0 })),
+);
+
 onMounted(async () => {
   try {
     data.value = await wallet.api.insights();
@@ -41,6 +47,8 @@ onMounted(async () => {
       <template v-else>
         <BarChart testid="chart-months" :title="t('insights.perMonth')" :items="data.perMonth.map((m) => ({ label: monthLabel(m.month), value: m.total }))" />
         <HBarChart testid="chart-categories" :title="t('insights.perCategory')" :items="data.perCategory.map((c) => ({ label: tOr('category', c.category), value: c.total }))" />
+        <HBarChart testid="chart-vat" :title="t('insights.vatPerRate')" :items="vatItems" />
+        <p class="-mt-2 text-xs text-text-secondary">{{ t('insights.vatNote') }}</p>
         <HBarChart testid="chart-merchants" :title="t('insights.topMerchants')" :items="data.topMerchants.map((m) => ({ label: m.merchantName, value: m.total }))" />
       </template>
     </template>

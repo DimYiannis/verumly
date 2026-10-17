@@ -1,14 +1,17 @@
-import { and, count, desc, eq, gt } from 'drizzle-orm';
+import { and, count, desc, eq, gt, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { findMatchingReceipt, orgIdsByIdentifiers, QUEUES, tables, type ExtractUploadJob } from '@lr/db';
-import { createUploadBody, idParam, MAX_UPLOAD_BYTES, uploadExtracted, uploadPatchBody, type UploadExtracted } from '@lr/schema';
+import { z } from 'zod';
+import { createUploadBody, idParam, MAX_UPLOAD_BYTES, uploadCategoriesBody, uploadExtracted, uploadPatchBody, type UploadExtracted } from '@lr/schema';
 import type { AppDeps } from '../context.ts';
 import { claimedBy, loadReceipt } from '../receipts.ts';
-import { applyCorrections, ownUpload, readExtracted, uploadView } from '../uploads.ts';
+import { applyCategories, applyCorrections, ownUpload, readExtracted, uploadView } from '../uploads.ts';
 import { requireSession } from './auth.ts';
 
 const MAX_UPLOADS_PER_HOUR = 50;
+
+const listQuery = z.object({ category: z.string().max(40).optional() });
 
 export function uploadRoutes(deps: AppDeps) {
   return async (app: FastifyInstance) => {
@@ -64,9 +67,14 @@ export function uploadRoutes(deps: AppDeps) {
       return reply.code(202).send({ uploadId: upload.id, status: 'processing' });
     });
 
-    r.get('/v1/me/uploads', async (req) => {
+    r.get('/v1/me/uploads', { schema: { querystring: listQuery } }, async (req) => {
       const userId = req.session!.userId;
-      const rows = await deps.db.select().from(tables.uploads).where(eq(tables.uploads.userId, userId)).orderBy(desc(tables.uploads.createdAt)).limit(50);
+      const conds = [eq(tables.uploads.userId, userId)];
+      // the stored category of a line (what the worker or the buyer set), same meaning as the receipts filter
+      if (req.query.category) {
+        conds.push(sql`jsonb_path_exists(${tables.uploads.extracted}, '$.parsed.lines[*] ? (@.category == $c)', jsonb_build_object('c', ${req.query.category}::text))`);
+      }
+      const rows = await deps.db.select().from(tables.uploads).where(and(...conds)).orderBy(desc(tables.uploads.createdAt)).limit(50);
       return { items: await Promise.all(rows.map((u) => uploadView(deps.db, userId, u))) };
     });
 
@@ -99,6 +107,45 @@ export function uploadRoutes(deps: AppDeps) {
         .returning();
       if (!updated) return reply.code(409).send({ error: 'not_reviewable' });
       return uploadView(deps.db, userId, updated);
+    });
+
+    // the buyer's own category per line; allowed on `done` and `needs_review`, and touches nothing else (no re-matching)
+    r.put('/v1/me/uploads/:id/categories', { schema: { params: idParam, body: uploadCategoriesBody } }, async (req, reply) => {
+      const userId = req.session!.userId;
+      const upload = await ownUpload(deps.db, userId, req.params.id);
+      if (!upload) return reply.code(404).send({ error: 'not_found' });
+      const extracted = readExtracted(upload);
+      if ((upload.status !== 'done' && upload.status !== 'needs_review') || !extracted?.parsed) return reply.code(409).send({ error: 'not_editable' });
+      const parsed = applyCategories(extracted.parsed, req.body);
+      if (!parsed) return reply.code(400).send({ error: 'unknown_line' });
+      const next: UploadExtracted = uploadExtracted.parse({ ...extracted, parsed });
+      const [updated] = await deps.db
+        .update(tables.uploads)
+        .set({ extracted: next })
+        .where(and(eq(tables.uploads.id, upload.id), eq(tables.uploads.status, upload.status)))
+        .returning();
+      if (!updated) return reply.code(409).send({ error: 'not_editable' });
+      return uploadView(deps.db, userId, updated);
+    });
+
+    // the photo itself, through the API so it works wherever the wallet can reach buyer-api (S3 may be private)
+    r.get('/v1/me/uploads/:id/photo', { schema: { params: idParam } }, async (req, reply) => {
+      if (!deps.s3) return reply.code(503).send({ error: 'storage_unavailable' });
+      const upload = await ownUpload(deps.db, req.session!.userId, req.params.id);
+      if (!upload || upload.status === 'pending_upload') return reply.code(404).send({ error: 'not_found' });
+      const bytes = await deps.s3.get(upload.s3Key).catch(() => null);
+      if (!bytes) return reply.code(404).send({ error: 'not_found' });
+      return reply.header('content-type', upload.contentType).header('cache-control', 'private, no-store').send(Buffer.from(bytes));
+    });
+
+    // removes the object first: if S3 fails the row stays and the buyer can try again, so no photo outlives its row
+    r.delete('/v1/me/uploads/:id', { schema: { params: idParam } }, async (req, reply) => {
+      if (!deps.s3) return reply.code(503).send({ error: 'storage_unavailable' });
+      const upload = await ownUpload(deps.db, req.session!.userId, req.params.id);
+      if (!upload) return reply.code(404).send({ error: 'not_found' });
+      await deps.s3.remove(upload.s3Key);
+      await deps.db.delete(tables.uploads).where(and(eq(tables.uploads.id, upload.id), eq(tables.uploads.userId, upload.userId)));
+      return reply.code(204).send();
     });
 
     r.post('/v1/me/uploads/:id/accept-match', { schema: { params: idParam } }, async (req, reply) => {

@@ -2,7 +2,7 @@ import { and, count, eq, sql } from 'drizzle-orm';
 import { sha256Hex } from '@lr/crypto';
 import { findMatchingReceipt, orgIdsByIdentifiers, tables } from '@lr/db';
 import type { ExtractUploadJob } from '@lr/db';
-import { parseExtraction } from '@lr/receipt-nl';
+import { categoriseLines, parseExtraction } from '@lr/receipt-nl';
 import type { UploadExtracted } from '@lr/schema';
 import type { WorkerCtx } from '../context.ts';
 import { PermanentExtractionError } from '../extractor.ts';
@@ -69,7 +69,9 @@ export async function extractUpload(ctx: WorkerCtx, job: ExtractUploadJob, opts:
     throw e;
   }
 
-  const parsed = parseExtraction({ markdown: extraction.markdown, kie: extraction.kie });
+  const read = parseExtraction({ markdown: extraction.markdown, kie: extraction.kie });
+  // store the category (and health flag) of every line now, so lists and insights never re-derive them
+  const parsed = { ...read, lines: categoriseLines(read.lines, read.merchant.name) };
 
   let matchedReceiptId: string | null = null;
   let lead: ExtractOutcome['lead'] = 'none';

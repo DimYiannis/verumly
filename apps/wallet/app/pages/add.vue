@@ -37,6 +37,8 @@ async function onFile(event: Event) {
   } catch (e) {
     if (e instanceof ApiError && e.isNetwork) error.value = 'add.err.offline';
     else if (e instanceof ApiError && e.status === 401) await wallet.endSession();
+    else if (e instanceof ApiError && e.status === 429) error.value = 'add.err.limit';
+    else if (e instanceof ApiError && e.code === 'unsupported_type') error.value = 'add.err.unsupported_type';
     else error.value = 'add.err.failed';
   } finally {
     busy.value = false;
@@ -61,22 +63,24 @@ async function onFile(event: Event) {
       <input
         id="receipt-photo"
         type="file"
-        accept="image/*,application/pdf"
+        accept="image/jpeg,image/png,image/webp"
         capture="environment"
         class="sr-only"
         data-testid="file-input"
         :disabled="busy"
         @change="onFile"
       />
-      <!-- `capture` forces the camera on phones, so a PDF needs a picker without it -->
+      <!-- `capture` forces the camera on phones, so choosing a saved photo needs a picker without it -->
       <Button as-child variant="secondary" size="lg" class="w-full cursor-pointer" :class="busy ? 'pointer-events-none opacity-50' : ''">
         <label for="receipt-file">
           <FileUp aria-hidden="true" />
           {{ t('add.file') }}
         </label>
       </Button>
-      <input id="receipt-file" type="file" accept="image/*,application/pdf" class="sr-only" data-testid="file-input-library" :disabled="busy" @change="onFile" />
+      <input id="receipt-file" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" data-testid="file-input-library" :disabled="busy" @change="onFile" />
     </div>
+
+    <p class="text-sm text-text-secondary" data-testid="upload-formats">{{ t('add.formats') }}</p>
 
     <p role="status" aria-live="polite" data-testid="upload-step" class="text-sm text-text-secondary">{{ uploading ? t('add.uploading') : '' }}</p>
     <p v-if="error" role="alert" data-testid="upload-error" class="rounded-lg border border-danger-border bg-danger-soft p-3 text-sm text-danger">{{ t(error) }}</p>
