@@ -66,7 +66,7 @@ describe('requireRole', () => {
     }
     for (const p of writes.filter((w) => w !== 'exports.create')) expect(() => requireRole({ role: 'accountant' }, p)).toThrow(ForbiddenError);
     const managerDenied = PERMISSIONS.filter((p: Permission) => !ROLE_PERMISSIONS.manager.includes(p));
-    expect(managerDenied).toEqual(['org.write', 'users.read', 'users.write']);
+    expect(managerDenied).toEqual(['org.write', 'users.read', 'users.write', 'billing.read', 'billing.write']);
   });
 });
 

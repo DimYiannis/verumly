@@ -2,6 +2,7 @@ import { and, desc, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { fromB64url, generateToken } from '@lr/crypto';
 import { tables, withOrg, type Db } from '@lr/db';
+import { assertPlanAllows } from './billing.ts';
 import { DashboardError } from './errors.ts';
 import { requireRole, type Actor } from './roles.ts';
 
@@ -44,6 +45,7 @@ export async function createTerminal(db: Db, actor: Actor, input: unknown) {
     // the FK alone would accept another org's location id: RLS makes the select empty for it
     const [loc] = await tx.select({ id: tables.locations.id }).from(tables.locations).where(eq(tables.locations.id, v.data.locationId));
     if (!loc) throw new DashboardError('validation', 'unknown location');
+    await assertPlanAllows(tx, actor.orgId, 'activeTerminals');
     const [t] = await tx
       .insert(tables.terminals)
       .values({ orgId: actor.orgId, locationId: v.data.locationId, label: v.data.label, apiKeyHash: hash, signingPublicKey: v.data.publicKey })

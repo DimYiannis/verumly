@@ -1,4 +1,5 @@
-export type ErrorCode = 'validation' | 'not_found' | 'conflict' | 'unauthenticated';
+/** `plan_inactive`: the subscription has ended; `plan_limit`: the plan does not allow one more location or terminal. */
+export type ErrorCode = 'validation' | 'not_found' | 'conflict' | 'unauthenticated' | 'plan_inactive' | 'plan_limit';
 
 /** Domain error that the web layer maps to an HTTP status. */
 export class DashboardError extends Error {

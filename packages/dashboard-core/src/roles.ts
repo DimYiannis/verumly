@@ -14,17 +14,19 @@ export const PERMISSIONS = [
   'reports.read',
   'exports.read',
   'exports.create',
+  'billing.read',
+  'billing.write',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 /**
- * owner: everything. manager: operations (locations, terminals) but no organisation settings and no user management.
- * accountant: read-only; reads plus exports.
+ * owner: everything. manager: operations (locations, terminals) but no organisation settings, no user management and
+ * no billing. accountant: read-only; reads plus exports, and the subscription and its invoices (no plan changes).
  */
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: PERMISSIONS,
-  manager: PERMISSIONS.filter((p) => !p.startsWith('users.') && p !== 'org.write'),
-  accountant: ['org.read', 'locations.read', 'archive.read', 'reports.read', 'exports.read', 'exports.create'],
+  manager: PERMISSIONS.filter((p) => !p.startsWith('users.') && !p.startsWith('billing.') && p !== 'org.write'),
+  accountant: ['org.read', 'locations.read', 'archive.read', 'reports.read', 'exports.read', 'exports.create', 'billing.read'],
 };
 
 /** The authenticated, MFA-completed dashboard user. Built only by `resolveSession`. */
