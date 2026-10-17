@@ -323,6 +323,9 @@ importers:
 
   apps/merchant-web:
     dependencies:
+      '@lr/billing':
+        specifier: workspace:*
+        version: link:../../packages/billing
       '@lr/compliance':
         specifier: workspace:*
         version: link:../../packages/compliance
@@ -487,6 +490,9 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.700.0
         version: 3.1152.0
+      '@lr/billing':
+        specifier: workspace:*
+        version: link:../../packages/billing
       '@lr/config':
         specifier: workspace:*
         version: link:../../packages/config

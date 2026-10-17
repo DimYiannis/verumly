@@ -11,6 +11,7 @@ const { t: tl, intlLocale } = useLocale();
 const rows = ref<Term[]>([]);
 const locations = ref<Loc[]>([]);
 const error = ref('');
+const refusal = ref<PlanRefusal | null>(null);
 const form = reactive({ label: '', locationId: '', publicKey: '' });
 // shown exactly once, never stored in the page after dismissal
 const created = ref<{ terminalId: string; apiKey: string } | null>(null);
@@ -77,7 +78,7 @@ function generate() {
 }
 
 async function create() {
-  const r = await attempt(error, () => $fetch<{ terminalId: string; apiKey: string }>('/api/dashboard/terminals', { method: 'POST', body: { label: form.label, locationId: form.locationId, publicKey: form.publicKey } }));
+  const r = await attemptPlan(error, refusal, () => $fetch<{ terminalId: string; apiKey: string }>('/api/dashboard/terminals', { method: 'POST', body: { label: form.label, locationId: form.locationId, publicKey: form.publicKey } }));
   if (r) {
     created.value = r;
     copied.value = false;
@@ -102,6 +103,7 @@ async function revoke(id: string) {
     <Button data-testid="terminal-add" @click="focusForm"><PlusIcon />{{ tl('adm.term.add') }}</Button>
   </AppPageHeading>
   <AppErrorNote v-if="error" data-testid="error">{{ error }}</AppErrorNote>
+  <AppPlanRefusal v-if="refusal" :code="refusal" />
 
   <Card v-if="created" class="border-warning-border bg-warning-soft" data-testid="terminal-created">
     <CardContent class="space-y-3">

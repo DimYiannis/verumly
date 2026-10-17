@@ -9,7 +9,7 @@ export default defineNuxtConfig({
   vite: { plugins: [tailwindcss()] },
   // The dashboard and the simulator are client-side apps behind an API: no SSR (no cookie forwarding, no
   // hydration mismatch with localStorage/IndexedDB). Nitro still serves /api and /sim-api on the node preset.
-  routeRules: { '/dashboard/**': { ssr: false }, '/simulator': { ssr: false } },
+  routeRules: { '/dashboard/**': { ssr: false }, '/billing/**': { ssr: false }, '/simulator': { ssr: false } },
   nitro: {
     // workspace packages ship TypeScript sources: bundle them (Node refuses to strip types under node_modules)
     externals: { inline: [/^@lr\//] },
