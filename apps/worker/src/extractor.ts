@@ -25,6 +25,13 @@ export class PermanentExtractionError extends Error {
   }
 }
 
+/**
+ * The model server did not answer in time (our request timeout, or a gateway answering 408/504/524). Retried like any
+ * transient error; when the last attempt also times out, the upload fails with `extraction_timeout`, so the buyer is told
+ * to take a closer, clearer photo instead of waiting.
+ */
+export class ExtractionTimeoutError extends Error {}
+
 const recordedFile = z.object({ modelRevision: z.string().min(1), markdown: z.string(), kie: z.string() });
 
 /**
@@ -60,17 +67,26 @@ export function sniffMime(bytes: Uint8Array): string | null {
   return null;
 }
 
+const CHAT_PATH = '/v1/chat/completions';
+
+/** Base URL (trailing slashes tolerated) or full chat-completions URL -> full chat-completions URL. */
+export function chatCompletionsUrl(url: string): string {
+  const base = url.trim().replace(/\/+$/, '');
+  return base.endsWith(CHAT_PATH) ? base : `${base}${CHAT_PATH}`;
+}
+
 const chatResponse = z.object({
-  model: z.string().optional(),
   choices: z.array(z.object({ message: z.object({ content: z.string() }) })).min(1),
 });
 
 export interface HttpExtractorOptions {
-  /** OpenAI-compatible chat completions endpoint, e.g. http://gpu-box:8000/v1/chat/completions */
+  /** Server base URL, e.g. http://gpu-box:8000; `/v1/chat/completions` is appended. A URL already ending in it is accepted. */
   url: string;
   model: string;
-  /** recorded in `modelRevision` when the server does not report one */
+  /** recorded as `modelRevision` (the pinned HF commit); "unknown" when unset. The served model name is never used. */
   revision?: string;
+  /** sent as `Authorization: Bearer <key>` (vLLM `--api-key`); never logged */
+  apiKey?: string;
   timeoutMs?: number;
   fetch?: typeof fetch;
 }
@@ -78,22 +94,34 @@ export interface HttpExtractorOptions {
 /** POSTs the image to a vLLM-served `baidu/Qianfan-OCR` twice (markdown prompt, KIE prompt), greedy decoding. */
 export function httpExtractor(opts: HttpExtractorOptions): Extractor {
   const f = opts.fetch ?? fetch;
+  const endpoint = chatCompletionsUrl(opts.url);
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  if (opts.apiKey) headers.authorization = `Bearer ${opts.apiKey}`;
+  const timeoutMs = opts.timeoutMs ?? 120_000;
   const ask = async (dataUrl: string, prompt: string) => {
-    const res = await f(opts.url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      signal: AbortSignal.timeout(opts.timeoutMs ?? 120_000),
-      body: JSON.stringify({
-        model: opts.model,
-        temperature: 0,
-        max_tokens: 4096,
-        messages: [{ role: 'user', content: [{ type: 'image_url', image_url: { url: dataUrl } }, { type: 'text', text: prompt }] }],
-      }),
-    });
-    // 4xx = the model server rejected this input; 5xx / network errors throw and are retried
-    if (res.status >= 400 && res.status < 500) throw new PermanentExtractionError('extractor_rejected', `extractor returned ${res.status}`);
-    if (!res.ok) throw new Error(`extractor returned ${res.status}`);
-    return chatResponse.parse(await res.json());
+    try {
+      const res = await f(endpoint, {
+        method: 'POST',
+        headers,
+        signal: AbortSignal.timeout(timeoutMs),
+        body: JSON.stringify({
+          model: opts.model,
+          temperature: 0,
+          // bounded output: a degenerate run (a model that loops) stops here instead of running into the timeout; tools/qianfan/serve.md uses the same
+          max_tokens: 2048,
+          messages: [{ role: 'user', content: [{ type: 'image_url', image_url: { url: dataUrl } }, { type: 'text', text: prompt }] }],
+        }),
+      });
+      // 4xx = the model server rejected this input, except 408/429 (timeout, rate limit): those, 5xx and network errors throw and are retried
+      if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) throw new PermanentExtractionError('extractor_rejected', `extractor returned ${res.status}`);
+      if (res.status === 408 || res.status === 504 || res.status === 524) throw new ExtractionTimeoutError(`extractor returned ${res.status}`);
+      if (!res.ok) throw new Error(`extractor returned ${res.status}`);
+      return chatResponse.parse(await res.json());
+    } catch (e) {
+      // our own deadline (it also covers reading the body)
+      if (e instanceof DOMException && (e.name === 'TimeoutError' || e.name === 'AbortError')) throw new ExtractionTimeoutError(`extractor did not answer within ${timeoutMs} ms`);
+      throw e;
+    }
   };
   return {
     async extract(bytes) {
@@ -104,12 +132,13 @@ export function httpExtractor(opts: HttpExtractorOptions): Extractor {
         throw new PermanentExtractionError('pdf_unsupported', 'PDF extraction needs page rasterisation, which is not implemented');
       }
       const dataUrl = `data:${mime};base64,${Buffer.from(bytes).toString('base64')}`;
-      const markdown = await ask(dataUrl, QIANFAN_PROMPTS.markdown);
-      const kie = await ask(dataUrl, QIANFAN_PROMPTS.kie);
+      // The two prompts are independent: ask them together. vLLM batches concurrent requests on the GPU, so the wall time
+      // is close to one request instead of two (the live check measured about 46 s per request).
+      const [markdown, kie] = await Promise.all([ask(dataUrl, QIANFAN_PROMPTS.markdown), ask(dataUrl, QIANFAN_PROMPTS.kie)]);
       return {
         markdown: markdown.choices[0]!.message.content,
         kie: kie.choices[0]!.message.content,
-        modelRevision: opts.revision ?? markdown.model ?? opts.model,
+        modelRevision: opts.revision ?? 'unknown',
       };
     },
   };

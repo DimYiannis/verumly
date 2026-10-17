@@ -466,12 +466,18 @@ importers:
         specifier: ^4.0.0
         version: 4.6.7
     devDependencies:
+      '@types/pngjs':
+        specifier: ^6.0.5
+        version: 6.0.5
       '@types/qrcode':
         specifier: ^1.5.6
         version: 1.5.6
       fake-indexeddb:
         specifier: ^6.2.6
         version: 6.2.6
+      pngjs:
+        specifier: ^7.0.0
+        version: 7.0.0
       vue-tsc:
         specifier: ^3.3.13
         version: 3.3.13(typescript@6.0.3)
@@ -545,6 +551,9 @@ importers:
       '@lr/db':
         specifier: workspace:*
         version: link:../packages/db
+      '@lr/storage':
+        specifier: workspace:*
+        version: link:../packages/storage
       '@lr/terminal-sdk':
         specifier: workspace:*
         version: link:../packages/terminal-sdk
@@ -561,6 +570,12 @@ importers:
       '@types/pg':
         specifier: ^8.11.0
         version: 8.23.1
+      '@types/pngjs':
+        specifier: ^6.0.5
+        version: 6.0.5
+      pngjs:
+        specifier: ^7.0.0
+        version: 7.0.0
 
   packages/compliance: {}
 
@@ -3095,6 +3110,9 @@ packages:
   '@types/pg@8.23.1':
     resolution: {integrity: sha512-fKVHpikPdg4GKks3JuLEhvwSyvwzF23hnabPy6DD8ljVbC7+6J5dQzdv4arV6jqq57djnMgs1HKBxX4P8aBI3A==}
 
+  '@types/pngjs@6.0.5':
+    resolution: {integrity: sha512-0k5eKfrA83JOZPppLtS2C7OUtyNAl2wKNxfyYl9Q5g9lPkgBl/9hNyAu6HuEH2J4XmIv2znEpkDd0SaZVxW6iQ==}
+
   '@types/qrcode@1.5.6':
     resolution: {integrity: sha512-te7NQcV2BOvdj2b1hCAHzAoMNuj65kNBMz0KBaxM6c3VGBOhU0dURQKOtH8CFNI/dsKkwlv32p26qYQTWoB5bw==}
 
@@ -5550,6 +5568,10 @@ packages:
   pngjs@5.0.0:
     resolution: {integrity: sha512-40QW5YalBNfQo5yRYmiw7Yz6TKKVr3h6970B2YE+3fQpsWcrbj1PzJgxeJ19DRQjhMbKPIuMY8rFaXc8moolVw==}
     engines: {node: '>=10.13.0'}
+
+  pngjs@7.0.0:
+    resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
+    engines: {node: '>=14.19.0'}
 
   possible-typed-array-names@1.1.0:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
@@ -9839,6 +9861,10 @@ snapshots:
       pg-protocol: 1.16.1
       pg-types: 2.2.0
 
+  '@types/pngjs@6.0.5':
+    dependencies:
+      '@types/node': 22.20.5
+
   '@types/qrcode@1.5.6':
     dependencies:
       '@types/node': 22.20.5
@@ -12775,6 +12801,8 @@ snapshots:
       browserify-zlib: 0.2.0
 
   pngjs@5.0.0: {}
+
+  pngjs@7.0.0: {}
 
   possible-typed-array-names@1.1.0: {}
 

@@ -2,6 +2,6 @@ import { httpExtractor, recordedExtractor, type Extractor } from './extractor.ts
 import type { WorkerEnv } from './env.ts';
 
 export function createExtractor(env: WorkerEnv): Extractor {
-  if (env.EXTRACTOR === 'http') return httpExtractor({ url: env.QIANFAN_URL, model: env.QIANFAN_MODEL, revision: env.QIANFAN_REVISION });
+  if (env.EXTRACTOR === 'http') return httpExtractor({ url: env.QIANFAN_URL, model: env.QIANFAN_MODEL, revision: env.QIANFAN_REVISION, apiKey: env.QIANFAN_API_KEY });
   return recordedExtractor(env.FIXTURES_DIR);
 }

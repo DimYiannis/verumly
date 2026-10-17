@@ -23,7 +23,8 @@ export interface WorkerWorld {
   close(): Promise<void>;
 }
 
-const FIXTURES = new URL('../../../fixtures/receipts-nl', import.meta.url).pathname;
+/** Worker tests use the mock corpus explicitly: a real receipt dropped into fixtures/receipts-nl/ must not change them. */
+const MOCK_FIXTURES = new URL('../../../fixtures/receipts-nl/mock', import.meta.url).pathname;
 
 /** Real Postgres + real S3 + both HTTP apps (Fastify inject) + worker context with the recorded extractor. */
 export async function createWorkerWorld(opts: { leadThreshold?: number } = {}): Promise<WorkerWorld> {
@@ -34,7 +35,7 @@ export async function createWorkerWorld(opts: { leadThreshold?: number } = {}): 
   const ctx: WorkerCtx = {
     db: handle.db,
     s3,
-    extractor: recordedExtractor(FIXTURES),
+    extractor: recordedExtractor(MOCK_FIXTURES),
     vapid: { subject: 'mailto:test@receipts.test', ...vapid },
     leadThreshold: opts.leadThreshold ?? 20,
     log: () => {},
@@ -48,7 +49,7 @@ export async function createWorkerWorld(opts: { leadThreshold?: number } = {}): 
     vapid,
     handle,
     uploadedKeys,
-    corpus: loadCorpus({ quiet: true }),
+    corpus: loadCorpus({ quiet: true, only: 'mock' }),
     async close() {
       for (const k of uploadedKeys) await s3.remove(k).catch(() => {});
       await handle.close();

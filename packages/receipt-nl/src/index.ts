@@ -2,6 +2,7 @@ export * from './money.ts';
 export * from './lifecycle.ts';
 export * from './validate.ts';
 export * from './categorise.ts';
+export * from './merchant-rules.ts';
 export * from './text.ts';
 export * from './numbers.ts';
 export * from './ids.ts';

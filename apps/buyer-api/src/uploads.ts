@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { tables, type Db } from '@lr/db';
-import { lineTotal, vatFromGross } from '@lr/receipt-nl';
-import { uploadExtracted, type ParsedLineDto, type ParsedReceiptDto, type UploadExtracted, type UploadPatchBody } from '@lr/schema';
+import { categoriseLines, lineTotal, vatFromGross } from '@lr/receipt-nl';
+import { uploadExtracted, type ParsedLineDto, type ParsedReceiptDto, type UploadCategoriesBody, type UploadExtracted, type UploadPatchBody } from '@lr/schema';
 import { claimedBy, loadReceipt } from './receipts.ts';
 
 type UploadRow = typeof tables.uploads.$inferSelect;
@@ -85,6 +85,20 @@ function vatFromLines(lines: ParsedLineDto[]): ParsedReceiptDto['vatBreakdown'] 
     });
 }
 
+/**
+ * Set or clear the buyer's category of single lines (`null` clears: the rules decide again). Nothing else changes: not
+ * the total, the time, the status or the official-receipt match. Returns null when a line index does not exist.
+ */
+export function applyCategories(parsed: ParsedReceiptDto, body: UploadCategoriesBody): ParsedReceiptDto | null {
+  const lines = parsed.lines.map((l) => ({ ...l }));
+  for (const c of body.lines) {
+    const line = lines[c.index];
+    if (!line) return null;
+    line.userCategory = c.category;
+  }
+  return { ...parsed, lines: categoriseLines(lines, parsed.merchant.name) };
+}
+
 const LINE_TOLERANCE = 2;
 
 /**
@@ -93,10 +107,12 @@ const LINE_TOLERANCE = 2;
  * and every non-deposit line has a BTW rate. BTW per rate is then derived from the (buyer-confirmed) lines.
  */
 export function applyCorrections(parsed: ParsedReceiptDto, patch: UploadPatchBody): ParsedReceiptDto {
-  const lines = patch.lines ?? parsed.lines;
+  const merchant = { ...parsed.merchant, name: patch.merchantName ?? parsed.merchant.name };
+  // re-categorise after every correction; lines with a buyer-set category keep it (and are never made sensitive)
+  const lines = categoriseLines(patch.lines ?? parsed.lines, merchant.name);
   const next: ParsedReceiptDto = {
     ...parsed,
-    merchant: { ...parsed.merchant, name: patch.merchantName ?? parsed.merchant.name },
+    merchant,
     printedAtUtc: patch.printedAt ? new Date(patch.printedAt).toISOString() : parsed.printedAtUtc,
     gross: patch.gross ?? parsed.gross,
     lines,

@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { chromium, type Route } from '@playwright/test';
 import { MemoryStore, TerminalSdk } from '@lr/terminal-sdk';
 import { deleteMailFor, mailpitCode, startStack } from '../../../scripts/lib/harness.ts';
@@ -216,7 +217,8 @@ try {
       return fulfil(route, 200, view(patched ? 'done' : polls < 2 ? 'processing' : 'needs_review'));
     });
     await page.goto(WALLET + '/add');
-    await T('file-input').setInputFiles({ name: 'bon.png', mimeType: 'image/png', buffer: Buffer.from('not-a-real-png') });
+    // a real image: the wallet decodes and checks the photo before it uploads anything
+    await T('file-input').setInputFiles(fileURLToPath(new URL('../../../fixtures/receipts-nl/mock/mock-weegschaal.png', import.meta.url)));
     await page.waitForURL(/\/uploads\/u1$/);
     await T('correction-form').waitFor({ timeout: 15_000 });
     assert.equal(await T('corr-merchant').inputValue(), 'Albert Heijn');

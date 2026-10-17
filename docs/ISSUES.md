@@ -62,11 +62,11 @@ Big issues found in the code review (2026-10-16) and still open. Tick an item wh
     - reject control characters and invalid dates in the schema
     - stop adding versions to a receipt after a refusal
     - on `unauthorized`, pause the uploader instead of dead-lettering
-- [ ] **#11 Adding a real receipt breaks the tests and the seed.**
+- [x] **#11 Adding a real receipt breaks the tests and the seed.** Fixed on `feat/qianfan-photo`: worker tests load `mock/` explicitly, the seed falls back to mock below 3 usable real receipts, covered by `packages/receipt-nl/test/corpus-selection.test.ts`.
   - **Where:** `scripts/lib/corpus.ts:47`, `scripts/seed.ts:296`, worker tests
   - **Problem:** one real `*.truth.json` switches the whole corpus to real files. The worker tests look up mock IDs and fail, and the seed needs at least 3 receipts. This breaks the spec rule that "the code must not change when real files arrive".
   - **Fix:** the worker tests load `mock/` explicitly, and the seed falls back to mock receipts.
-- [ ] **#12 The Qianfan extractor fails if you follow the docs.**
+- [x] **#12 The Qianfan extractor fails if you follow the docs.** Fixed on `feat/qianfan-photo`: base-URL semantics, 408/429 retried, `QIANFAN_REVISION`, optional `QIANFAN_API_KEY`. **Proven against a live endpoint on 2026-10-17** (Colab T4): two mock images read correctly and a real PLUS receipt ended as `needs_review`, see FINDINGS "Live Qianfan check".
   - **Where:** `apps/worker/src/extractor.ts:82,94,112`, `tools/qianfan/serve.md:32`
   - **Problems:**
     - **URL mismatch:** `serve.md` says to give the base URL, but the code posts to the URL as given, so every upload fails.
@@ -98,6 +98,8 @@ Big issues found in the code review (2026-10-16) and still open. Tick an item wh
 - [ ] **#20 `resolve/view` stays readable after a claim:** anyone with a forwarded link can still see the receipt.
 - [ ] **#21 The resolver reveals whether a receipt ID exists:** it answers `pending` instead of 404 for unknown IDs. This is a recorded departure, against the spec's "same 404" rule.
 - [ ] **#22 Refused attempts from revoked terminals are not audit-logged,** and there is no way to replay dead-lettered versions.
+- [~] **#25 Photos where the receipt is small in the frame never finish.** Mostly fixed on `feat/qianfan-photo`: the wallet now finds the receipt, crops it, caps the size and declines photos that are too small, too blurry, too dark, cut off or contain no receipt, before any upload; `max_tokens` is 2048 and an upload whose extraction keeps timing out ends `failed` with `extraction_timeout`. Measured live: the prepared real photo is read in 62 s (100 s before the two prompts were sent together; the uncropped photo never finished). **Still open:** a buyer waits up to about 16 minutes on "Reading" before `failed` when the model always times out, and the sharpness threshold has little headroom on soft real thermal prints (one real photo only).
+- [ ] **#26 The parser does not read the PLUS-style VAT table.** The real receipt's rows (`BTW lang 9% 4,69 56,76`, `BTW 0 0,00 0,25`) were reported as `vat_row_unreadable`. Add the layout to the corpus (needs a real truth file) and make the table parser tolerant.
 - [ ] **#24 "Issued means paid" is a UI decision; the backend still carries the full lifecycle.** The simulator now issues each receipt once, already `paid`, and the only later change is **Void**. The wallet shows no pre-bill banner, no "final" badge and no `presented` filter. merchant-api, the SDK, the CRF and `receipt-nl` still accept `open`, `presented` and version edits (v2 §6), and their tests still cover them. Decide whether the lifecycle stays as an unused capability (for restaurants' pre-bill later) or is removed, and whether v2 §6 should be updated.
 - [ ] **#23 Hardening:**
   - rate limiters are in memory per process, so they reset on restart and aren't shared

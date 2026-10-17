@@ -2,10 +2,10 @@ import { and, count, eq, sql } from 'drizzle-orm';
 import { sha256Hex } from '@lr/crypto';
 import { findMatchingReceipt, orgIdsByIdentifiers, tables } from '@lr/db';
 import type { ExtractUploadJob } from '@lr/db';
-import { parseExtraction } from '@lr/receipt-nl';
+import { categoriseLines, parseExtraction } from '@lr/receipt-nl';
 import type { UploadExtracted } from '@lr/schema';
 import type { WorkerCtx } from '../context.ts';
-import { PermanentExtractionError } from '../extractor.ts';
+import { ExtractionTimeoutError, PermanentExtractionError } from '../extractor.ts';
 
 export interface ExtractOutcome {
   status: 'done' | 'needs_review' | 'failed' | 'skipped';
@@ -65,11 +65,13 @@ export async function extractUpload(ctx: WorkerCtx, job: ExtractUploadJob, opts:
     extraction = await ctx.extractor.extract(bytes);
   } catch (e) {
     if (e instanceof PermanentExtractionError) return fail(ctx, upload.id, e.code);
-    if (opts.finalAttempt) return fail(ctx, upload.id, 'extractor_unavailable');
+    if (opts.finalAttempt) return fail(ctx, upload.id, e instanceof ExtractionTimeoutError ? 'extraction_timeout' : 'extractor_unavailable');
     throw e;
   }
 
-  const parsed = parseExtraction({ markdown: extraction.markdown, kie: extraction.kie });
+  const read = parseExtraction({ markdown: extraction.markdown, kie: extraction.kie });
+  // store the category (and health flag) of every line now, so lists and insights never re-derive them
+  const parsed = { ...read, lines: categoriseLines(read.lines, read.merchant.name) };
 
   let matchedReceiptId: string | null = null;
   let lead: ExtractOutcome['lead'] = 'none';
