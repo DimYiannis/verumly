@@ -1,8 +1,12 @@
+import { homeNl } from './home.nl.ts';
+import { receipts2Nl } from './receipts2.nl.ts';
 import { socialNl } from './social.nl.ts';
 
 /** Dutch is the source dictionary: its key set defines `MessageKey`, and `en.ts` is typed against it. */
 export const nl = {
   ...socialNl,
+  ...homeNl,
+  ...receipts2Nl,
   // layout
   'layout.skip': 'Naar de inhoud',
   'layout.brand': 'bonnen',

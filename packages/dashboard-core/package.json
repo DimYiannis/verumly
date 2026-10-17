@@ -23,7 +23,7 @@
     "otpauth": "^9.0.0",
     "@aws-sdk/client-s3": "^3.0.0",
     "@aws-sdk/s3-request-presigner": "^3.0.0",
-    "pdfmake": "^0.3.0",
+    "@lr/receipt-pdf": "workspace:*",
     "zod": "^4.0.0",
     "pg-boss": "^12.38.0"
   },

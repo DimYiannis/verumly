@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ChevronLeft, Plus, X } from '@lucide/vue';
+import { Check, ChevronLeft, Plus, X } from '@lucide/vue';
 import type { MessageKey } from '~/i18n';
+import type { Profile } from '~/utils/api-schemas';
 import { MAX_SPLIT_PARTICIPANTS, type PublicUser, type ReceiptDetail } from '~/utils/api-schemas';
 import { formatEuro } from '~/utils/format';
 import { errorKey, isOffline, userName } from '~/utils/social';
@@ -25,6 +26,7 @@ interface Person {
 const status = ref<'loading' | 'ready' | 'offline' | 'error'>('loading');
 const detail = shallowRef<ReceiptDetail | null>(null);
 const friends = ref<PublicUser[]>([]);
+const myProfile = ref<Profile | null>(null);
 const selected = ref<Person[]>([]);
 const guestName = ref('');
 const includeMe = ref(true);
@@ -37,7 +39,8 @@ const error = ref<MessageKey | null>(null);
 async function load() {
   status.value = 'loading';
   try {
-    const [d, f] = await Promise.all([wallet.api.getReceipt(id), wallet.api.getFriends()]);
+    const [d, f, p] = await Promise.all([wallet.api.getReceipt(id), wallet.api.getFriends(), wallet.api.getProfile().catch(() => null)]);
+    myProfile.value = p;
     detail.value = d;
     friends.value = f.friends;
     status.value = 'ready';
@@ -158,11 +161,14 @@ const modes: { value: SplitMode; label: MessageKey }[] = [
 
 <template>
   <div class="space-y-4">
-    <NuxtLink :to="`/receipts/${id}`" class="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary no-underline hover:text-brand-900">
-      <ChevronLeft class="size-4" aria-hidden="true" />
-      {{ t('split.back') }}
-    </NuxtLink>
-    <h1 class="text-h1 font-semibold">{{ t('split.title') }}</h1>
+    <div class="flex items-center justify-between">
+      <NuxtLink :to="`/receipts/${id}`" class="inline-flex min-h-11 min-w-11 items-center gap-1 text-sm font-medium text-primary no-underline hover:text-brand-900" :aria-label="t('split.back')">
+        <ChevronLeft class="size-5" aria-hidden="true" />
+        <span class="sr-only sm:not-sr-only">{{ t('split.back') }}</span>
+      </NuxtLink>
+      <h1 class="text-h3 font-semibold">{{ t('split.title') }}</h1>
+      <span class="min-w-11" aria-hidden="true" />
+    </div>
     <p v-if="status === 'loading'" role="status" class="flex items-center gap-2 text-sm text-text-secondary">
       <Spinner role="presentation" aria-hidden="true" />
       {{ t('common.loading') }}
@@ -172,51 +178,62 @@ const modes: { value: SplitMode; label: MessageKey }[] = [
       <Button type="button" variant="secondary" size="lg" @click="load">{{ t('common.retry') }}</Button>
     </div>
     <template v-else>
-      <section class="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-4">
-        <div class="min-w-0">
-          <p class="truncate font-medium">{{ detail.receipt.merchant.name }}</p>
-          <p class="text-xs text-text-secondary">{{ t('split.payable') }}</p>
+      <section class="flex items-center justify-between gap-3 rounded-[14px] border border-border bg-card px-4 py-3.5">
+        <div class="flex min-w-0 items-center gap-3">
+          <MerchantLogo :name="detail.receipt.merchant.name" />
+          <div class="min-w-0">
+            <p class="truncate font-semibold">{{ detail.receipt.merchant.name }}</p>
+            <p class="text-xs text-text-secondary">{{ t('split.payable') }}</p>
+          </div>
         </div>
-        <p class="font-mono text-lg font-medium tabular-nums" data-testid="split-payable">{{ formatEuro(payable, locale) }}</p>
+        <p class="font-mono text-xl font-semibold tabular-nums" data-testid="split-payable">{{ formatEuro(payable, locale) }}</p>
       </section>
 
       <!-- participants -->
-      <section class="space-y-3 rounded-xl border border-border bg-card p-4">
-        <h2 class="text-h2 font-semibold">{{ t('split.who') }}</h2>
-        <label class="flex min-h-11 items-center gap-3 text-sm">
-          <input v-model="includeMe" type="checkbox" class="size-5 accent-[var(--primary)]" data-testid="split-include-me" />
-          {{ t('split.includeMe') }}
-        </label>
-        <p v-if="friends.length === 0" class="text-sm text-text-secondary">{{ t('split.noFriends') }}</p>
-        <ul v-else class="space-y-1">
+      <section class="space-y-2" :aria-label="t('split.who')">
+        <h2 class="text-xs font-medium tracking-wide text-text-secondary uppercase">{{ t('rcpt.split.withWhom') }}</h2>
+        <ul class="-mx-4 flex gap-3 overflow-x-auto px-4 py-1">
+          <li>
+            <button type="button" role="checkbox" :aria-checked="includeMe" data-testid="split-include-me" class="flex w-16 flex-col items-center gap-1.5" @click="includeMe = !includeMe">
+              <span class="relative rounded-full" :class="includeMe ? 'outline outline-2 outline-primary' : 'opacity-60'">
+                <PersonAvatar :user="myProfile" :name="t('split.you')" me size="lg" />
+                <i v-if="includeMe" class="absolute -right-0.5 -bottom-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground"><Check class="size-3" aria-hidden="true" /></i>
+              </span>
+              <span class="text-xs">{{ t('split.you') }}</span>
+            </button>
+          </li>
           <li v-for="(f, n) in friends" :key="f.userId">
             <button
               type="button"
               role="checkbox"
               :aria-checked="isSelectedFriend(f.userId)"
               :data-testid="`split-participant-${n}`"
-              class="flex min-h-11 w-full items-center gap-3 rounded-lg border bg-card px-3 text-left text-sm"
-              :class="isSelectedFriend(f.userId) ? 'border-primary' : 'border-border'"
+              class="flex w-16 flex-col items-center gap-1.5"
               @click="toggleFriend(f)"
             >
-              <UserAvatar :user="f" size="sm" />
-              <span class="flex-1 font-medium">{{ userName(f) }}</span>
-              <span v-if="isSelectedFriend(f.userId)" class="text-xs font-medium text-primary">{{ t('split.picked') }}</span>
+              <span class="relative rounded-full" :class="isSelectedFriend(f.userId) ? 'outline outline-2 outline-primary' : ''">
+                <PersonAvatar :user="f" :name="userName(f)" size="lg" />
+                <i v-if="isSelectedFriend(f.userId)" class="absolute -right-0.5 -bottom-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground"><Check class="size-3" aria-hidden="true" /></i>
+              </span>
+              <span class="w-full truncate text-xs">{{ userName(f) }}</span>
+              <span v-if="isSelectedFriend(f.userId)" class="sr-only">{{ t('split.picked') }}</span>
             </button>
           </li>
-        </ul>
-        <ul v-if="selected.some((p) => p.guestName)" class="space-y-1">
           <template v-for="(p, i) in selected" :key="p.key">
-            <li v-if="p.guestName" class="flex min-h-11 items-center gap-3 rounded-lg border border-primary px-3 text-sm" :data-testid="`split-guest-${i}`">
-              <UserAvatar :user="null" :name="p.label" size="sm" />
-              <span class="flex-1 font-medium">{{ p.label }}</span>
-              <span class="text-xs text-text-secondary">{{ t('split.guestTag') }}</span>
-              <button type="button" class="flex size-9 items-center justify-center" :aria-label="t('split.removeGuest', { name: p.label })" @click="removeAt(i)"><X class="size-4" aria-hidden="true" /></button>
+            <li v-if="p.guestName" :data-testid="`split-guest-${i}`">
+              <button type="button" class="flex w-16 flex-col items-center gap-1.5" :aria-label="t('split.removeGuest', { name: p.label })" @click="removeAt(i)">
+                <span class="relative rounded-full outline outline-2 outline-primary">
+                  <PersonAvatar :user="null" :name="p.label" size="lg" />
+                  <i class="absolute -right-0.5 -bottom-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground"><X class="size-3" aria-hidden="true" /></i>
+                </span>
+                <span class="w-full truncate text-xs">{{ p.label }}</span>
+              </button>
             </li>
           </template>
         </ul>
+        <p v-if="friends.length === 0" class="text-sm text-text-secondary">{{ t('split.noFriends') }}</p>
         <form class="flex gap-2" @submit.prevent="addGuest">
-          <Input v-model="guestName" maxlength="40" :placeholder="t('split.guestPlaceholder')" :aria-label="t('split.guestLabel')" class="h-11" data-testid="split-guest-input" />
+          <Input v-model="guestName" maxlength="40" :placeholder="t('split.guestPlaceholder')" :aria-label="t('split.guestLabel')" class="h-11 bg-card" data-testid="split-guest-input" />
           <Button type="submit" variant="secondary" size="lg" data-testid="split-guest-add" :disabled="!guestName.trim() || full">
             <Plus aria-hidden="true" />
             {{ t('split.guestAdd') }}
@@ -227,16 +244,16 @@ const modes: { value: SplitMode; label: MessageKey }[] = [
       </section>
 
       <!-- mode -->
-      <section class="space-y-3 rounded-xl border border-border bg-card p-4">
+      <section class="space-y-3">
         <Tabs v-model="mode">
-          <TabsList class="grid h-11 w-full grid-cols-3">
-            <TabsTrigger v-for="m in modes" :key="m.value" :value="m.value" :data-testid="`split-mode-${m.value}`" class="min-h-9">{{ t(m.label) }}</TabsTrigger>
+          <TabsList class="grid h-12 w-full grid-cols-3 rounded-[10px] border border-border bg-card p-1">
+            <TabsTrigger v-for="m in modes" :key="m.value" :value="m.value" :data-testid="`split-mode-${m.value}`" class="min-h-9 rounded-[7px] text-sm data-[state=active]:bg-primary data-[state=active]:font-semibold data-[state=active]:text-primary-foreground">{{ t(m.label) }}</TabsTrigger>
           </TabsList>
         </Tabs>
 
         <p v-if="mode === 'equal'" class="text-sm text-text-secondary">{{ t('split.equalHint') }}</p>
 
-        <div v-else-if="mode === 'items'" class="space-y-3">
+        <div v-else-if="mode === 'items'" class="space-y-3 rounded-[14px] border border-border bg-card p-4">
           <p class="text-sm text-text-secondary">{{ t('split.itemsHint') }}</p>
           <ul class="space-y-3">
             <li v-for="line in detail.receipt.lines" :key="line.lineNo" class="space-y-2 border-t border-border pt-3 first:border-t-0 first:pt-0" :data-testid="`split-line-${line.lineNo}`">
@@ -251,8 +268,8 @@ const modes: { value: SplitMode; label: MessageKey }[] = [
                   type="button"
                   :aria-pressed="(assignments[line.lineNo] ?? []).includes(p.who)"
                   :data-testid="`split-chip-${line.lineNo}-${p.who}`"
-                  class="min-h-9 rounded-full border px-3 text-sm"
-                  :class="(assignments[line.lineNo] ?? []).includes(p.who) ? 'border-primary bg-muted font-medium text-primary' : 'border-border text-text-secondary'"
+                  class="min-h-9 rounded-full border px-3 text-[13px] font-medium"
+                  :class="(assignments[line.lineNo] ?? []).includes(p.who) ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-text-secondary'"
                   @click="toggleAssign(line.lineNo, p.who)"
                 >
                   {{ p.label }}
@@ -264,7 +281,7 @@ const modes: { value: SplitMode; label: MessageKey }[] = [
           <p v-if="preview.unassigned.length" role="status" class="text-sm text-warning" data-testid="split-unassigned">{{ t('split.unassigned', { n: preview.unassigned.length }) }}</p>
         </div>
 
-        <div v-else class="space-y-2">
+        <div v-else class="space-y-2 rounded-[14px] border border-border bg-card p-4">
           <p class="text-sm text-text-secondary">{{ t('split.customHint') }}</p>
           <div v-for="p in people" :key="p.who" class="flex items-center gap-3">
             <Label :for="`custom-${p.who}`" class="flex-1 text-sm font-medium">{{ p.label }}</Label>
@@ -280,17 +297,24 @@ const modes: { value: SplitMode; label: MessageKey }[] = [
       </section>
 
       <!-- preview -->
-      <section class="space-y-2 rounded-xl border border-border bg-card p-4" :aria-label="t('split.preview')" data-testid="split-preview">
-        <h2 class="text-h2 font-semibold">{{ t('split.preview') }}</h2>
+      <section class="space-y-3 rounded-[14px] border border-border bg-card p-4" :aria-label="t('split.preview')" data-testid="split-preview">
+        <h2 class="text-xs font-medium tracking-wide text-text-secondary uppercase">{{ t('rcpt.split.eachPays') }}</h2>
         <p v-if="people.length === 0" class="text-sm text-text-secondary">{{ t('split.previewEmpty') }}</p>
-        <ul v-else class="divide-y divide-border">
-          <li v-for="p in people" :key="p.who" class="flex justify-between gap-3 py-2 text-sm" :data-testid="`split-preview-${p.who}`">
-            <span class="font-medium">{{ p.label }}</span>
-            <span class="font-mono tabular-nums">{{ formatEuro(preview.shares[p.who] ?? 0, locale) }}</span>
-          </li>
-        </ul>
+        <template v-else>
+          <div v-for="p in people" :key="p.who" class="flex items-center gap-3" :data-testid="`split-preview-${p.who}`">
+            <PersonAvatar :user="p.who === 'me' ? myProfile : null" :name="p.label" :me="p.who === 'me'" size="sm" />
+            <span class="flex-1 text-[15px]">{{ p.label }}</span>
+            <span class="font-mono text-[15px] font-semibold tabular-nums">{{ formatEuro(preview.shares[p.who] ?? 0, locale) }}</span>
+          </div>
+          <div class="flex justify-between border-t border-border pt-3 text-[13px] text-text-secondary">
+            <span>{{ t('split.detail.total') }}</span>
+            <span class="font-mono tabular-nums">{{ formatEuro(payable, locale) }}</span>
+          </div>
+        </template>
         <p class="text-xs text-text-secondary">{{ t('split.tipNote') }}</p>
       </section>
+
+      <p class="rounded-[14px] border border-selected-border bg-selected px-3.5 py-3 text-[13px] text-accent-foreground">{{ t('rcpt.split.privacy') }}</p>
 
       <p v-if="error" role="alert" class="rounded-lg border border-danger-border bg-danger-soft p-3 text-sm text-danger">{{ t(error) }}</p>
       <Button type="button" size="lg" class="w-full" data-testid="split-create" :disabled="!canCreate" @click="create">

@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import type { MessageKey } from '~/i18n/en';
+
 definePageMeta({ layout: 'dashboard', middleware: 'dashboard-auth' });
 
 interface Exp { id: string; kind: string; periodFrom: string; periodTo: string; status: string; createdAt: string; link: string | null; linkExpiresAt: string | null }
-const { t } = useLocale();
+const { t, te } = useLocale();
 const KINDS = [
   { value: 'btw_csv', label: 'exports.kind.btw_csv' },
   { value: 'sales_csv', label: 'exports.kind.sales_csv' },
@@ -34,17 +36,27 @@ async function request() {
 <template>
   <AppPageHeading :title="t('nav.exports')" :description="t('exports.description')" />
 
+  <div class="grid gap-4 sm:grid-cols-2">
+    <button v-for="k in KINDS" :key="k.value" type="button" :data-testid="`export-card-${k.value}`" :aria-pressed="form.kind === k.value"
+      class="flex flex-col items-start gap-3 rounded-xl border bg-card p-4 text-left transition-colors hover:bg-muted"
+      :class="form.kind === k.value ? 'border-primary ring-[3px] ring-accent' : ''" @click="form.kind = k.value">
+      <span class="text-[17px] font-semibold">{{ t(`ov.exp.kind.${k.value}` as MessageKey) }}</span>
+      <span class="text-sm text-muted-foreground">{{ t(`ov.exp.desc.${k.value}` as MessageKey) }}</span>
+      <Badge variant="accent">CSV</Badge>
+    </button>
+  </div>
+
   <Card>
     <form @submit.prevent="request">
-      <CardContent class="grid items-end gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="space-y-2 lg:col-span-2">
+      <CardContent class="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="space-y-2">
           <Label for="export-kind">{{ t('exports.export') }}</Label>
           <AppNativeSelect id="export-kind" v-model="form.kind" data-testid="export-kind"><option v-for="k in KINDS" :key="k.value" :value="k.value">{{ t(k.label) }}</option></AppNativeSelect>
         </div>
         <div class="space-y-2"><Label for="export-from">{{ t('common.from') }}</Label><Input id="export-from" v-model="form.from" type="date" required data-testid="export-from" /></div>
         <div class="space-y-2"><Label for="export-to">{{ t('common.to') }}</Label><Input id="export-to" v-model="form.to" type="date" required data-testid="export-to" /></div>
+        <div class="flex lg:justify-end"><Button data-testid="export-request">{{ t('common.requestExport') }}</Button></div>
       </CardContent>
-      <CardFooter class="mt-6 justify-end"><Button data-testid="export-request">{{ t('common.requestExport') }}</Button></CardFooter>
     </form>
   </Card>
 
@@ -60,10 +72,10 @@ async function request() {
           <TableBody>
             <TableRow v-for="e in rows" :key="e.id" class="h-[52px]" data-testid="export-row" :data-status="e.status">
               <TableCell class="px-4">{{ amsterdam(e.createdAt) }}</TableCell>
-              <TableCell>{{ e.kind }}</TableCell>
+              <TableCell class="font-medium">{{ te(`ov.exp.kind.${e.kind}`) ? t(`ov.exp.kind.${e.kind}` as MessageKey) : e.kind }}</TableCell>
               <TableCell class="tabular-nums">{{ t('exports.period', { from: e.periodFrom, to: e.periodTo }) }}</TableCell>
               <TableCell><AppStatusBadge :status="e.status" data-testid="export-status" /></TableCell>
-              <TableCell class="px-4"><a v-if="e.link" :href="e.link" data-testid="export-link" class="font-medium text-primary hover:underline">{{ t('exports.downloadLink') }}</a></TableCell>
+              <TableCell class="px-4"><Button v-if="e.link" variant="outline" size="sm" as-child><a :href="e.link" data-testid="export-link">{{ t('exports.downloadLink') }}</a></Button></TableCell>
             </TableRow>
             <TableRow v-if="!rows.length" class="hover:bg-transparent"><TableCell colspan="5" class="h-[52px] text-center text-muted-foreground">{{ t('exports.empty') }}</TableCell></TableRow>
           </TableBody>

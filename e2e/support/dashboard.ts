@@ -33,5 +33,5 @@ export async function loginDashboard(page: Page, world: World): Promise<void> {
   await page.getByTestId('totp-input').fill(totpCode(world.totpSecret));
   await page.getByTestId('totp-submit').click();
   await expect(page.getByTestId('whoami')).toBeVisible();
-  await expect(page).toHaveURL(/\/dashboard\/archive$/); // /dashboard redirects to the archive
+  await expect(page).toHaveURL(/\/dashboard\/overview$/); // /dashboard redirects to the overview
 }

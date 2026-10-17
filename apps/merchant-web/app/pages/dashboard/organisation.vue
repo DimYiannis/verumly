@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { DISCLAIMER, getCountry, listCountries, validateSetup } from '@lr/compliance';
+import { CheckIcon, ChevronDownIcon } from '@lucide/vue';
 
 definePageMeta({ layout: 'dashboard', middleware: 'dashboard-auth' });
 
@@ -80,6 +81,23 @@ function setValue(key: string, v: string | boolean) {
   values.value = { ...values.value, [key]: v };
 }
 
+// ---- stepper: reflects progress, each step anchors to its section ------------------------------------------------
+const identityDone = computed(() => !!form.legalName.trim() && !!form.kvkNumber.trim());
+const legalDone = computed(() => problems.value.length === 0);
+const steps = computed(() => {
+  const done = [true, identityDone.value, identityDone.value && legalDone.value, confirmLegal.value && identityDone.value && legalDone.value];
+  const current = done.findIndex((d) => !d);
+  return [
+    { id: 'org-step-country', anchor: 'org-section-identity', label: t('adm.setup.stepCountry') },
+    { id: 'org-step-identity', anchor: 'org-section-identity', label: t('adm.setup.stepIdentity') },
+    { id: 'org-step-legal', anchor: 'org-section-legal', label: t('adm.setup.stepLegal') },
+    { id: 'org-step-confirm', anchor: 'org-section-confirm', label: t('adm.setup.stepConfirm') },
+  ].map((s, i) => ({ ...s, n: i + 1, done: done[i]!, current: i === current }));
+});
+function goTo(anchor: string) {
+  document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 async function save() {
   saved.value = false;
   const o = await attempt(error, () =>
@@ -110,145 +128,171 @@ async function save() {
     </Badge>
   </AppPageHeading>
 
-  <form class="space-y-6" @submit.prevent="save">
+  <nav class="flex flex-wrap items-center gap-2 px-2" :aria-label="t('adm.setup.stepsLabel')" data-testid="org-steps">
+    <template v-for="(s, i) in steps" :key="s.id">
+      <button type="button" class="flex items-center gap-2 rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring" :aria-current="s.current ? 'step' : undefined" :data-testid="s.id" :data-state="s.done ? 'done' : s.current ? 'current' : 'todo'" @click="goTo(s.anchor)">
+        <span class="flex size-7 items-center justify-center rounded-full text-xs font-medium" :class="s.done ? 'bg-success text-white' : s.current ? 'bg-primary text-primary-foreground' : 'bg-border text-muted-foreground'">
+          <CheckIcon v-if="s.done" class="size-4" /><template v-else>{{ s.n }}</template>
+        </span>
+        <span class="text-sm" :class="s.done || s.current ? 'font-medium' : 'text-muted-foreground'">{{ s.label }}</span>
+      </button>
+      <span v-if="i < steps.length - 1" class="hidden h-0.5 min-w-6 flex-1 rounded sm:block" :class="s.done ? 'bg-success' : 'bg-border'" aria-hidden="true" />
+    </template>
+  </nav>
+
+  <form class="space-y-4" @submit.prevent="save">
     <p v-if="form.country !== 'NL'" class="rounded-md border border-warning-border bg-warning-soft p-3 text-sm text-warning" role="status" data-testid="org-nl-only">{{ t('setup.nlOnly') }}</p>
     <ul v-if="missing.length" class="list-disc space-y-1 pl-5 text-sm text-muted-foreground" data-testid="org-missing">
       <li v-for="m in missing" :key="m">{{ m }}</li>
     </ul>
 
-    <Card>
-      <CardContent class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        <div>
-          <h2 class="text-base font-medium">{{ t('setup.identityTitle') }}</h2>
-          <p class="mt-1 text-sm text-muted-foreground">{{ t('setup.identityHelp') }}</p>
-        </div>
-        <div class="max-w-lg space-y-6">
-          <div class="space-y-2">
-            <Label for="org-country">{{ t('setup.country') }}</Label>
-            <AppNativeSelect id="org-country" v-model="form.country" :disabled="!canWrite" data-testid="org-country">
-              <option v-for="c in countries" :key="c.code" :value="c.code">{{ c.name }} ({{ c.currency }})</option>
-            </AppNativeSelect>
-          </div>
-          <div class="space-y-2">
-            <Label for="org-legal-name">{{ t('setup.legalName') }}</Label>
-            <Input id="org-legal-name" v-model="form.legalName" :disabled="!canWrite" required data-testid="org-legal-name" />
-          </div>
-          <div class="space-y-2">
-            <Label for="org-kvk">{{ country.companyId.label }}</Label>
-            <Input id="org-kvk" v-model="form.kvkNumber" :disabled="!canWrite" required :pattern="country.companyId.pattern" data-testid="org-kvk" />
-            <p v-if="country.companyId.example" class="text-xs text-muted-foreground">{{ t('setup.companyIdHint', { example: country.companyId.example }) }}</p>
-          </div>
-          <div class="space-y-2">
-            <Label for="org-vat">{{ country.vatId.label }} <span class="font-normal text-muted-foreground">({{ t('setup.vatOptional') }})</span></Label>
-            <Input id="org-vat" v-model="form.vatNumber" :disabled="!canWrite" :placeholder="country.vatId.example" data-testid="org-vat" />
-            <p v-if="country.vatId.example" class="text-xs text-muted-foreground">{{ t('setup.vatHint', { example: country.vatId.example }) }}</p>
-          </div>
-          <div class="space-y-2">
-            <Label for="org-retention">{{ t('setup.retention') }}</Label>
-            <Input id="org-retention" v-model.number="form.retentionYears" :disabled="!canWrite" type="number" :min="minRetention" max="25" required data-testid="org-retention" />
-            <p class="text-xs text-muted-foreground">{{ t('setup.retentionHelp', { country: country.name, years: country.retentionYearsIndicative }) }}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-
-    <Card>
-      <CardContent class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        <div>
-          <h2 class="text-base font-medium">{{ t('setup.settingsTitle', { country: country.name }) }}</h2>
-          <p class="mt-1 text-sm text-muted-foreground">{{ t('setup.settingsHelp') }}</p>
-        </div>
-        <div class="max-w-lg space-y-6">
-          <p v-if="!country.settings.length" class="text-sm text-muted-foreground">{{ t('setup.settingsNone') }}</p>
-          <div v-for="s in country.settings" :key="`${country.code}-${s.key}`" class="space-y-2">
-            <template v-if="s.type === 'boolean'">
-              <div class="flex items-center justify-between gap-4">
-                <Label :for="`org-setting-${s.key}`">{{ s.label }}<span v-if="s.required" class="text-danger"> *</span></Label>
-                <Switch :id="`org-setting-${s.key}`" :model-value="values[s.key] === true" :disabled="!canWrite" :data-testid="`org-setting-${s.key}`" @update:model-value="setValue(s.key, !!$event)" />
-              </div>
-            </template>
-            <template v-else>
-              <Label :for="`org-setting-${s.key}`">{{ s.label }}<span v-if="s.required" class="text-danger"> *</span></Label>
-              <AppNativeSelect
-                v-if="s.type === 'select'"
-                :id="`org-setting-${s.key}`"
-                :model-value="textValue(s.key)"
-                :disabled="!canWrite"
-                :required="s.required"
-                :data-testid="`org-setting-${s.key}`"
-                @update:model-value="setValue(s.key, $event ?? '')"
-              >
-                <option value="">{{ t('setup.selectPlaceholder') }}</option>
-                <option v-for="o in s.options ?? []" :key="o" :value="o">{{ o }}</option>
+    <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div class="flex min-w-0 flex-col gap-4">
+        <Card id="org-section-identity" class="scroll-mt-4">
+          <CardHeader>
+            <CardTitle class="text-base">{{ t('setup.identityTitle') }}</CardTitle>
+            <CardDescription>{{ t('setup.identityHelp') }}</CardDescription>
+          </CardHeader>
+          <CardContent class="mt-2 grid gap-6 sm:grid-cols-2">
+            <div class="space-y-2">
+              <Label for="org-country">{{ t('setup.country') }}</Label>
+              <AppNativeSelect id="org-country" v-model="form.country" :disabled="!canWrite" data-testid="org-country">
+                <option v-for="c in countries" :key="c.code" :value="c.code">{{ c.name }} ({{ c.currency }})</option>
               </AppNativeSelect>
-              <Input
-                v-else
-                :id="`org-setting-${s.key}`"
-                :model-value="textValue(s.key)"
-                :disabled="!canWrite"
-                :required="s.required"
-                :pattern="s.pattern"
-                :data-testid="`org-setting-${s.key}`"
-                @update:model-value="setValue(s.key, String($event))"
-              />
-            </template>
-            <p v-if="s.help" class="text-xs text-muted-foreground">{{ s.help }}</p>
-            <p v-if="s.hint" class="text-xs text-muted-foreground">{{ s.hint }}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+            </div>
+            <div class="space-y-2">
+              <Label for="org-legal-name">{{ t('setup.legalName') }}</Label>
+              <Input id="org-legal-name" v-model="form.legalName" :disabled="!canWrite" required data-testid="org-legal-name" />
+            </div>
+            <div class="space-y-2">
+              <Label for="org-kvk">{{ country.companyId.label }}</Label>
+              <Input id="org-kvk" v-model="form.kvkNumber" :disabled="!canWrite" required :pattern="country.companyId.pattern" data-testid="org-kvk" />
+              <p v-if="country.companyId.example" class="text-xs text-muted-foreground">{{ t('setup.companyIdHint', { example: country.companyId.example }) }}</p>
+            </div>
+            <div class="space-y-2">
+              <Label for="org-vat">{{ country.vatId.label }} <span class="font-normal text-muted-foreground">({{ t('setup.vatOptional') }})</span></Label>
+              <Input id="org-vat" v-model="form.vatNumber" :disabled="!canWrite" :placeholder="country.vatId.example" data-testid="org-vat" />
+              <p v-if="country.vatId.example" class="text-xs text-muted-foreground">{{ t('setup.vatHint', { example: country.vatId.example }) }}</p>
+            </div>
+            <div class="space-y-2 sm:col-span-2">
+              <Label for="org-retention">{{ t('setup.retention') }}</Label>
+              <Input id="org-retention" v-model.number="form.retentionYears" :disabled="!canWrite" type="number" :min="minRetention" max="25" required class="sm:max-w-48" data-testid="org-retention" />
+              <p class="text-xs text-muted-foreground">{{ t('setup.retentionHelp', { country: country.name, years: country.retentionYearsIndicative }) }}</p>
+            </div>
+          </CardContent>
+        </Card>
 
-    <Card>
-      <CardContent class="space-y-5">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <h2 class="text-base font-medium">{{ t('setup.lawTitle', { country: country.name }) }}</h2>
-          <div class="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <Card id="org-section-legal" class="scroll-mt-4">
+          <CardHeader>
+            <CardTitle class="text-base">{{ t('setup.settingsTitle', { country: country.name }) }}</CardTitle>
+            <CardDescription>{{ t('setup.settingsHelp') }} {{ t('adm.setup.settingsRequired') }}</CardDescription>
+          </CardHeader>
+          <CardContent class="mt-2 grid gap-6 sm:grid-cols-2">
+            <p v-if="!country.settings.length" class="text-sm text-muted-foreground sm:col-span-2">{{ t('setup.settingsNone') }}</p>
+            <div v-for="s in country.settings" :key="`${country.code}-${s.key}`" class="space-y-2" :class="s.type === 'boolean' ? 'sm:col-span-2' : ''">
+              <template v-if="s.type === 'boolean'">
+                <div class="flex items-center justify-between gap-4 rounded-md border border-border px-4 py-3">
+                  <div class="min-w-0 space-y-1">
+                    <Label :for="`org-setting-${s.key}`">{{ s.label }}<span v-if="s.required" class="text-danger"> *</span></Label>
+                    <p v-if="s.help" class="text-xs text-muted-foreground">{{ s.help }}</p>
+                    <p v-if="s.hint" class="text-xs text-muted-foreground">{{ s.hint }}</p>
+                  </div>
+                  <Switch :id="`org-setting-${s.key}`" :model-value="values[s.key] === true" :disabled="!canWrite" :data-testid="`org-setting-${s.key}`" @update:model-value="setValue(s.key, !!$event)" />
+                </div>
+              </template>
+              <template v-else>
+                <Label :for="`org-setting-${s.key}`">{{ s.label }}<span v-if="s.required" class="text-danger"> *</span></Label>
+                <AppNativeSelect
+                  v-if="s.type === 'select'"
+                  :id="`org-setting-${s.key}`"
+                  :model-value="textValue(s.key)"
+                  :disabled="!canWrite"
+                  :required="s.required"
+                  :data-testid="`org-setting-${s.key}`"
+                  @update:model-value="setValue(s.key, $event ?? '')"
+                >
+                  <option value="">{{ t('setup.selectPlaceholder') }}</option>
+                  <option v-for="o in s.options ?? []" :key="o" :value="o">{{ o }}</option>
+                </AppNativeSelect>
+                <Input
+                  v-else
+                  :id="`org-setting-${s.key}`"
+                  :model-value="textValue(s.key)"
+                  :disabled="!canWrite"
+                  :required="s.required"
+                  :pattern="s.pattern"
+                  :data-testid="`org-setting-${s.key}`"
+                  @update:model-value="setValue(s.key, String($event))"
+                />
+                <p v-if="s.help" class="text-xs text-muted-foreground">{{ s.help }}</p>
+                <p v-if="s.hint" class="text-xs text-muted-foreground">{{ s.hint }}</p>
+              </template>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card id="org-section-confirm" class="scroll-mt-4">
+          <CardContent class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex min-w-0 flex-1 basis-72 items-start gap-3">
+              <Switch id="org-confirm-legal" :model-value="confirmLegal" :disabled="!canWrite" data-testid="org-confirm-legal" @update:model-value="confirmLegal = !!$event" />
+              <Label for="org-confirm-legal" class="leading-snug">{{ t('setup.confirmLegal', { country: country.name }) }}</Label>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="text-sm">
+                <p v-if="saved" class="text-success" data-testid="org-saved">{{ t('setup.saved') }}</p>
+                <p v-else-if="error" class="text-danger" role="alert" data-testid="error">{{ error }}</p>
+                <p v-else-if="!canWrite" class="text-muted-foreground">{{ t('setup.ownersOnly') }}</p>
+              </div>
+              <Button v-if="canWrite" :disabled="!confirmLegal" data-testid="org-save">{{ t('setup.save') }}</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card class="lg:sticky lg:top-4" data-testid="org-law">
+        <CardHeader>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle class="text-base">{{ t('adm.setup.lawCard') }}</CardTitle>
             <Badge :variant="confidenceVariant[country.confidence]" data-testid="org-confidence">{{ t(`setup.confidence.${country.confidence}`) }}</Badge>
-            <span>{{ t('setup.lastChecked', { date: lastChecked }) }}</span>
           </div>
-        </div>
+          <CardDescription>{{ t('setup.lawTitle', { country: country.name }) }} · {{ t('setup.lastChecked', { date: lastChecked }) }}</CardDescription>
+        </CardHeader>
+        <CardContent class="space-y-4">
+          <div class="rounded-md border border-warning-border bg-warning-soft p-3 text-sm" role="note">
+            <p class="font-medium text-warning">{{ t('setup.disclaimerTitle') }}</p>
+            <p class="mt-1 text-text-secondary">{{ DISCLAIMER }}</p>
+          </div>
 
-        <div class="rounded-md border border-warning-border bg-warning-soft p-3 text-sm" role="note">
-          <p class="font-medium text-warning">{{ t('setup.disclaimerTitle') }}</p>
-          <p class="mt-1">{{ DISCLAIMER }}</p>
-        </div>
+          <div class="max-h-[60vh] divide-y divide-border overflow-y-auto rounded-md border border-border">
+            <details v-for="(topic, i) in TOPICS" :key="`${country.code}-${topic}`" :open="i === 0" class="group px-4 py-3">
+              <summary class="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
+                {{ t(`setup.topic.${topic}`) }}
+                <ChevronDownIcon class="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <p class="mt-2 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{{ country.summary[topic] }}</p>
+            </details>
+          </div>
 
-        <div class="divide-y divide-border rounded-md border border-border">
-          <details v-for="(topic, i) in TOPICS" :key="`${country.code}-${topic}`" :open="i === 0" class="group px-4 py-3">
-            <summary class="cursor-pointer text-sm font-medium">{{ t(`setup.topic.${topic}`) }}</summary>
-            <p class="mt-2 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{{ country.summary[topic] }}</p>
+          <details v-if="country.adviserMustVerify || country.sources.length" class="group rounded-md border border-border px-4 py-3">
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-primary [&::-webkit-details-marker]:hidden">
+              {{ t('adm.setup.sourcesTitle') }}
+              <ChevronDownIcon class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+            </summary>
+            <div v-if="country.adviserMustVerify" class="mt-3">
+              <h3 class="text-sm font-medium">{{ t('setup.adviserTitle') }}</h3>
+              <p class="mt-1 whitespace-pre-line text-sm text-muted-foreground">{{ country.adviserMustVerify }}</p>
+            </div>
+            <div v-if="country.sources.length" class="mt-3">
+              <h3 class="text-sm font-medium">{{ t('setup.sources') }}</h3>
+              <ul class="mt-1 space-y-1 text-sm">
+                <li v-for="src in country.sources" :key="src" class="break-all">
+                  <a :href="src" target="_blank" rel="noopener noreferrer" class="text-primary underline-offset-4 hover:underline">{{ src }}</a>
+                </li>
+              </ul>
+            </div>
           </details>
-        </div>
-
-        <div v-if="country.adviserMustVerify">
-          <h3 class="text-sm font-medium">{{ t('setup.adviserTitle') }}</h3>
-          <p class="mt-1 whitespace-pre-line text-sm text-muted-foreground">{{ country.adviserMustVerify }}</p>
-        </div>
-
-        <div v-if="country.sources.length">
-          <h3 class="text-sm font-medium">{{ t('setup.sources') }}</h3>
-          <ul class="mt-1 space-y-1 text-sm">
-            <li v-for="src in country.sources" :key="src" class="break-all">
-              <a :href="src" target="_blank" rel="noopener noreferrer" class="text-primary underline-offset-4 hover:underline">{{ src }}</a>
-            </li>
-          </ul>
-        </div>
-      </CardContent>
-      <CardFooter class="flex-col items-stretch gap-4 border-t border-border pt-4">
-        <div class="flex items-start gap-3">
-          <Switch id="org-confirm-legal" :model-value="confirmLegal" :disabled="!canWrite" data-testid="org-confirm-legal" @update:model-value="confirmLegal = !!$event" />
-          <Label for="org-confirm-legal" class="leading-snug">{{ t('setup.confirmLegal', { country: country.name }) }}</Label>
-        </div>
-        <div class="flex items-center justify-between gap-4">
-          <div class="text-sm">
-            <p v-if="saved" class="text-success" data-testid="org-saved">{{ t('setup.saved') }}</p>
-            <p v-else-if="error" class="text-danger" role="alert" data-testid="error">{{ error }}</p>
-            <p v-else-if="!canWrite" class="text-muted-foreground">{{ t('setup.ownersOnly') }}</p>
-          </div>
-          <Button v-if="canWrite" :disabled="!confirmLegal" data-testid="org-save">{{ t('setup.save') }}</Button>
-        </div>
-      </CardFooter>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   </form>
 </template>

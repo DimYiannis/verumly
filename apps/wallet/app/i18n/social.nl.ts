@@ -119,7 +119,7 @@ export const socialNl = {
   'split.picked': 'Gekozen',
   'split.guestTag': 'Zonder app',
   'split.guestLabel': 'Naam van iemand zonder de app',
-  'split.guestPlaceholder': 'Naam, bijvoorbeeld Sam',
+  'split.guestPlaceholder': 'Naam van de persoon',
   'split.guestAdd': 'Toevoegen',
   'split.guestHint': 'Iemand zonder de app krijgt een link om zijn deel te zien.',
   'split.removeGuest': '{name} verwijderen',

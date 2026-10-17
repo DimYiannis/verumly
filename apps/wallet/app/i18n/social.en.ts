@@ -121,7 +121,7 @@ export const socialEn: Record<keyof typeof socialNl, string> = {
   'split.picked': 'Selected',
   'split.guestTag': 'No app',
   'split.guestLabel': 'Name of someone without the app',
-  'split.guestPlaceholder': 'Name, for example Sam',
+  'split.guestPlaceholder': 'Name of the person',
   'split.guestAdd': 'Add',
   'split.guestHint': 'Someone without the app gets a link to see their share.',
   'split.removeGuest': 'Remove {name}',

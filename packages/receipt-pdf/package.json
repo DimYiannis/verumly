@@ -1,0 +1,17 @@
+{
+  "name": "@lr/receipt-pdf",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@lr/receipt-nl": "workspace:*",
+    "@lr/schema": "workspace:*",
+    "pdfmake": "^0.3.0"
+  },
+  "devDependencies": { "vitest": "^5.0.5" }
+}

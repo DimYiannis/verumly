@@ -104,17 +104,24 @@ onBeforeUnmount(stop);
 
 <template>
   <div v-if="supportsQr || supportsNfc" class="space-y-3" data-testid="invite-scan">
-    <div v-if="mode === 'off'" class="flex flex-wrap gap-2">
-      <Button v-if="supportsQr" type="button" variant="secondary" size="lg" data-testid="invite-scan-qr" @click="startQr">
-        <ScanLine aria-hidden="true" />
-        {{ t('social.scan.qr') }}
-      </Button>
-      <Button v-if="supportsNfc" type="button" variant="secondary" size="lg" data-testid="invite-scan-nfc" @click="startNfc">
-        <Nfc aria-hidden="true" />
-        {{ t('social.scan.nfc') }}
-      </Button>
+    <div v-if="mode === 'off'" class="flex items-center gap-3 rounded-[14px] border border-border bg-card p-3.5">
+      <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-selected text-primary"><ScanLine class="size-5" aria-hidden="true" /></span>
+      <div class="min-w-0 flex-1">
+        <p class="text-[15px] font-medium">{{ t('rcpt.invite.joinTitle') }}</p>
+        <p class="text-xs text-text-secondary">{{ t('rcpt.invite.joinHint') }}</p>
+      </div>
+      <div class="flex shrink-0 flex-wrap gap-2">
+        <Button v-if="supportsQr" type="button" variant="secondary" size="sm" data-testid="invite-scan-qr" @click="startQr">
+          <ScanLine aria-hidden="true" />
+          {{ t('rcpt.invite.scan') }}
+        </Button>
+        <Button v-if="supportsNfc" type="button" variant="secondary" size="sm" data-testid="invite-scan-nfc" @click="startNfc">
+          <Nfc aria-hidden="true" />
+          {{ t('social.scan.nfc') }}
+        </Button>
+      </div>
     </div>
-    <div v-else class="space-y-2 rounded-xl border border-border bg-card p-3">
+    <div v-else class="space-y-2 rounded-[14px] border border-border bg-card p-3">
       <video v-if="mode === 'qr'" ref="video" class="aspect-square w-full rounded-lg bg-black object-cover" playsinline muted />
       <p v-else class="flex items-center gap-2 text-sm"><Nfc class="size-5 text-primary" aria-hidden="true" />{{ t('social.scan.nfcHint') }}</p>
       <Button type="button" variant="ghost" size="lg" @click="stop"><X aria-hidden="true" />{{ t('social.scan.stop') }}</Button>

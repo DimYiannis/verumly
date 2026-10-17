@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ChevronLeft, Link2 } from '@lucide/vue';
+import { buttonVariants } from '~/components/ui/button';
+import { formatRelative } from '~/utils/relative-time';
 import type { MessageKey } from '~/i18n';
 import type { SplitDetail } from '~/utils/api-schemas';
 import { ApiError } from '~/utils/api';
@@ -36,6 +38,15 @@ onMounted(load);
 
 const owed = computed(() => (split.value?.shares ?? []).filter((s) => !s.settled).reduce((a, s) => a + s.amountMinor, 0));
 const detailForView = computed(() => (split.value ? { receipt: split.value.receipt, final: true, versions: [], template: split.value.template } : null));
+
+const paidPercent = computed(() => (split.value && split.value.totalMinor > 0 ? Math.round(((split.value.totalMinor - owed.value) / split.value.totalMinor) * 100) : 0));
+
+function shareNote(s: SplitDetail['shares'][number]): string {
+  if (s.isMe && split.value?.creatorIsMe) return t('rcpt.sd.paidBill');
+  if (s.settled) return s.settledAt ? t('rcpt.sd.settledWhen', { when: formatRelative(s.settledAt, locale.value) }) : '';
+  if (s.who === null) return t('rcpt.sd.guestWaiting');
+  return '';
+}
 
 function shareName(s: SplitDetail['shares'][number]): string {
   if (s.isMe) return t('split.you');
@@ -89,10 +100,14 @@ async function remove() {
 
 <template>
   <div class="space-y-4">
-    <NuxtLink to="/friends" class="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary no-underline hover:text-brand-900">
-      <ChevronLeft class="size-4" aria-hidden="true" />
-      {{ t('social.title') }}
-    </NuxtLink>
+    <div class="flex items-center justify-between">
+      <NuxtLink to="/friends" class="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary no-underline hover:text-brand-900">
+        <ChevronLeft class="size-5" aria-hidden="true" />
+        {{ t('social.title') }}
+      </NuxtLink>
+      <span class="text-[13px] text-text-secondary">{{ t('split.detail.title') }}</span>
+      <span class="min-w-11" aria-hidden="true" />
+    </div>
     <p v-if="status === 'loading'" role="status" class="flex items-center gap-2 text-sm text-text-secondary">
       <Spinner role="presentation" aria-hidden="true" />
       {{ t('common.loading') }}
@@ -103,35 +118,43 @@ async function remove() {
       <Button type="button" variant="secondary" size="lg" @click="load">{{ t('common.retry') }}</Button>
     </div>
     <template v-else>
-      <section class="space-y-1 rounded-xl border border-border bg-card p-4">
+      <section class="flex flex-col items-center gap-1 text-center">
         <h1 class="text-h2 font-semibold">{{ split.receipt.merchant.name }}</h1>
-        <p class="text-sm text-text-secondary">
+        <p class="text-[13px] text-text-secondary">
           {{ t('split.detail.by', { name: split.creatorIsMe ? t('split.you') : userName(split.creator), date: formatDateTime(split.createdAt, locale) }) }}
         </p>
-        <div class="flex items-baseline justify-between pt-2">
-          <span class="text-sm text-text-secondary">{{ t('split.detail.total') }}</span>
-          <span class="font-mono text-lg font-medium tabular-nums">{{ formatEuro(split.totalMinor, locale) }}</span>
+        <p class="sr-only">{{ t('split.detail.total') }} {{ formatEuro(split.totalMinor, locale) }}</p>
+      </section>
+
+      <section class="space-y-3 rounded-[14px] border border-border bg-card p-4" :aria-label="t('split.detail.open')">
+        <div class="flex items-center justify-between gap-3">
+          <p class="text-xs font-medium tracking-wide text-text-secondary uppercase">
+            <span class="font-mono tabular-nums" data-testid="split-open-amount">{{ formatEuro(owed, locale) }}</span>
+            {{ t('rcpt.sd.openOfTotal', { total: formatEuro(split.totalMinor, locale) }) }}
+          </p>
+          <span class="font-mono text-[13px] tabular-nums">{{ paidPercent }}%</span>
         </div>
-        <div class="flex items-baseline justify-between">
-          <span class="text-sm text-text-secondary">{{ t('split.detail.open') }}</span>
-          <span class="font-mono tabular-nums" data-testid="split-open-amount">{{ formatEuro(owed, locale) }}</span>
+        <div class="h-2.5 overflow-hidden rounded-full bg-muted" role="progressbar" :aria-valuenow="paidPercent" aria-valuemin="0" aria-valuemax="100">
+          <i class="block h-full rounded-full bg-primary" :style="{ width: `${paidPercent}%` }" />
         </div>
       </section>
 
       <p v-if="error" role="alert" class="rounded-lg border border-danger-border bg-danger-soft p-3 text-sm text-danger">{{ t(error) }}</p>
 
-      <section class="space-y-2">
-        <h2 class="text-h2 font-semibold">{{ t('split.detail.shares') }}</h2>
-        <ul class="divide-y divide-border rounded-xl border border-border bg-card">
-          <li v-for="s in split.shares" :key="s.id" class="space-y-2 p-3" data-testid="split-share">
+      <section class="space-y-2" :aria-label="t('split.detail.shares')">
+        <ul class="overflow-hidden rounded-[14px] border border-border bg-card">
+          <li v-for="s in split.shares" :key="s.id" class="space-y-2 border-b border-border px-4 py-3 last:border-b-0" data-testid="split-share">
             <div class="flex items-center gap-3">
-              <UserAvatar :user="s.who" :name="shareName(s)" size="sm" />
+              <PersonAvatar :user="s.who" :name="shareName(s)" :me="s.isMe" :guest="!s.who && !s.isMe" />
               <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-medium">{{ shareName(s) }}</p>
-                <p v-if="s.guestName" class="text-xs text-text-secondary">{{ t('split.guestTag') }}</p>
+                <p class="flex items-center gap-1.5 truncate text-[15px] font-medium">
+                  {{ shareName(s) }}
+                  <Badge v-if="s.guestName" variant="neutral">{{ t('split.guestTag') }}</Badge>
+                </p>
+                <p class="text-xs text-text-secondary">{{ shareNote(s) }}</p>
               </div>
-              <div class="text-right">
-                <p class="font-mono text-sm tabular-nums" :class="s.settled ? 'text-text-secondary line-through' : ''">{{ formatEuro(s.amountMinor, locale) }}</p>
+              <div class="flex flex-col items-end gap-1">
+                <p class="font-mono text-[15px] tabular-nums" :class="s.settled ? 'text-text-secondary line-through' : ''">{{ formatEuro(s.amountMinor, locale) }}</p>
                 <Badge :variant="s.settled ? 'success' : 'warning'">{{ s.settled ? t('split.detail.settled') : t('split.detail.unsettled') }}</Badge>
               </div>
             </div>
@@ -140,14 +163,14 @@ async function remove() {
                 v-if="canToggle(s)"
                 type="button"
                 :variant="s.settled ? 'secondary' : 'default'"
-                size="lg"
+                size="sm"
                 data-testid="split-share-settle"
                 :disabled="busyShare === s.id"
                 @click="toggle(s)"
               >
                 {{ s.settled ? t('split.detail.undo') : t('split.detail.settle') }}
               </Button>
-              <Button v-if="split.creatorIsMe && s.who === null && !s.settled" type="button" variant="secondary" size="lg" data-testid="split-guest-invite" @click="copyInvite(s.id, s.inviteCode)">
+              <Button v-if="split.creatorIsMe && s.who === null && !s.settled" type="button" variant="secondary" size="sm" data-testid="split-guest-invite" @click="copyInvite(s.id, s.inviteCode)">
                 <Link2 aria-hidden="true" />
                 {{ t('split.detail.copyInvite') }}
               </Button>
@@ -159,21 +182,25 @@ async function remove() {
       </section>
 
       <section class="space-y-2">
-        <Button type="button" variant="secondary" size="lg" class="w-full" data-testid="split-receipt-toggle" :aria-expanded="showReceipt" @click="showReceipt = !showReceipt">
-          {{ showReceipt ? t('split.detail.hideReceipt') : t('split.detail.showReceipt') }}
-        </Button>
+        <div class="grid grid-cols-2 gap-2">
+          <NuxtLink :to="`/receipts/${split.receiptId}`" :class="buttonVariants({ variant: 'secondary', size: 'lg' })" class="no-underline hover:text-foreground" data-testid="split-open-receipt">{{ t('rcpt.sd.openReceipt') }}</NuxtLink>
+          <Button type="button" variant="secondary" size="lg" data-testid="split-receipt-toggle" :aria-expanded="showReceipt" @click="showReceipt = !showReceipt">
+            {{ showReceipt ? t('split.detail.hideReceipt') : t('split.detail.showReceipt') }}
+          </Button>
+        </div>
         <ReceiptView v-if="showReceipt && detailForView" :detail="detailForView" />
       </section>
 
-      <section v-if="split.creatorIsMe" class="space-y-2">
+      <section v-if="split.creatorIsMe" class="space-y-2 text-center">
         <Button v-if="!confirmDelete" type="button" variant="ghost" size="lg" class="w-full" data-testid="split-delete" @click="confirmDelete = true">{{ t('split.detail.delete') }}</Button>
-        <div v-else class="space-y-2 rounded-xl border border-danger-border bg-danger-soft p-4" role="alert">
+        <div v-else class="space-y-2 rounded-xl border border-danger-border bg-danger-soft p-4 text-left" role="alert">
           <p class="text-sm text-danger">{{ t('split.detail.deleteConfirm') }}</p>
           <div class="flex gap-2">
             <Button type="button" variant="destructive" size="lg" data-testid="split-delete-confirm" @click="remove">{{ t('split.detail.deleteYes') }}</Button>
             <Button type="button" variant="secondary" size="lg" @click="confirmDelete = false">{{ t('social.cancel') }}</Button>
           </div>
         </div>
+        <p class="text-xs text-text-secondary">{{ t('rcpt.sd.deleteNote') }}</p>
       </section>
     </template>
   </div>

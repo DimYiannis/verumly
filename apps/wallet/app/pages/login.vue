@@ -19,9 +19,18 @@ async function done() {
 </script>
 
 <template>
-  <section class="space-y-4">
-    <h1 class="text-h1 font-semibold">{{ t('login.title') }}</h1>
-    <p class="text-text-secondary">{{ t('login.body') }}</p>
-    <div class="rounded-xl border border-border bg-card p-4"><EmailLogin @done="done" /></div>
+  <section class="flex min-h-[calc(100dvh-4rem)] flex-col justify-between gap-8 px-2 pt-6 pb-6">
+    <div class="space-y-4">
+      <p class="text-[52px] leading-[52px] font-semibold tracking-[-0.04em]">{{ t('layout.brand') }}</p>
+      <h1 class="sr-only">{{ t('login.title') }}</h1>
+      <p class="text-[22px] leading-[30px] font-normal text-[#E6E7F8]">{{ t('home.login.tagline') }}</p>
+      <ul class="space-y-2 pt-3 text-body text-[#E6E7F8]">
+        <li class="flex items-center gap-2"><i class="size-2 rounded-full bg-[#B3B6EE]" aria-hidden="true" />{{ t('home.login.point1') }}</li>
+        <li class="flex items-center gap-2"><i class="size-2 rounded-full bg-[#B3B6EE]" aria-hidden="true" />{{ t('home.login.point2') }}</li>
+      </ul>
+    </div>
+    <div class="space-y-3">
+      <div class="rounded-xl border border-border bg-card p-4 text-foreground"><EmailLogin @done="done" /></div>
+    </div>
   </section>
 </template>

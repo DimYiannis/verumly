@@ -1,9 +1,13 @@
 import type { MessageKey } from './nl.ts';
+import { homeEn } from './home.en.ts';
+import { receipts2En } from './receipts2.en.ts';
 import { socialEn } from './social.en.ts';
 
 /** English dictionary. Typed against Dutch, so a missing or extra key fails typecheck. An empty string hides an optional line. */
 export const en: Record<MessageKey, string> = {
   ...socialEn,
+  ...homeEn,
+  ...receipts2En,
   // layout
   'layout.skip': 'Skip to content',
   'layout.brand': 'bonnen',

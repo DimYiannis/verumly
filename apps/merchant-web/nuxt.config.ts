@@ -13,10 +13,10 @@ export default defineNuxtConfig({
   nitro: {
     // workspace packages ship TypeScript sources: bundle them (Node refuses to strip types under node_modules)
     externals: { inline: [/^@lr\//] },
-    // pdfmake 0.3 ships no types; dashboard-core declares them ambiently
-    typescript: { tsConfig: { include: ['../../../packages/dashboard-core/src/pdfmake.d.ts'] } },
+    // pdfmake 0.3 ships no types; @lr/receipt-pdf declares them ambiently
+    typescript: { tsConfig: { include: ['../../../packages/receipt-pdf/src/pdfmake.d.ts'] } },
   },
   // the typed $fetch route map imports the server handlers, which import dashboard-core (and so pdfmake)
-  typescript: { tsConfig: { include: ['../../../packages/dashboard-core/src/pdfmake.d.ts'] } },
+  typescript: { tsConfig: { include: ['../../../packages/receipt-pdf/src/pdfmake.d.ts'] } },
   app: { head: { title: 'Less Receipts · Merchant', htmlAttrs: { lang: 'en' } } },
 });

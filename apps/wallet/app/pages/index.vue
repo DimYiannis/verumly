@@ -1,217 +1,240 @@
 <script setup lang="ts">
-import { Search, SlidersHorizontal } from '@lucide/vue';
-import { z } from 'zod';
+import { ChevronRight, ScanLine, WifiOff } from '@lucide/vue';
 import { ApiError } from '~/utils/api';
-import type { ReceiptFilters, ReceiptListItem, UploadStatus } from '~/utils/api-schemas';
-import { filterCachedItems, formatDayHeading, formatEuro, formatTime, groupByDay } from '~/utils/format';
+import type { Balances, HomeSummary } from '~/utils/api-schemas';
+import { dayKey, formatEuro, formatTime } from '~/utils/format';
+import { budgetProgress, dayPart, parseBudgetInput, percentChange, sparkPoints } from '~/utils/home';
+import { userName } from '~/utils/social';
 
+definePageMeta({ middleware: 'auth' });
 const wallet = useWallet();
-const { t, tOr, locale } = useLocale();
-useHead({ title: () => t('wallet.title') });
+const { t, locale } = useLocale();
+const { name, load: loadProfile } = useProfile();
+useHead({ title: () => t('home.nav.home') });
 
-const items = ref<ReceiptListItem[]>([]);
-const nextCursor = ref<string | null>(null);
-const loading = ref(false);
+const home = ref<HomeSummary | null>(null);
+const balances = ref<Balances | null>(null);
 const loaded = ref(false);
-const offlineList = ref(false);
+const offline = ref(false);
 const failed = ref(false);
-const showFilters = ref(false);
-const onboarded = ref(true);
-const uploads = ref<UploadStatus[]>([]);
+/** receipts from the offline cache when the home summary cannot be fetched */
+const cachedRecent = ref<HomeSummary['recent']>([]);
 
-const filters = reactive({ q: '', state: '', from: '', to: '', category: '', merchant: '' });
-const STATES = ['presented', 'paid', 'void'] as const;
+const BCP47 = { nl: 'nl-NL', en: 'en-GB' } as const;
+const today = computed(() => new Intl.DateTimeFormat(BCP47[locale.value], { timeZone: 'Europe/Amsterdam', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date()));
+const greeting = computed(() => {
+  const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', hour: '2-digit', hourCycle: 'h23' }).format(new Date()));
+  return t(`home.greet.${dayPart(hour)}`, { name: name.value });
+});
 
-function activeFilters(): ReceiptFilters {
-  const f: ReceiptFilters = {};
-  if (filters.q.trim()) f.q = filters.q.trim();
-  const state = STATES.find((s) => s === filters.state);
-  if (state) f.state = state;
-  if (filters.from) f.from = filters.from;
-  if (filters.to) f.to = filters.to;
-  if (filters.category.trim()) f.category = filters.category.trim();
-  if (filters.merchant.trim()) f.merchant = filters.merchant.trim();
-  return f;
-}
+const change = computed(() => (home.value ? percentChange(home.value.total, home.value.previousToDate) : null));
+const changeLabel = computed(() => {
+  const pct = change.value;
+  if (pct === null) return '';
+  if (pct === 0) return t('home.hero.flat');
+  return t(pct > 0 ? 'home.hero.up' : 'home.hero.down', { pct });
+});
+const spark = computed(() => (home.value ? sparkPoints(home.value.daily, 300, 56) : null));
+const recent = computed(() => home.value?.recent ?? cachedRecent.value);
+const isNew = computed(() => loaded.value && !offline.value && !failed.value && home.value !== null && home.value.receipts === 0 && home.value.recent.length === 0);
 
-async function load(append: boolean) {
-  loading.value = true;
-  failed.value = false;
-  const f = activeFilters();
-  const unfiltered = Object.keys(f).length === 0;
+// optional monthly budget, kept on this device only (cents as a plain integer string)
+const budgetKey = computed(() => `lr-budget:${wallet.session.value?.userId ?? ''}`);
+const budget = ref<number | null>(null);
+const editing = ref(false);
+const budgetText = ref('');
+const budgetError = ref(false);
+function readBudget() {
   try {
-    const page = await wallet.api.listReceipts({ ...f, cursor: append ? (nextCursor.value ?? undefined) : undefined });
-    items.value = append ? [...items.value, ...page.items] : page.items;
-    nextCursor.value = page.nextCursor;
-    offlineList.value = false;
-    if (unfiltered) await (append ? wallet.cache.addToList(page.items) : wallet.cache.replaceList(page.items));
-  } catch (e) {
-    if (e instanceof ApiError && e.status === 401) {
-      await wallet.endSession();
-    } else if (e instanceof ApiError && !e.isNetwork) {
-      failed.value = true;
-    } else {
-      items.value = filterCachedItems(await wallet.cache.getList(), f);
-      nextCursor.value = null;
-      offlineList.value = true;
-    }
-  } finally {
-    loading.value = false;
-    loaded.value = true;
-  }
-}
-
-async function loadUploads() {
-  try {
-    uploads.value = (await wallet.api.listUploads()).items;
+    const n = Number(localStorage.getItem(budgetKey.value));
+    budget.value = Number.isInteger(n) && n > 0 ? n : null;
   } catch {
-    uploads.value = [];
+    budget.value = null;
   }
 }
+function openEditor() {
+  budgetText.value = budget.value ? String(budget.value / 100).replace('.', locale.value === 'nl' ? ',' : '.') : '';
+  budgetError.value = false;
+  editing.value = true;
+}
+function saveBudget() {
+  const cents = parseBudgetInput(budgetText.value);
+  if (cents === null) {
+    budgetError.value = true;
+    return;
+  }
+  budget.value = cents;
+  editing.value = false;
+  try {
+    localStorage.setItem(budgetKey.value, String(cents));
+  } catch {
+    // not persisted: still shown for this session
+  }
+}
+function removeBudget() {
+  budget.value = null;
+  editing.value = false;
+  try {
+    localStorage.removeItem(budgetKey.value);
+  } catch {
+    // ignore
+  }
+}
+const progress = computed(() => (home.value && budget.value ? budgetProgress(home.value.total, budget.value) : null));
+const wholeEuro = (cents: number) => formatEuro(cents, locale.value).replace(/[,.]00(?=\D*$)/, '');
 
-const groups = computed(() => groupByDay(items.value));
+function people(rows: Balances['friends'], key: 'owesMe' | 'iOwe') {
+  return rows
+    .filter((r) => r[key] > 0)
+    .slice(0, 3)
+    .map((r) => r.user);
+}
+const owedBy = computed(() => (balances.value ? people(balances.value.friends, 'owesMe') : []));
+const oweTo = computed(() => (balances.value ? people(balances.value.friends, 'iOwe') : []));
+const names = (us: typeof owedBy.value) => us.map((u) => userName(u)).join(', ');
 
-let debounce: ReturnType<typeof setTimeout> | undefined;
-watch(filters, () => {
-  clearTimeout(debounce);
-  debounce = setTimeout(() => void load(false), 300);
-});
-watch(wallet.savedTick, () => void load(false));
-watch(wallet.online, (isOnline) => {
-  if (isOnline) void load(false);
-});
+function whenLabel(iso: string): string {
+  if (dayKey(iso) === dayKey(new Date().toISOString())) return formatTime(iso, locale.value);
+  return new Intl.DateTimeFormat(BCP47[locale.value], { timeZone: 'Europe/Amsterdam', day: 'numeric', month: 'short' }).format(new Date(iso));
+}
+function itemsLabel(n: number): string {
+  return n === 1 ? t('home.recent.items.one') : t('home.recent.items', { n });
+}
 
 onMounted(async () => {
-  if (!wallet.session.value) return;
-  onboarded.value = (await wallet.kv.get('onboarded', z.boolean())) ?? false;
-  await load(false);
-  if (!offlineList.value) await loadUploads();
+  readBudget();
+  void loadProfile();
+  const [h, b] = await Promise.allSettled([wallet.api.getHome(), wallet.api.getBalances()]);
+  if (h.status === 'fulfilled') home.value = h.value;
+  else {
+    if (h.reason instanceof ApiError && h.reason.status === 401) {
+      await wallet.endSession();
+      return;
+    }
+    if (h.reason instanceof ApiError && h.reason.isNetwork) offline.value = true;
+    else failed.value = true;
+    try {
+      cachedRecent.value = (await wallet.cache.getList()).slice(0, 5).map((i) => ({
+        receiptId: i.receiptId,
+        merchantName: i.merchantName,
+        total: i.total,
+        createdAt: i.createdAt,
+        state: i.state,
+        splitWith: [],
+        itemCount: 0,
+      }));
+    } catch {
+      // no cache: the offline note is enough
+    }
+  }
+  if (b.status === 'fulfilled') balances.value = b.value;
+  loaded.value = true;
 });
-onBeforeUnmount(() => clearTimeout(debounce));
 </script>
 
 <template>
-  <div>
-    <section v-if="!wallet.session.value" class="space-y-4" data-testid="landing">
-      <h1 class="text-h1 font-semibold">{{ t('wallet.landingTitle') }}</h1>
-      <p class="text-text-secondary">{{ t('wallet.landingBody') }}</p>
-      <Button as-child size="lg" class="w-full">
-        <NuxtLink to="/login" data-testid="login-link">{{ t('common.login') }}</NuxtLink>
-      </Button>
-      <InstallHint />
-    </section>
+  <div class="space-y-4">
+    <div class="space-y-1">
+      <p class="text-small text-muted-foreground" data-testid="home-date">{{ today }}</p>
+      <h1 class="text-h1 font-semibold" data-testid="home-greeting">{{ greeting }}</h1>
+    </div>
 
-    <div v-else class="space-y-4">
-      <NuxtLink
-        v-if="!onboarded"
-        to="/onboarding"
-        data-testid="onboarding-prompt"
-        class="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-selected-border bg-selected p-3 text-sm font-medium text-accent-foreground no-underline hover:text-accent-foreground"
-      >
-        {{ t('wallet.onboardingPrompt') }}
-      </NuxtLink>
+    <p v-if="offline" role="status" data-testid="home-offline" class="flex items-center gap-2 rounded-xl border border-warning-border bg-warning-soft p-3 text-sm text-warning">
+      <WifiOff class="size-4 shrink-0" aria-hidden="true" />
+      {{ t('home.offline') }}
+    </p>
+    <p v-else-if="failed" role="alert" class="rounded-xl border border-danger-border bg-danger-soft p-3 text-sm text-danger">{{ t('home.err.failed') }}</p>
 
-      <ArrivingSection />
+    <div v-if="!loaded" class="space-y-3">
+      <Skeleton class="h-48 w-full rounded-xl" />
+      <Skeleton class="h-24 w-full rounded-xl" />
+    </div>
 
-      <h1 class="text-h2 font-semibold">{{ t('wallet.title') }}</h1>
+    <NuxtLink
+      v-else-if="isNew"
+      to="/add"
+      data-testid="home-empty"
+      class="flex flex-col items-start gap-3 rounded-xl bg-brand-900 p-5 text-white no-underline hover:text-white"
+    >
+      <span class="flex size-12 items-center justify-center rounded-xl bg-white/15"><ScanLine class="size-6" aria-hidden="true" /></span>
+      <span class="text-h2 font-semibold">{{ t('home.empty.title') }}</span>
+      <span class="text-sm text-[#E6E7F8]">{{ t('home.empty.body') }}</span>
+      <span class="rounded-md bg-white px-4 py-2 text-sm font-medium text-brand-900">{{ t('home.empty.cta') }}</span>
+    </NuxtLink>
 
-      <form class="space-y-2" role="search" @submit.prevent="load(false)">
-        <Label for="q" class="sr-only">{{ t('wallet.searchLabel') }}</Label>
-        <div class="relative">
-          <Search class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input id="q" v-model="filters.q" type="search" class="h-11 pl-9 text-base" :placeholder="t('wallet.searchPlaceholder')" data-testid="search-input" />
+    <section v-else-if="home" class="space-y-3 rounded-xl bg-brand-900 p-4 text-white" data-testid="home-hero" :aria-label="t('home.hero.title')">
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-label text-[#B3B6EE] uppercase">{{ t('home.hero.title') }}</span>
+        <span v-if="changeLabel" data-testid="home-change" class="rounded-full border border-white/25 bg-white/15 px-2.5 py-0.5 text-xs font-medium">{{ changeLabel }}</span>
+      </div>
+      <p class="font-mono text-[38px] leading-[44px] font-medium tracking-tight" data-testid="home-total">{{ formatEuro(home.total, locale) }}</p>
+      <svg v-if="spark" viewBox="0 0 300 56" preserveAspectRatio="none" class="h-14 w-full" role="img" :aria-label="t('home.hero.spark')" data-testid="home-spark">
+        <polygon :points="spark.area" fill="rgba(179,182,238,.16)" />
+        <polyline :points="spark.line" fill="none" stroke="#B3B6EE" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" />
+      </svg>
+      <div v-if="progress && budget" class="space-y-2" data-testid="home-budget">
+        <div class="flex items-center justify-between text-small text-[#E6E7F8]">
+          <span>{{ progress.over ? t('home.budget.over') : t('home.budget.label') }}</span>
+          <button type="button" class="font-mono underline-offset-2 hover:underline" :aria-label="t('home.budget.edit')" @click="openEditor">{{ t('home.budget.of', { spent: wholeEuro(home.total), budget: wholeEuro(budget) }) }}</button>
         </div>
-        <Button type="button" variant="secondary" class="w-full" :aria-expanded="showFilters" aria-controls="filters" data-testid="toggle-filters" @click="showFilters = !showFilters">
-          <SlidersHorizontal aria-hidden="true" />
-          {{ t('wallet.filters') }}
-        </Button>
-        <div v-show="showFilters" id="filters" class="grid grid-cols-2 gap-4 rounded-xl border border-border bg-card p-4" data-testid="filters">
-          <div class="col-span-2 space-y-2">
-            <Label for="f-state">{{ t('wallet.filterStatus') }}</Label>
-            <select
-              id="f-state"
-              v-model="filters.state"
-              class="h-11 w-full rounded-md border border-input bg-card px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-ring"
-              data-testid="filter-state"
-            >
-              <option value="">{{ t('wallet.filterAll') }}</option>
-              <option value="paid">{{ t('wallet.filterPaid') }}</option>
-              <option value="void">{{ t('wallet.filterVoid') }}</option>
-            </select>
-          </div>
-          <div class="space-y-2">
-            <Label for="f-from">{{ t('wallet.filterFrom') }}</Label>
-            <Input id="f-from" v-model="filters.from" type="date" class="h-11" data-testid="filter-from" />
-          </div>
-          <div class="space-y-2">
-            <Label for="f-to">{{ t('wallet.filterTo') }}</Label>
-            <Input id="f-to" v-model="filters.to" type="date" class="h-11" data-testid="filter-to" />
-          </div>
-          <div class="space-y-2">
-            <Label for="f-merchant">{{ t('wallet.filterMerchant') }}</Label>
-            <Input id="f-merchant" v-model="filters.merchant" type="text" class="h-11" data-testid="filter-merchant" />
-          </div>
-          <div class="space-y-2">
-            <Label for="f-category">{{ t('wallet.filterCategory') }}</Label>
-            <Input id="f-category" v-model="filters.category" type="text" class="h-11" data-testid="filter-category" />
-          </div>
+        <div class="h-2 overflow-hidden rounded-full bg-white/20" role="progressbar" :aria-valuenow="progress.pct" aria-valuemin="0" aria-valuemax="100">
+          <div class="h-full rounded-full" :class="progress.over ? 'bg-[#F4B5A8]' : 'bg-white'" :style="{ width: `${progress.pct}%` }" />
+        </div>
+      </div>
+      <button v-else-if="!editing" type="button" data-testid="home-budget-set" class="text-sm font-medium text-[#B3B6EE] underline-offset-2 hover:underline" @click="openEditor">{{ t('home.budget.set') }}</button>
+      <form v-if="editing" class="space-y-2 rounded-lg bg-white p-3 text-foreground" data-testid="home-budget-form" novalidate @submit.prevent="saveBudget">
+        <Label for="home-budget-input">{{ t('home.budget.field') }}</Label>
+        <Input id="home-budget-input" v-model="budgetText" inputmode="decimal" class="h-10 font-mono" data-testid="home-budget-input" />
+        <p v-if="budgetError" role="alert" class="text-sm text-danger">{{ t('home.budget.invalid') }}</p>
+        <div class="flex gap-2">
+          <Button type="submit" size="sm" data-testid="home-budget-save">{{ t('home.budget.save') }}</Button>
+          <Button type="button" size="sm" variant="secondary" @click="editing = false">{{ t('home.budget.cancel') }}</Button>
+          <Button v-if="budget" type="button" size="sm" variant="ghost" class="ml-auto text-danger" @click="removeBudget">{{ t('home.budget.remove') }}</Button>
         </div>
       </form>
+    </section>
 
-      <p v-if="offlineList" role="status" data-testid="offline-list-note" class="rounded-lg border border-warning-border bg-warning-soft p-3 text-sm text-warning">
-        {{ t('wallet.offlineList') }}
-      </p>
-      <p v-if="failed" role="alert" class="rounded-lg border border-danger-border bg-danger-soft p-3 text-sm text-danger">{{ t('wallet.loadFailed') }}</p>
-      <div v-if="loading && !loaded" class="space-y-2">
-        <p role="status" class="flex items-center gap-2 text-sm text-text-secondary">
-          <Spinner role="presentation" aria-hidden="true" />
-          {{ t('common.loading') }}
-        </p>
-        <Skeleton class="h-16 w-full" />
-        <Skeleton class="h-16 w-full" />
-      </div>
-
-      <div v-if="loaded && items.length === 0 && !failed" class="rounded-xl border border-border bg-card p-4" data-testid="empty-wallet">
-        <p class="text-text-secondary">{{ t('wallet.emptyPre') }}<NuxtLink to="/add" class="font-medium underline">{{ t('wallet.emptyLink') }}</NuxtLink>{{ t('wallet.emptyPost') }}</p>
-      </div>
-
-      <section v-for="g in groups" :key="g.day" data-testid="day-group" :data-day="g.day" :aria-label="formatDayHeading(g.day, undefined, locale)">
-        <h2 class="mb-2 text-label text-text-secondary" data-testid="day-heading">{{ formatDayHeading(g.day, undefined, locale) }}</h2>
-        <ul class="space-y-2">
-          <li v-for="r in g.items" :key="r.receiptId">
-            <NuxtLink
-              :to="`/receipts/${r.receiptId}`"
-              class="flex min-h-14 items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 text-foreground no-underline transition-shadow duration-150 hover:text-foreground hover:shadow-sm"
-              data-testid="receipt-item"
-              :data-receipt-id="r.receiptId"
-              :data-state="r.state"
-            >
-              <span class="min-w-0">
-                <span class="block truncate font-medium">{{ r.merchantName }}</span>
-                <span class="mt-0.5 flex items-center gap-2 text-sm text-text-secondary">
-                  {{ formatTime(r.createdAt, locale) }}
-                  <Badge v-if="r.state === 'void'" variant="danger">{{ t('wallet.badgeVoid') }}</Badge>
-                </span>
-              </span>
-              <span class="shrink-0 font-mono font-medium tabular-nums">{{ formatEuro(r.total, locale) }}</span>
-            </NuxtLink>
-          </li>
-        </ul>
-      </section>
-
-      <Button v-if="nextCursor" type="button" variant="secondary" size="lg" class="w-full" :disabled="loading" data-testid="load-more" @click="load(true)">{{ t('wallet.loadMore') }}</Button>
-
-      <section v-if="uploads.length > 0" aria-labelledby="uploads-h" data-testid="uploads-section">
-        <h2 id="uploads-h" class="mb-2 text-label text-text-secondary">{{ t('wallet.uploads') }}</h2>
-        <ul class="space-y-2">
-          <li v-for="u in uploads" :key="u.uploadId">
-            <NuxtLink :to="`/uploads/${u.uploadId}`" class="block rounded-lg border border-border bg-card p-4 text-foreground no-underline transition-shadow duration-150 hover:text-foreground hover:shadow-sm" data-testid="upload-item">
-              <span class="font-medium">{{ u.draft?.merchantName ?? t('common.unknownMerchant') }}</span>
-              <span class="block text-sm text-text-secondary">{{ tOr('upload', u.status) }}</span>
-            </NuxtLink>
-          </li>
-        </ul>
-      </section>
+    <div v-if="balances" class="grid grid-cols-2 gap-3" data-testid="home-balances">
+      <NuxtLink to="/friends" class="space-y-2 rounded-xl border border-border bg-card p-4 text-foreground no-underline hover:text-foreground">
+        <span class="block text-label text-text-secondary uppercase">{{ t('home.owed.label') }}</span>
+        <span class="block font-mono text-h2 font-medium text-success" data-testid="home-owed">{{ formatEuro(balances.totalOwedToMe, locale) }}</span>
+        <span class="flex items-center gap-2">
+          <span v-if="owedBy.length" class="flex -space-x-2"><HomeAvatar v-for="u in owedBy" :key="userName(u)" :name="userName(u)" :emoji="u.avatar" size="sm" /></span>
+          <span class="truncate text-xs text-text-secondary">{{ owedBy.length ? names(owedBy) : t('home.owed.none') }}</span>
+        </span>
+      </NuxtLink>
+      <NuxtLink to="/friends" class="space-y-2 rounded-xl border border-border bg-card p-4 text-foreground no-underline hover:text-foreground">
+        <span class="block text-label text-text-secondary uppercase">{{ t('home.owe.label') }}</span>
+        <span class="block font-mono text-h2 font-medium" data-testid="home-owe">{{ formatEuro(balances.totalIOwe, locale) }}</span>
+        <span class="flex items-center gap-2">
+          <span v-if="oweTo.length" class="flex -space-x-2"><HomeAvatar v-for="u in oweTo" :key="userName(u)" :name="userName(u)" :emoji="u.avatar" size="sm" /></span>
+          <span class="truncate text-xs text-text-secondary">{{ oweTo.length ? names(oweTo) : t('home.owe.none') }}</span>
+        </span>
+      </NuxtLink>
     </div>
+
+    <section v-if="recent.length > 0" class="space-y-2" aria-labelledby="home-recent-h" data-testid="home-recent">
+      <div class="flex items-center justify-between">
+        <h2 id="home-recent-h" class="text-h3 font-semibold">{{ t('home.recent.title') }}</h2>
+        <NuxtLink to="/receipts" class="text-sm font-medium" data-testid="home-all-receipts">{{ t('home.recent.all') }}</NuxtLink>
+      </div>
+      <ul class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+        <li v-for="r in recent" :key="r.receiptId">
+          <NuxtLink :to="`/receipts/${r.receiptId}`" data-testid="home-recent-item" class="flex min-h-14 items-center gap-3 px-4 py-3 text-foreground no-underline hover:bg-muted hover:text-foreground">
+            <MerchantLogo :name="r.merchantName" />
+            <span class="min-w-0 flex-1">
+              <span class="block truncate font-medium" :class="r.state === 'void' ? 'line-through' : ''">{{ r.merchantName }}</span>
+              <span class="block truncate text-xs text-muted-foreground">
+                {{ whenLabel(r.createdAt) }}<template v-if="r.itemCount > 0"> · {{ itemsLabel(r.itemCount) }}</template><template v-if="r.splitWith.length"> · {{ t('home.recent.splitWith', { names: r.splitWith.join(', ') }) }}</template>
+              </span>
+            </span>
+            <Badge v-if="r.state === 'void'" variant="warning">{{ t('home.recent.cancelled') }}</Badge>
+            <span class="font-mono text-sm">{{ formatEuro(r.total, locale) }}</span>
+            <ChevronRight class="size-4 text-muted-foreground" aria-hidden="true" />
+          </NuxtLink>
+        </li>
+      </ul>
+    </section>
+    <NuxtLink v-else-if="loaded && !isNew" to="/receipts" class="block text-sm font-medium">{{ t('home.recent.all') }}</NuxtLink>
   </div>
 </template>

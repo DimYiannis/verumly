@@ -165,3 +165,21 @@ Big issues found in the code review (2026-10-16) and still open. Tick an item wh
 - **P2: invites are single use and expire after 30 days.** A general friend-invite link works once. Guest slots of a split get a fresh link on demand (the earlier one stops working).
 - **P2: privacy review.** Sharing a receipt or splitting it shows the friend its items and total. There is no per-field redaction and no "unshare"; deleting a split removes the participants' access to it, and a share cannot be withdrawn yet. Handle search tells anyone whether a handle exists.
 - **P3: no comments, no groups, no feed**, only 1:1 shares with emoji reactions and splits with up to 10 people. Currency is the receipt currency (EUR); no cross-currency settle-up.
+
+## Custom reports
+
+- **P2: saved views store absolute dates**, so a view saved as "last 30 days" does not move forward; only the two built-in views are relative.
+- **P2: sorting is client-side**, so with more than 500 groups the server cuts the list before the sort.
+- **P3: no scheduled/e-mailed reports, no per-user private views, no custom formulas.** Category grouping depends on the line categories the till sends (often missing: "uncategorised").
+
+## UI book gaps
+
+- **P3: designs that need data we do not have yet:** per-week insights and a Month/Year switch in the wallet; per-line confidence on scanned receipts; reminders ("Remind Anna"); terminal offline queue, location revenue and "last seen" on users in the dashboard; an Audit pack export; an accountant e-mail switch.
+- **P3: the dashboard greeting uses the e-mail name** (the session has no display name); "Arrived late" uses a 10 minute threshold chosen without a product decision.
+
+- **P3: overview location filter** fetches 60 archive rows and filters by location name in the browser (the archive endpoint has no location parameter), so a location with only old receipts can show fewer than 8 rows.
+
+## PDF follows the design
+
+- **P3: WebP logos are left out of the PDF** (pdfkit reads PNG and JPEG only). The designer now saves PNG, else JPEG; a logo saved earlier as WebP shows in the wallet but not in the PDF until it is uploaded again.
+- **P3: PDF wording is English** (labels such as Rate, Net, VAT, Card), whatever the wallet language is.
