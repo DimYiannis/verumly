@@ -28,6 +28,10 @@ The connection URLs have no SSL settings (`packages/config/src/index.ts:33-45`),
 ### Follow-up: connection hygiene (after the pooler circuit breaker)
 
 `db:migrate` no longer re-sets role passwords on a hosted database (`pnpm db:set-role-passwords` does), pool sizes are configurable with small hosted defaults, and the seed refuses to run next to the apps. See DECISIONS.md, "Hosted database: passwords, pool sizes, seed". Not yet run against Supabase, which was unreachable when this was written.
+### Storage and billing on Supabase (2026-10-18)
+
+- **Billing migration:** `0008_billing` applied to Supabase (9 migrations), role passwords left alone, `pnpm db:seed` added the demo subscription, `pnpm check:supabase` all PASS.
+- **Supabase Storage as S3:** a server-side smoke test passed (presigned PUT, head, get, presigned GET, delete) against the `receipts` bucket. A real Chromium page on `http://localhost:3001` could PUT 2048 bytes to a presigned URL and GET it back (HTTP 200 both), so **CORS did not block the browser upload** and the uploads-through-buyer-api fallback is not needed for that origin. Not yet tried: a different public origin (for example the boxd wallet address), and the whole wallet flow with the worker reading from Supabase Storage.
 
 ## 2. One connection URL per service role
 
