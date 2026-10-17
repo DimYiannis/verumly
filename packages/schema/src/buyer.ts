@@ -3,7 +3,8 @@ import { uuidString } from './crf.ts';
 
 /** Buyer API DTOs beyond auth/claims: uploads, consents, push subscriptions. */
 
-export const UPLOAD_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf'] as const;
+/** PDF and HEIC are not extracted (Qianfan reads raster images): refused at the API, and before upload in the wallet. */
+export const UPLOAD_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export const MAX_UPLOAD_BYTES = 10_000_000;
 
 export const createUploadBody = z
@@ -13,6 +14,10 @@ export const createUploadBody = z
   })
   .strict();
 export type CreateUploadBody = z.infer<typeof createUploadBody>;
+
+/** The categories a receipt line can have (the buyer picks from these); `@lr/receipt-nl` rules produce exactly these. */
+export const LINE_CATEGORIES = ['gezondheid', 'statiegeld', 'dining', 'boodschappen', 'huishouden', 'vervoer', 'kleding', 'elektronica', 'overig'] as const;
+export type LineCategory = (typeof LINE_CATEGORIES)[number];
 
 const cents = z.number().int().min(-100_000_000).max(100_000_000);
 
@@ -24,6 +29,11 @@ export const parsedLine = z
     total: cents,
     vatRate: z.union([z.literal(21), z.literal(9), z.literal(0)]).nullable(),
     kind: z.enum(['item', 'discount', 'deposit']),
+    /** stored by the worker and after every correction (`categoriseLines`); derived data, never trusted from a client */
+    category: z.string().min(1).max(40).optional(),
+    sensitive: z.boolean().optional(),
+    /** the buyer's own category: kept by every later re-categorisation, and never sensitive */
+    userCategory: z.enum(LINE_CATEGORIES).nullable().optional(),
   })
   .strict();
 export type ParsedLineDto = z.infer<typeof parsedLine>;
@@ -69,6 +79,12 @@ export const uploadPatchBody = z
   .strict()
   .refine((b) => Object.keys(b).length > 0, 'empty patch');
 export type UploadPatchBody = z.infer<typeof uploadPatchBody>;
+
+/** `category: null` removes the buyer's choice again, so the rules decide. */
+export const uploadCategoriesBody = z
+  .object({ lines: z.array(z.object({ index: z.number().int().min(0).max(199), category: z.enum(LINE_CATEGORIES).nullable() }).strict()).min(1).max(200) })
+  .strict();
+export type UploadCategoriesBody = z.infer<typeof uploadCategoriesBody>;
 
 export const CONSENT_PURPOSES = ['analytics', 'marketing', 'push'] as const;
 export const consentsBody = z

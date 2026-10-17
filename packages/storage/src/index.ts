@@ -35,6 +35,10 @@ export function createObjectStore(env: S3Env): ObjectStore {
     endpoint: env.S3_ENDPOINT,
     region: env.S3_REGION,
     forcePathStyle: true,
+    // SDK v3 >= 3.729 adds a CRC32 of the (empty) presign-time body to a presigned PUT URL; real S3 compares it with the
+    // uploaded bytes and answers BadDigest. Only compute checksums where the operation requires them.
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+    responseChecksumValidation: 'WHEN_REQUIRED',
     credentials: { accessKeyId: env.S3_ACCESS_KEY, secretAccessKey: env.S3_SECRET_KEY },
   });
   const Bucket = env.S3_BUCKET;
