@@ -40,6 +40,20 @@ export const organizations = merchant.table('organizations', {
   createdAt: ts('created_at').notNull().defaultNow(),
 });
 
+/** Saved report setups (see reportSpec in @lr/schema), shared by everyone in the organisation. */
+export const reportViews = merchant.table(
+  'report_views',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: uuid('org_id').notNull().references(() => organizations.id),
+    name: text('name').notNull(),
+    spec: jsonb('spec').notNull(),
+    createdBy: uuid('created_by'),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [index('report_views_org_idx').on(t.orgId, t.createdAt)],
+);
+
 export const locations = merchant.table('locations', {
   id: uuid('id').primaryKey().defaultRandom(),
   orgId: uuid('org_id').notNull().references(() => organizations.id),
