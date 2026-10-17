@@ -342,6 +342,12 @@ Hop 6 reads the archive and VAT report through `@lr/dashboard-core` (`searchArch
 - The worker and the admin are warned at startup (no URL, no secrets in the message) if they point at port 6543 (transaction pooler).
 - Role passwords are still set by `migrate` from the `*_DB_PASSWORD` variables, which must equal the passwords inside the URLs.
 
+## Hosted database: passwords, pool sizes, seed (connection hygiene)
+
+- **Role passwords are not rotated by `pnpm db:migrate` on a hosted database.** After the live Supabase run the pooler returned `ECIRCUITBREAKER` ("failed to retrieve database credentials after multiple attempts"), and every migrate had re-run `ALTER ROLE … PASSWORD`, which makes the pooler drop its cached credentials. `migrate(env, { setRolePasswords })` defaults to `true` only when no connection-string variable is set (local Docker: fresh clones and tests need login roles). `pnpm db:set-role-passwords` and `pnpm db:migrate --set-role-passwords` set them explicitly. After a hosted migrate the CLI warns if a role still cannot log in. Verified against the local database in hosted mode: password hashes unchanged by `db:migrate`, changed by the flag and by the command.
+- **Pool sizes are configurable:** `PG_POOL_MAX`, `PG_BOSS_POOL_MAX`, `PG_ADMIN_POOL_MAX`. Defaults 10 / 4 / 4 locally (unchanged) and 3 / 2 / 2 when the connection-string variables are set, so one app uses 5 of the pooler's 15 connections per role. Migrations now use one connection for the migrator.
+- **The seed runs alone:** it uses three roles at once, so `pnpm db:seed` refuses to run against a hosted database while any app answers on its default port (`--force` overrides). RUNNING.md says to run migrate, seed and the check one at a time and to start the apps last.
+
 ## Deferred (v2 §17)
 
 Not built in this run, by design:

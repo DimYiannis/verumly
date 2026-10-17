@@ -3,7 +3,7 @@ import { migrate as drizzleMigrate } from 'drizzle-orm/node-postgres/migrator';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { PgBoss } from 'pg-boss';
-import { adminDbUrl, dbEnvSchema, DB_ROLES, loadEnv, sessionModeWarning, usesDbUrls, type DbEnv } from '@lr/config';
+import { adminDbUrl, bossPoolMax, dbEnvSchema, DB_ROLES, loadEnv, sessionModeWarning, usesDbUrls, type DbEnv } from '@lr/config';
 import { BOSS_SCHEMA, QUEUES } from './queues.ts';
 
 const migrationsFolder = fileURLToPath(new URL('../migrations', import.meta.url));
@@ -52,23 +52,38 @@ const MIGRATE_LOCK_KEY = 727_274_001;
  * Roles are cluster-wide, so two migrations running at once (parallel test files, each with its own database)
  * race on CREATE/ALTER ROLE ("tuple concurrently updated"). An advisory lock on the maintenance database serialises them.
  */
-export async function migrate(env: DbEnv): Promise<void> {
+export interface MigrateOptions {
+  /**
+   * Re-set the four role passwords from the `*_DB_PASSWORD` variables. Default: yes on the local Docker database (fresh
+   * clones and tests need login roles), **no on a hosted one**: changing a role's password invalidates the pooler's cached
+   * credentials and, if a connection fails in that window, can trip its circuit breaker. On a hosted database use
+   * `pnpm db:set-role-passwords` (or `pnpm db:migrate --set-role-passwords`) when you really want to.
+   */
+  setRolePasswords?: boolean;
+}
+
+export function shouldSetRolePasswords(env: DbEnv, opts: MigrateOptions = {}): boolean {
+  return opts.setRolePasswords ?? !usesDbUrls(env);
+}
+
+export async function migrate(env: DbEnv, opts: MigrateOptions = {}): Promise<void> {
   const lock = new pg.Client({ connectionString: adminDbUrl({ ...env, PG_DATABASE: 'postgres' }) });
   await lock.connect();
   try {
     await lock.query('select pg_advisory_lock($1)', [MIGRATE_LOCK_KEY]);
-    await applyMigrations(env);
+    await applyMigrations(env, shouldSetRolePasswords(env, opts));
   } finally {
     await lock.end(); // closing the session releases the lock
   }
 }
 
-/** Apply drizzle migrations, set role passwords from env, install pg-boss and grant job-table access. */
-async function applyMigrations(env: DbEnv): Promise<void> {
-  const pool = new pg.Pool({ connectionString: adminDbUrl(env), max: 2 });
+/**
+ * Set the four service roles' passwords from the `*_DB_PASSWORD` variables (`ALTER ROLE … LOGIN PASSWORD`). The passwords come
+ * from the environment, never from SQL files in git. Run it once for a new hosted database, and again only to rotate them.
+ */
+export async function setRolePasswords(env: DbEnv): Promise<void> {
+  const pool = new pg.Pool({ connectionString: adminDbUrl(env), max: 1 });
   try {
-    await drizzleMigrate(drizzle(pool), { migrationsFolder });
-    // Role passwords come from env at migrate time, never from SQL files in git.
     for (const role of DB_ROLES) {
       const pw = env[PASSWORD_KEY[role]].replace(/'/g, "''");
       await pool.query(`ALTER ROLE ${role} WITH LOGIN PASSWORD '${pw}'`);
@@ -76,8 +91,30 @@ async function applyMigrations(env: DbEnv): Promise<void> {
   } finally {
     await pool.end();
   }
+}
 
-  const boss = new PgBoss({ connectionString: adminDbUrl(env), schema: BOSS_SCHEMA, max: 2, supervise: false, schedule: false });
+/** The service roles that cannot log in yet (created NOLOGIN by the first migration, no password set). */
+export async function rolesWithoutLogin(env: DbEnv): Promise<string[]> {
+  const pool = new pg.Pool({ connectionString: adminDbUrl(env), max: 1 });
+  try {
+    const r = await pool.query<{ rolname: string }>('select rolname from pg_roles where rolname = any($1) and not rolcanlogin', [[...DB_ROLES]]);
+    return r.rows.map((x) => x.rolname);
+  } finally {
+    await pool.end();
+  }
+}
+
+/** Apply drizzle migrations, optionally set role passwords, install pg-boss and grant job-table access. */
+async function applyMigrations(env: DbEnv, withPasswords: boolean): Promise<void> {
+  const pool = new pg.Pool({ connectionString: adminDbUrl(env), max: 1 });
+  try {
+    await drizzleMigrate(drizzle(pool), { migrationsFolder });
+  } finally {
+    await pool.end();
+  }
+  if (withPasswords) await setRolePasswords(env);
+
+  const boss = new PgBoss({ connectionString: adminDbUrl(env), schema: BOSS_SCHEMA, max: Math.min(2, bossPoolMax(env)), supervise: false, schedule: false });
   boss.on('error', () => {});
   await boss.start();
   for (const q of Object.values(QUEUES)) await boss.createQueue(q);
@@ -98,15 +135,20 @@ async function applyMigrations(env: DbEnv): Promise<void> {
 
 if (import.meta.main) {
   const env = loadEnv(dbEnvSchema);
+  const flag = process.argv.includes('--set-role-passwords');
   if (usesDbUrls(env)) {
     // Hosted (Supabase): one database, nothing to create; every connection uses PG_ADMIN_URL.
     const warning = sessionModeWarning('PG_ADMIN_URL', adminDbUrl(env));
     if (warning) console.warn(`WARNING: ${warning}`);
-    await migrate(env);
-    console.log('migrated the database configured by PG_ADMIN_URL');
+    await migrate(env, { setRolePasswords: flag });
+    console.log(`migrated the database configured by PG_ADMIN_URL (role passwords ${flag ? 'set' : 'left as they are'})`);
+    const locked = await rolesWithoutLogin(env);
+    if (locked.length > 0) {
+      console.warn(`WARNING: these roles cannot log in yet: ${locked.join(', ')}. Run \`pnpm db:set-role-passwords\` once.`);
+    }
   } else {
     await ensureDatabase(env, env.PG_DATABASE);
-    await migrate(env);
+    await migrate(env, { setRolePasswords: flag ? true : undefined });
     console.log(`migrated ${env.PG_DATABASE} on ${env.PG_HOST}:${env.PG_PORT}`);
   }
 }

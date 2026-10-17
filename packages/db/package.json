@@ -16,7 +16,8 @@
     "typecheck": "tsc -p .",
     "generate": "drizzle-kit generate",
     "migrate": "node src/migrate.ts",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "set-role-passwords": "node src/set-role-passwords.ts"
   },
   "dependencies": {
     "@lr/config": "workspace:*",
