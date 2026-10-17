@@ -27,14 +27,53 @@ export const dbEnvSchema = z.object({
   BUYER_API_DB_PASSWORD: z.string().default('buyer_api_dev'),
   WORKER_DB_PASSWORD: z.string().default('worker_dev'),
   DASHBOARD_DB_PASSWORD: z.string().default('dashboard_dev'),
+  // Full connection strings (Supabase). When set they are used verbatim, including SSL params such as
+  // ?sslmode=verify-full&sslrootcert=/abs/path/ca.crt, and the PG_* / *_PASSWORD values above are ignored.
+  PG_ADMIN_URL: z.string().optional(),
+  MERCHANT_API_DB_URL: z.string().optional(),
+  BUYER_API_DB_URL: z.string().optional(),
+  WORKER_DB_URL: z.string().optional(),
+  DASHBOARD_DB_URL: z.string().optional(),
 });
 export type DbEnv = z.infer<typeof dbEnvSchema>;
 
+const ROLE_URL_KEY = {
+  merchant_api: 'MERCHANT_API_DB_URL',
+  buyer_api: 'BUYER_API_DB_URL',
+  worker: 'WORKER_DB_URL',
+  dashboard: 'DASHBOARD_DB_URL',
+} as const;
+const URL_KEYS = ['PG_ADMIN_URL', ...Object.values(ROLE_URL_KEY)] as const;
+
+/** True when the database is configured through full connection strings (Supabase) instead of PG_* values. */
+export function usesDbUrls(e: DbEnv): boolean {
+  return URL_KEYS.some((k) => e[k] !== undefined && e[k] !== '');
+}
+
+/**
+ * Either none of the connection-string variables are set (local Docker, built from PG_*), or all five are.
+ * Mixing Supabase and local per role is refused at startup, naming the missing variables.
+ */
+export function assertDbUrlConsistency(e: DbEnv): void {
+  if (!usesDbUrls(e)) return;
+  const missing = URL_KEYS.filter((k) => e[k] === undefined || e[k] === '');
+  if (missing.length > 0) {
+    throw new Error(
+      `Incomplete database configuration: some of the connection-string variables are set but these are missing: ${missing.join(', ')}. Set all five or none (no mixing Supabase and local per role).`,
+    );
+  }
+}
+
 export function adminDbUrl(e: DbEnv): string {
+  assertDbUrlConsistency(e);
+  if (e.PG_ADMIN_URL) return e.PG_ADMIN_URL;
   return `postgres://${e.PG_ADMIN_USER}:${encodeURIComponent(e.PG_ADMIN_PASSWORD)}@${e.PG_HOST}:${e.PG_PORT}/${e.PG_DATABASE}`;
 }
 
 export function roleDbUrl(role: DbRole, e: DbEnv): string {
+  assertDbUrlConsistency(e);
+  const full = e[ROLE_URL_KEY[role]];
+  if (full) return full;
   const pw = {
     merchant_api: e.MERCHANT_API_DB_PASSWORD,
     buyer_api: e.BUYER_API_DB_PASSWORD,
@@ -42,6 +81,28 @@ export function roleDbUrl(role: DbRole, e: DbEnv): string {
     dashboard: e.DASHBOARD_DB_PASSWORD,
   }[role];
   return `postgres://${role}:${encodeURIComponent(pw)}@${e.PG_HOST}:${e.PG_PORT}/${e.PG_DATABASE}`;
+}
+
+/** Port of a connection string, or undefined if it cannot be parsed. Never exposes the URL itself. */
+export function urlPort(url: string): number | undefined {
+  try {
+    const p = new URL(url).port;
+    return p ? Number(p) : 5432;
+  } catch {
+    return undefined;
+  }
+}
+
+const TRANSACTION_POOLER_PORT = 6543;
+
+/**
+ * Worker and migrations hold long-lived sessions (pg-boss, advisory lock) and must not use a transaction pooler.
+ * Returns the warning text (no URL, no secrets) or undefined.
+ */
+export function sessionModeWarning(what: string, url: string): string | undefined {
+  return urlPort(url) === TRANSACTION_POOLER_PORT
+    ? `${what} points at port ${TRANSACTION_POOLER_PORT} (transaction pooler). Use the session pooler (5432) or the direct connection: pg-boss and the migration advisory lock need session state.`
+    : undefined;
 }
 
 export const s3EnvSchema = z.object({

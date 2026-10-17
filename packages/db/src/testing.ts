@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { dbEnvSchema, loadEnv, type DbEnv } from '@lr/config';
-import { dropDatabase, ensureDatabase, migrate } from './migrate.ts';
+import { assertLocalOnly, dropDatabase, ensureDatabase, migrate } from './migrate.ts';
 
 export interface TestDb {
   env: DbEnv;
@@ -11,6 +11,7 @@ export interface TestDb {
 /** A fresh, fully migrated database (roles, RLS, pg-boss). Integration tests use real Postgres from docker compose. */
 export async function createTestDb(prefix = 'test'): Promise<TestDb> {
   const base = loadEnv(dbEnvSchema);
+  assertLocalOnly(base);
   const name = `${prefix}_${Date.now().toString(36)}_${randomBytes(3).toString('hex')}`;
   await ensureDatabase(base, name);
   const env = { ...base, PG_DATABASE: name };

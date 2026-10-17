@@ -154,6 +154,42 @@ docker compose stop                 # stop the containers, keep data
 docker compose down -v              # delete ALL local data (database, S3, mail); re-run migrate + seed after
 ```
 
+## Run against Supabase (instead of the local Docker Postgres)
+
+Only the database moves; S3 (`adobe/s3mock`), Mailpit and everything else stay local. `pnpm test`, `pnpm test:privacy` and `pnpm test:e2e` are **local-only**: they create and drop databases (they refuse to run when `PG_ADMIN_URL` is set) and `test:privacy` uses `docker exec pg_dump`.
+
+1. Create the project (Frankfurt), turn off the Data API, and download the CA certificate (Settings → Database).
+2. Create `.env.supabase` in the repo root (git-ignored) with these variables. Set all five URLs or none. The URL, not the code, carries SSL: use `sslmode=verify-full` with an absolute `sslrootcert` path, never `no-verify`. Pooler usernames are `<role>.<project-ref>`; URL-encode special characters in passwords. Each `*_DB_PASSWORD` must equal the password inside its URL (migrate sets it with `ALTER ROLE`).
+   ```sh
+   PG_DATABASE=postgres
+   # migrations, seed, check: session pooler (5432) or direct, never 6543
+   PG_ADMIN_URL=postgres://postgres.<ref>:<pw>@<host>:5432/postgres?sslmode=verify-full&sslrootcert=/abs/ca.crt
+   # merchant-api, buyer-api, dashboard: transaction pooler (6543)
+   MERCHANT_API_DB_URL=postgres://merchant_api.<ref>:<pw>@<host>:6543/postgres?sslmode=verify-full&sslrootcert=/abs/ca.crt
+   BUYER_API_DB_URL=postgres://buyer_api.<ref>:<pw>@<host>:6543/postgres?sslmode=verify-full&sslrootcert=/abs/ca.crt
+   DASHBOARD_DB_URL=postgres://dashboard.<ref>:<pw>@<host>:6543/postgres?sslmode=verify-full&sslrootcert=/abs/ca.crt
+   # worker: session pooler (5432) or direct, never 6543
+   WORKER_DB_URL=postgres://worker.<ref>:<pw>@<host>:5432/postgres?sslmode=verify-full&sslrootcert=/abs/ca.crt
+   MERCHANT_API_DB_PASSWORD=...
+   BUYER_API_DB_PASSWORD=...
+   WORKER_DB_PASSWORD=...
+   DASHBOARD_DB_PASSWORD=...
+   ```
+3. Load it into the shell (the apps do not read .env files):
+   ```sh
+   set -a; source .env.supabase; set +a
+   ```
+4. Migrate, seed, check, run:
+   ```sh
+   pnpm db:migrate               # idempotent; does not create databases when PG_ADMIN_URL is set
+   pnpm db:seed
+   pnpm check:supabase           # roles unprivileged, anon/authenticated locked out, merchant roles cannot read buyer data
+   pnpm dev --env-mode=loose     # Turborepo must pass the shell variables to the apps
+   ```
+5. Do the demo flow above.
+
+To go back to local, open a new shell (or `unset` the variables) and run `docker compose up -d` as before. If only some of the five URL variables are set, every app refuses to start and names the missing ones.
+
 ## 7. Troubleshooting
 
 | Symptom | Cause and fix |

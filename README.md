@@ -26,7 +26,7 @@ docs/                   DECISIONS, FINDINGS, ARCHITECTURE, API
 Requirements: Docker Desktop running, Node ≥ 22.12, pnpm (via corepack; see `packageManager`).
 
 ```sh
-docker compose up -d          # Postgres 16 (host port 5433), S3 (adobe/s3mock :9090), Mailpit (:1025 / UI :8025)
+docker compose up -d          # Postgres 17 (host port 5433), S3 (adobe/s3mock :9090), Mailpit (:1025 / UI :8025)
 pnpm install
 pnpm db:migrate               # schemas, roles, row-level security, pg-boss queues
 pnpm db:seed                  # org "Café Het Plein", 200 receipts over 60 days, buyer + owner users
