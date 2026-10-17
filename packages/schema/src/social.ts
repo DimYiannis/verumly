@@ -157,3 +157,53 @@ export const balanceRow = z.object({
 });
 export const balances = z.object({ friends: z.array(balanceRow), totalOwedToMe: z.number().int(), totalIOwe: z.number().int() });
 export type Balances = z.infer<typeof balances>;
+
+// ---------------------------------------------------------------- home summary and activity feed
+
+/** What the wallet home shows: this month so far, the same stretch of last month, a daily series and the latest receipts. */
+export const homeSummary = z.object({
+  /** current month 'YYYY-MM' (Europe/Amsterdam) and today's day of month */
+  month: z.string(),
+  dayOfMonth: z.number().int(),
+  daysInMonth: z.number().int(),
+  currency: z.string(),
+  total: z.number().int(),
+  receipts: z.number().int(),
+  /** last month up to the same day of the month, so the comparison is fair */
+  previousToDate: z.number().int(),
+  /** spend per day of the month, index 0 = day 1, length = dayOfMonth */
+  daily: z.array(z.number().int()),
+  recent: z.array(
+    z.object({
+      receiptId: uuidString,
+      merchantName: z.string(),
+      total: z.number().int(),
+      createdAt: z.string(),
+      state: z.string(),
+      /** people on a split of this receipt, besides me */
+      splitWith: z.array(z.string()),
+      itemCount: z.number().int(),
+    }),
+  ),
+});
+export type HomeSummary = z.infer<typeof homeSummary>;
+
+export const ACTIVITY_KINDS = ['friend_added', 'friend_request', 'share_received', 'split_with_me', 'split_created', 'paid_you', 'you_settled', 'reaction'] as const;
+
+/** One line of the friends feed. `user` is the other person; amounts in cents. */
+export const activityItem = z.object({
+  id: z.string(),
+  kind: z.enum(ACTIVITY_KINDS),
+  at: z.string(),
+  user: publicUser.nullable(),
+  merchantName: z.string().nullable(),
+  amountMinor: z.number().int().nullable(),
+  emoji: z.string().nullable(),
+  /** where a tap goes: a split, a shared receipt or a request */
+  splitId: uuidString.nullable(),
+  shareId: uuidString.nullable(),
+  requestId: uuidString.nullable(),
+  receiptId: uuidString.nullable(),
+});
+export const activityFeed = z.object({ items: z.array(activityItem) });
+export type ActivityItem = z.infer<typeof activityItem>;

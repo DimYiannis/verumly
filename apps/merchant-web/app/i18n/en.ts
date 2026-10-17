@@ -1,4 +1,6 @@
 import { designEn } from './design.en';
+import { adminEn } from './admin.en';
+import { overviewEn } from './overview.en';
 import { reportsEn } from './reports.en';
 import { setupEn } from './setup.en';
 
@@ -7,6 +9,8 @@ export const en = {
   ...setupEn,
   ...designEn,
   ...reportsEn,
+  ...overviewEn,
+  ...adminEn,
   // locale switch
   'nav.template': 'Receipt design',
   'locale.label': 'Language',

@@ -1,5 +1,7 @@
 import type { MessageKey } from './en';
 import { designNl } from './design.nl';
+import { adminNl } from './admin.nl';
+import { overviewNl } from './overview.nl';
 import { reportsNl } from './reports.nl';
 import { setupNl } from './setup.nl';
 
@@ -8,6 +10,8 @@ export const nl: Record<MessageKey, string> = {
   ...setupNl,
   ...designNl,
   ...reportsNl,
+  ...overviewNl,
+  ...adminNl,
   'nav.template': 'Bonontwerp',
   'locale.label': 'Taal',
   'locale.en': 'English',

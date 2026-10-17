@@ -157,6 +157,9 @@ export function createApi(opts: ApiOptions) {
       await send(`/v1/me/splits/${id}`, { method: 'DELETE' });
     },
     getBalances: () => json(s.balances, '/v1/me/balances'),
+    // home summary and friends feed
+    getHome: () => json(s.homeSummary, '/v1/me/home'),
+    getActivity: () => json(s.activityFeed, '/v1/me/activity'),
 
     exportData: async () => (await send('/v1/me/export', {})).blob(),
     deleteAccount: async () => {
