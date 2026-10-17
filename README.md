@@ -63,14 +63,48 @@ For a phone on the same Wi-Fi, set `RECEIPT_HOST` to the laptop's LAN address ov
 
 On iOS, Web Push works only after the wallet is installed to the Home Screen (iOS 16.4+); the UI says so.
 
-## Qianfan-OCR (photos of paper receipts)
+## Photo receipts (Qianfan-OCR pipeline)
 
-Photos and PDFs are extracted by `baidu/Qianfan-OCR`, served outside this repo.
+A buyer can photograph a paper receipt in the wallet (**Add receipt**). The text is read by **`baidu/Qianfan-OCR`**, an open 4B-parameter vision model (Apache-2.0) that we serve with vLLM outside this repo. It is the only OCR/LLM model in the platform; there is no other vendor.
 
-- `EXTRACTOR=recorded` (tests, seed): reads `fixtures/receipts-nl/<sha256(bytes)>.qianfan.json`, falling back to `mock/`.
-- `EXTRACTOR=http`: POSTs to `<QIANFAN_URL>/v1/chat/completions` (`QIANFAN_URL` is the server base URL; optional `QIANFAN_API_KEY` bearer token, `QIANFAN_REVISION` recorded as `modelRevision`) of a `vllm serve baidu/Qianfan-OCR`. See `tools/qianfan/serve.md`. Batch recording of real receipts: `tools/qianfan/colab_extract.ipynb`.
+### The pipeline
 
-Adding a real corpus (Appendix A of the spec): drop `<id>.jpg`, `<id>.truth.json` and `<sha256>.qianfan.json` into `fixtures/receipts-nl/`. No code change is needed; the corpus picker prefers real files.
+1. **Prepare the photo (in the wallet, before any upload).** The wallet finds the receipt in the frame, crops to it and caps the long side at 2000 px. It declines photos that are too small, too blurry, too dark, cut off at the sides, or that contain no receipt, and asks for a clearer one. Declined photos are never uploaded. Accepted formats: JPEG, PNG, WEBP (PDF and HEIC are refused).
+2. **Upload** straight from the browser to object storage (presigned PUT); buyer-api only records the upload.
+3. **Extract (worker job `extract-upload`).** The worker sends the image to Qianfan twice, with two fixed prompts (the two requests run at the same time): one returns Markdown, the other a JSON key-information answer. Output is stored with the model revision.
+4. **Parse (`receipt-nl`, deterministic, no LLM).** Dutch decimals, BTW breakdown, statiegeld, bonus lines and cash rounding become a receipt draft. The result is `done` only if every arithmetic check passes **and** the printed total and per-rate BTW agree with the line sum. Otherwise it is `needs_review` and the buyer corrects it. Nothing wrong is ever marked `done` (zero-false-`done` gate, `pnpm eval:extraction`).
+5. **Store and categorise.** Each line gets a category (keyword rules, then shop-name rules) and its VAT rate; the buyer can change a category. A matching official receipt (same KvK or BTW-id and the same total within 30 minutes) is offered, and unknown shops are counted as leads.
+
+### Run it
+
+- `EXTRACTOR=recorded` (default for tests, seed and local dev): replays `fixtures/receipts-nl/<sha256(bytes)>.qianfan.json`, falling back to `mock/`. No GPU. It can only read the six mock receipt images.
+- `EXTRACTOR=http`: POSTs to `<QIANFAN_URL>/v1/chat/completions` of a `vllm serve baidu/Qianfan-OCR`. `QIANFAN_URL` is the server base URL; optional `QIANFAN_API_KEY` (bearer token, matches `vllm serve --api-key`) and `QIANFAN_REVISION` (recorded as `modelRevision`).
+- A GPU server for a demo: run `tools/qianfan/colab_serve.ipynb` on a Colab T4 (setup and troubleshooting in `tools/qianfan/serve.md`; step by step in `RUNNING.md`, "Photo receipts"). Batch recording of real receipts: `tools/qianfan/colab_extract.ipynb`.
+- Adding a real corpus (Appendix A of the spec): drop `<id>.jpg`, `<id>.truth.json` and `<sha256>.qianfan.json` into `fixtures/receipts-nl/`. No code change is needed; the corpus picker prefers real files.
+
+### Results of the live check (2026-10-17)
+
+Model `baidu/Qianfan-OCR` revision `623bf5d2`, vLLM 0.31.0 on a Google Colab **T4**, reached through a Cloudflare tunnel. Single runs, not a benchmark. Details and the open issues: `docs/FINDINGS.md` ("Live Qianfan check", "Live timing after photo preparation") and `docs/QIANFAN-LIVE-CHECK.md`.
+
+**Accuracy.** The correct value is the printed one.
+
+| Input | Outcome |
+| --- | --- |
+| 2 synthetic (**MOCK**) receipt images | both `done`; gross, VAT per rate and shop identity equal the truth files (supermarkt 1973, VAT 9% 68 / 21% 190; café 4380, VAT 9% 150 / 21% 444) |
+| 1 real PLUS supermarket photo | `needs_review`, the right outcome: shop, date, card payment and the whole VAT table were read correctly, but the total came out as `664,50` in one answer (the € read as a 6), most item names were garbled and the discount line was lost |
+
+**Speed** (choosing the file to a final status, on a shared T4):
+
+| Input | Setup | Time |
+| --- | --- | --- |
+| Real photo, uncropped (1512 x 1512) | before preparation | no result (past the 120 s timeout) |
+| Same photo, prepared by the wallet (419 x 1512, 80 KB) | requests one after the other | 100 s |
+| Same photo, prepared | the two requests sent together | **62 s** |
+| MOCK image, already tight | one after the other / together | 51 s / **39 s** |
+
+Cropping turned a photo that never finished into a result, and sending the two prompts together cut about 40% of the wait.
+
+**Known limits.** Only one real photo has been tried, so there is no real accuracy figure; the mock numbers are labelled **MOCK** and prove only that the pipeline works. The parser does not yet read the PLUS-style VAT table (ISSUES #26). The photo checks have little margin on soft thermal prints (one real photo). A model that always times out can leave the buyer on "Reading" for up to about 16 minutes before the upload fails. Not tested: iOS and Safari, a real phone camera, PDF and HEIC, hosted storage.
 
 ## NFC later
 
