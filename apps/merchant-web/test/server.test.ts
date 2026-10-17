@@ -39,7 +39,9 @@ Object.assign(process.env, {
   DEMO_MODE: 'false',
 });
 
-await setup({ rootDir: fileURLToPath(new URL('..', import.meta.url)), server: true, build: true, dev: false });
+// This builds the Nuxt app inside the setup hook. The default limit is 120 s; on a shared CI runner, with the other packages'
+// tests running at the same time, the build takes longer than that.
+await setup({ rootDir: fileURLToPath(new URL('..', import.meta.url)), server: true, build: true, dev: false, setupTimeout: 600_000 });
 
 /** Minimal cookie-jar client: the same-origin browser, as far as the server can tell. */
 class Browser {
