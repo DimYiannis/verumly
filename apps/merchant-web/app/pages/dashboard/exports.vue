@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { MessageKey } from '~/i18n/en';
+import { amsterdamNow } from '~/lib/overview';
 
 definePageMeta({ layout: 'dashboard', middleware: 'dashboard-auth' });
 
@@ -9,7 +10,8 @@ const KINDS = [
   { value: 'btw_csv', label: 'exports.kind.btw_csv' },
   { value: 'sales_csv', label: 'exports.kind.sales_csv' },
 ] as const;
-const today = new Date().toISOString().slice(0, 10);
+// the exports group by Amsterdam day, so the default period ends on the Amsterdam day, not the UTC one
+const today = amsterdamNow(new Date()).ymd;
 const rows = ref<Exp[]>([]);
 const error = ref('');
 const form = reactive({ kind: 'btw_csv', from: today.slice(0, 8) + '01', to: today });

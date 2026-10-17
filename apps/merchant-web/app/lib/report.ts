@@ -1,4 +1,5 @@
 import type { ReportMetric, ReportSpec } from '@lr/schema';
+import { addDays, amsterdamNow } from './overview.ts';
 
 /** Pure helpers of the report builder page (dates, labels, CSV). */
 
@@ -13,27 +14,33 @@ export const TIME_GROUPS = ['day', 'week', 'month', 'weekday', 'hour'];
 export const RUBRIEK: Record<string, string> = { 21: '1a', 9: '1b', 0: '1e' };
 
 const pad = (n: number) => String(n).padStart(2, '0');
-export const isoDay = (d: Date): string => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
+/**
+ * The period of a preset, as YYYY-MM-DD days. "Today" is the Amsterdam calendar day, not the browser's: the reports bucket
+ * receipts by Amsterdam day, so a browser in another time zone (or a CI runner in UTC between 22:00 and 24:00) would
+ * otherwise ask for the wrong days and show zeros.
+ */
 export function presetRange(p: (typeof PRESETS)[number], now = new Date()): { from: string; to: string } {
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  const day = (d: Date) => isoDay(d);
+  const today = amsterdamNow(now).ymd;
+  const [y, m] = today.split('-').map(Number) as [number, number];
+  const monthStart = (year: number, month: number) => `${year}-${pad(month)}-01`;
   switch (p) {
     case 'today':
-      return { from: day(now), to: day(now) };
+      return { from: today, to: today };
     case 'last7':
-      return { from: day(new Date(y, m, now.getDate() - 6)), to: day(now) };
+      return { from: addDays(today, -6), to: today };
     case 'last30':
-      return { from: day(new Date(y, m, now.getDate() - 29)), to: day(now) };
+      return { from: addDays(today, -29), to: today };
     case 'thisMonth':
-      return { from: day(new Date(y, m, 1)), to: day(now) };
-    case 'lastMonth':
-      return { from: day(new Date(y, m - 1, 1)), to: day(new Date(y, m, 0)) };
+      return { from: monthStart(y, m), to: today };
+    case 'lastMonth': {
+      const first = m === 1 ? monthStart(y - 1, 12) : monthStart(y, m - 1);
+      return { from: first, to: addDays(monthStart(y, m), -1) };
+    }
     case 'quarter':
-      return { from: day(new Date(y, Math.floor(m / 3) * 3, 1)), to: day(now) };
+      return { from: monthStart(y, Math.floor((m - 1) / 3) * 3 + 1), to: today };
     case 'ytd':
-      return { from: day(new Date(y, 0, 1)), to: day(now) };
+      return { from: monthStart(y, 1), to: today };
   }
 }
 
