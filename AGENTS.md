@@ -29,7 +29,7 @@ Read next, by task:
 
 | Task | Read |
 |---|---|
-| Run or demo the stack | `RUNNING.md`, `README.md` |
+| Run or demo the stack | `RUNNING.md`, `SETUP.md` (setup, configuration, technical details) |
 | Architecture, data flow | `docs/ARCHITECTURE.md` |
 | Why something is the way it is | `docs/DECISIONS.md` (record every departure from the spec there) |
 | Known problems, open work | `docs/ISSUES.md`, `docs/FINDINGS.md` |
