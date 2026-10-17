@@ -1,0 +1,24 @@
+# bonnen: the public website
+
+A static page that explains why the product exists and how it works (`/`) and how privacy is built (`/privacy`).
+Nuxt 4 + Tailwind 4, styled with the shared tokens in `packages/ui`. No API, no database.
+
+```sh
+pnpm --filter @lr/site dev        # http://localhost:3002
+pnpm --filter @lr/site generate   # static output in apps/site/.output/public
+```
+
+## Deploy to Vercel
+
+1. Import the GitHub repository in Vercel.
+2. **Root Directory**: `apps/site`. Keep "Include source files outside of the Root Directory" on (the site uses `packages/ui`).
+3. Framework preset: Nuxt. `vercel.json` already sets the install and build commands (pnpm at the repo root).
+4. Optional environment variables, used for the buttons on the page (all are public):
+   - `NUXT_PUBLIC_WALLET_URL`: where the wallet demo is hosted
+   - `NUXT_PUBLIC_DASHBOARD_URL`: where the dashboard demo is hosted
+   - `NUXT_PUBLIC_REPO_URL`: link to the source
+   - `NUXT_PUBLIC_SITE_URL`: the site's own address (for share previews)
+
+Without the first two the page shows the demo buttons as anchors and a note that the links appear once the apps are hosted.
+
+Content lives in `app/pages/index.vue` (copy) and `app/components/Frag*.vue` (the mini screens, drawn in markup: update them when the app's screens change).

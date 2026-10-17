@@ -97,6 +97,8 @@ The approved designs live in the Claude Design canvas "Less Receipts UI book" (h
 
 - **PDFs** (the buyer's download and the merchant archive) are drawn by `packages/receipt-pdf` from the same receipt template as the wallet (blocks, order, colours, font, paper, logo). Change the template renderer and the PDF renderer together.
 
+- **Public website** (`apps/site`, `pnpm --filter @lr/site dev`, port 3002): the landing page and the privacy explainer for Vercel (see its README). Its mini screens are hand-drawn components (`Frag*.vue`): update them when the app's screens change. It claims only what the code does; keep it that way.
+
 ## Frontend conventions (design system copied from Salespore)
 
 - Tailwind 4 + shadcn-vue (reka-ui), icons from `@lucide/vue`, font Outfit (JetBrains Mono for amounts and technical values).
