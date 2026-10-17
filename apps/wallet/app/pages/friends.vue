@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { Check, Copy, Share2, X } from '@lucide/vue';
+import { ChevronRight, X } from '@lucide/vue';
 import type { MessageKey } from '~/i18n';
-import type { Balances, FriendsResponse, Profile, ShareItem, SplitListItem } from '~/utils/api-schemas';
-import { formatDateTime, formatEuro } from '~/utils/format';
-import { AVATARS, copyText, errorKey, handleHint, inviteLink, isOffline, userName } from '~/utils/social';
+import type { ActivityItem, Balances, FriendsResponse, Profile } from '~/utils/api-schemas';
+import { ACTIVITY_SENTENCE, activityTarget, sentenceParts } from '~/utils/activity';
+import { formatEuro } from '~/utils/format';
+import { formatRelative } from '~/utils/relative-time';
+import { AVATARS, errorKey, handleHint, inviteLink, isOffline, userName } from '~/utils/social';
 
 definePageMeta({ middleware: 'auth' });
 
+const NuxtLinkC = resolveComponent('NuxtLink');
 const wallet = useWallet();
 const { t, locale } = useLocale();
 const receiptHost = useRuntimeConfig().public.receiptHost;
@@ -16,17 +19,15 @@ const status = ref<'loading' | 'ready' | 'offline' | 'error'>('loading');
 const profile = ref<Profile | null>(null);
 const friends = ref<FriendsResponse>({ friends: [], incoming: [], outgoing: [] });
 const balances = ref<Balances>({ friends: [], totalOwedToMe: 0, totalIOwe: 0 });
-const incomingShares = ref<ShareItem[]>([]);
-const splits = ref<SplitListItem[]>([]);
+const activity = ref<ActivityItem[]>([]);
 
 async function load() {
   try {
-    const [p, f, b, sh, sp] = await Promise.all([wallet.api.getProfile(), wallet.api.getFriends(), wallet.api.getBalances(), wallet.api.listShares(), wallet.api.listSplits()]);
+    const [p, f, b, a] = await Promise.all([wallet.api.getProfile(), wallet.api.getFriends(), wallet.api.getBalances(), wallet.api.getActivity()]);
     profile.value = p;
     friends.value = f;
     balances.value = b;
-    incomingShares.value = sh.incoming;
-    splits.value = [...sp.splits].sort((a, c) => Number(c.openMinor > 0) - Number(a.openMinor > 0) || c.createdAt.localeCompare(a.createdAt));
+    activity.value = a.items;
     status.value = 'ready';
   } catch (e) {
     status.value = isOffline(e) ? 'offline' : 'error';
@@ -99,12 +100,9 @@ async function addFriend() {
 const link = ref<string | null>(null);
 const inviteBusy = ref(false);
 const inviteError = ref<MessageKey | null>(null);
-const copied = ref(false);
-const canShare = computed(() => import.meta.client && typeof navigator.share === 'function');
 async function createInvite() {
   inviteBusy.value = true;
   inviteError.value = null;
-  copied.value = false;
   try {
     link.value = inviteLink(receiptHost, (await wallet.api.createInvite()).code);
   } catch (e) {
@@ -113,19 +111,12 @@ async function createInvite() {
     inviteBusy.value = false;
   }
 }
-async function copyLink() {
-  if (link.value) copied.value = await copyText(link.value);
-}
-async function shareLink() {
-  if (!link.value) return;
-  try {
-    await navigator.share({ title: t('social.invite.shareTitle'), text: t('social.invite.shareText'), url: link.value });
-  } catch {
-    // dismissed by the user
-  }
-}
-function selectAll(e: Event) {
-  (e.target as HTMLInputElement).select();
+
+/** the header button brings the add-a-friend card into view and focuses the username field */
+function jumpToAdd() {
+  const el = document.getElementById('add-friend');
+  el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => document.getElementById('add-friend-input')?.focus({ preventScroll: true }), 250);
 }
 
 // ---- requests and friends
@@ -141,23 +132,57 @@ async function act(fn: () => Promise<unknown>): Promise<boolean> {
     return false;
   }
 }
+const selectedId = ref<string | null>(null);
 const confirmRemove = ref<string | null>(null);
 async function remove(userId: string) {
-  if (await act(() => wallet.api.removeFriend(userId))) confirmRemove.value = null;
+  if (await act(() => wallet.api.removeFriend(userId))) {
+    confirmRemove.value = null;
+    selectedId.value = null;
+  }
 }
 function net(userId: string): number {
   const row = balances.value.friends.find((r) => r.user.userId === userId);
   return row ? row.owesMe - row.iOwe : 0;
 }
-function openText(s: SplitListItem): string {
-  if (s.openMinor === 0) return t('social.splits.settled');
-  return t(s.creatorIsMe ? 'social.splits.owedToYou' : 'social.splits.youOwe', { amount: formatEuro(s.openMinor, locale.value) });
+const strip = computed(() => [...friends.value.friends].sort((a, b) => Math.abs(net(b.userId)) - Math.abs(net(a.userId))));
+const selected = computed(() => friends.value.friends.find((f) => f.userId === selectedId.value) ?? null);
+function toggleSelected(userId: string) {
+  selectedId.value = selectedId.value === userId ? null : userId;
+  confirmRemove.value = null;
+}
+function signed(cents: number): string {
+  return `${cents > 0 ? '+' : '−'}${formatEuro(Math.abs(cents), locale.value)}`;
+}
+
+// ---- feed
+const feed = computed(() => activity.value.filter((i) => i.kind !== 'friend_request'));
+function sentence(i: ActivityItem): ReturnType<typeof sentenceParts> {
+  const who = i.user ? userName(i.user) : '?';
+  const key = ACTIVITY_SENTENCE[i.kind];
+  return sentenceParts(t(key), {
+    name: who,
+    merchant: i.merchantName ?? '',
+    amount: formatEuro(i.amountMinor ?? 0, locale.value),
+    emoji: i.emoji ?? '',
+  });
+}
+function detail(i: ActivityItem): string {
+  const bits: string[] = [];
+  if (i.merchantName && i.kind !== 'split_with_me' && i.kind !== 'split_created') bits.push(i.merchantName);
+  if (i.kind === 'share_received' && i.amountMinor !== null) bits.push(formatEuro(i.amountMinor, locale.value));
+  if (i.kind === 'split_created' && i.amountMinor !== null) bits.push(i.amountMinor > 0 ? t('rcpt.act.stillOpen', { amount: formatEuro(i.amountMinor, locale.value) }) : t('social.splits.settled'));
+  if (i.kind === 'split_with_me' && i.amountMinor !== null) bits.push(t('rcpt.act.yourShare', { amount: formatEuro(i.amountMinor, locale.value) }));
+  bits.push(formatRelative(i.at, locale.value));
+  return bits.join(' · ');
 }
 </script>
 
 <template>
   <div class="space-y-4">
-    <h1 class="text-h1 font-semibold">{{ t('social.title') }}</h1>
+    <div class="flex items-center justify-between gap-3">
+      <h1 class="text-h2 font-semibold">{{ t('social.title') }}</h1>
+      <Button v-if="status === 'ready' && profile && !needsProfile" type="button" size="sm" data-testid="friends-add-open" @click="jumpToAdd">{{ t('rcpt.friends.add') }}</Button>
+    </div>
     <p v-if="status === 'loading'" role="status" class="flex items-center gap-2 text-sm text-text-secondary">
       <Spinner role="presentation" aria-hidden="true" />
       {{ t('common.loading') }}
@@ -168,7 +193,7 @@ function openText(s: SplitListItem): string {
     </div>
     <template v-else-if="profile">
       <!-- profile -->
-      <section data-testid="friends-profile" class="space-y-3 rounded-xl border border-border bg-card p-4">
+      <section data-testid="friends-profile" class="space-y-3 rounded-[14px] border border-border bg-card p-4">
         <template v-if="needsProfile || editing">
           <h2 class="text-h2 font-semibold">{{ needsProfile ? t('social.profile.setupTitle') : t('social.profile.editTitle') }}</h2>
           <p v-if="needsProfile" class="text-sm text-text-secondary">{{ t('social.profile.setupBody') }}</p>
@@ -218,35 +243,118 @@ function openText(s: SplitListItem): string {
           </form>
         </template>
         <div v-else class="flex items-center gap-3">
-          <UserAvatar :user="profile" />
+          <PersonAvatar :user="profile" :name="userName(profile)" me />
           <div class="min-w-0 flex-1">
             <p class="truncate font-medium">{{ profile.displayName }}</p>
             <p class="truncate font-mono text-sm text-text-secondary">@{{ profile.handle }}</p>
           </div>
-          <Button type="button" variant="secondary" data-testid="profile-edit" @click="editing = true">{{ t('social.profile.edit') }}</Button>
+          <Button type="button" variant="secondary" size="sm" data-testid="profile-edit" @click="editing = true">{{ t('social.profile.edit') }}</Button>
         </div>
       </section>
 
       <template v-if="!needsProfile">
-        <!-- balances -->
-        <section class="grid grid-cols-2 gap-2" :aria-label="t('social.balances.title')">
-          <div class="rounded-xl border border-border bg-card p-4">
-            <p class="text-xs text-text-secondary">{{ t('social.balances.owedToMe') }}</p>
-            <p data-testid="balance-total-owed" class="font-mono text-lg font-medium tabular-nums text-success">{{ formatEuro(balances.totalOwedToMe, locale) }}</p>
+        <!-- friends as people, with what is between you -->
+        <section :aria-label="t('social.friends.title')" class="space-y-3">
+          <p v-if="friends.friends.length === 0" class="rounded-[14px] border border-border bg-card p-4 text-sm text-text-secondary">{{ t('social.friends.empty') }}</p>
+          <ul v-else class="-mx-4 flex gap-4 overflow-x-auto px-4 py-1">
+            <li v-for="f in strip" :key="f.userId" data-testid="friend-row">
+              <button type="button" class="flex w-16 flex-col items-center gap-1.5 text-center" :aria-expanded="selectedId === f.userId" :aria-label="userName(f)" data-testid="friend-open" @click="toggleSelected(f.userId)">
+                <span class="rounded-full" :class="selectedId === f.userId ? 'ring-[3px] ring-selected ring-offset-0 outline outline-1 outline-primary' : ''">
+                  <PersonAvatar :user="f" :name="userName(f)" :muted="net(f.userId) === 0" size="lg" />
+                </span>
+                <span class="w-full truncate text-xs">{{ userName(f) }}</span>
+                <span
+                  class="font-mono text-xs tabular-nums"
+                  :class="net(f.userId) > 0 ? 'text-success' : net(f.userId) < 0 ? 'text-danger' : 'text-text-secondary'"
+                  data-testid="friend-balance"
+                >{{ net(f.userId) === 0 ? formatEuro(0, locale) : signed(net(f.userId)) }}</span>
+              </button>
+            </li>
+          </ul>
+          <div v-if="selected" class="space-y-2 rounded-[14px] border border-border bg-card p-4" data-testid="friend-panel">
+            <div class="flex items-center gap-3">
+              <PersonAvatar :user="selected" :name="userName(selected)" />
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium">{{ userName(selected) }}</p>
+                <p v-if="selected.handle" class="truncate font-mono text-xs text-text-secondary">@{{ selected.handle }}</p>
+              </div>
+              <p class="text-right text-sm font-medium tabular-nums" :class="net(selected.userId) > 0 ? 'text-success' : net(selected.userId) < 0 ? 'text-danger' : 'text-text-secondary'">
+                <template v-if="net(selected.userId) > 0">{{ t('social.friends.owesYou', { amount: formatEuro(net(selected.userId), locale) }) }}</template>
+                <template v-else-if="net(selected.userId) < 0">{{ t('social.friends.youOwe', { amount: formatEuro(-net(selected.userId), locale) }) }}</template>
+                <template v-else>{{ t('social.friends.even') }}</template>
+              </p>
+            </div>
+            <Button v-if="confirmRemove !== selected.userId" type="button" variant="ghost" size="sm" data-testid="friend-remove" @click="confirmRemove = selected.userId">{{ t('social.friends.remove') }}</Button>
+            <div v-else class="space-y-2 rounded-lg border border-danger-border bg-danger-soft p-3" role="alert">
+              <p class="text-sm text-danger">{{ t('social.friends.removeConfirm', { name: userName(selected) }) }}</p>
+              <div class="flex gap-2">
+                <Button type="button" variant="destructive" size="lg" data-testid="friend-remove-confirm" @click="remove(selected.userId)">{{ t('social.friends.removeYes') }}</Button>
+                <Button type="button" variant="secondary" size="lg" @click="confirmRemove = null">{{ t('social.cancel') }}</Button>
+              </div>
+            </div>
           </div>
-          <div class="rounded-xl border border-border bg-card p-4">
-            <p class="text-xs text-text-secondary">{{ t('social.balances.iOwe') }}</p>
-            <p data-testid="balance-total-owe" class="font-mono text-lg font-medium tabular-nums" :class="balances.totalIOwe > 0 ? 'text-danger' : ''">{{ formatEuro(balances.totalIOwe, locale) }}</p>
+
+          <!-- totals -->
+          <div class="grid grid-cols-2 gap-2" :aria-label="t('social.balances.title')" role="group">
+            <div class="rounded-[14px] border border-border bg-card p-3">
+              <p class="text-xs text-text-secondary">{{ t('social.balances.owedToMe') }}</p>
+              <p data-testid="balance-total-owed" class="font-mono text-lg font-medium tabular-nums text-success">{{ formatEuro(balances.totalOwedToMe, locale) }}</p>
+            </div>
+            <div class="rounded-[14px] border border-border bg-card p-3">
+              <p class="text-xs text-text-secondary">{{ t('social.balances.iOwe') }}</p>
+              <p data-testid="balance-total-owe" class="font-mono text-lg font-medium tabular-nums" :class="balances.totalIOwe > 0 ? 'text-danger' : ''">{{ formatEuro(balances.totalIOwe, locale) }}</p>
+            </div>
           </div>
         </section>
 
         <p v-if="actionError" role="alert" class="rounded-lg border border-danger-border bg-danger-soft p-3 text-sm text-danger">{{ t(actionError) }}</p>
 
-        <!-- add friend and invite -->
-        <section class="space-y-3 rounded-xl border border-border bg-card p-4">
-          <h2 class="text-h2 font-semibold">{{ t('social.add.title') }}</h2>
+        <!-- activity -->
+        <section class="space-y-3" aria-labelledby="activity-h">
+          <h2 id="activity-h" class="text-xs font-medium tracking-wide text-text-secondary uppercase">{{ t('rcpt.friends.activity') }}</h2>
+
+          <div v-for="r in friends.incoming" :key="r.requestId" class="flex items-center gap-3 rounded-[14px] border border-border bg-card p-3.5" data-testid="friend-request">
+            <PersonAvatar :user="r.from" :name="userName(r.from)" />
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-[15px]"><b class="font-semibold">{{ userName(r.from) }}</b> {{ t('rcpt.act.wantsFriend') }}</p>
+            </div>
+            <Button type="button" data-testid="friend-request-accept" @click="act(() => wallet.api.acceptFriendRequest(r.requestId))">{{ t('social.requests.accept') }}</Button>
+            <Button type="button" variant="secondary" size="icon" :aria-label="t('social.requests.decline')" data-testid="friend-request-decline" @click="act(() => wallet.api.declineFriendRequest(r.requestId))">
+              <X aria-hidden="true" />
+            </Button>
+          </div>
+          <div v-for="r in friends.outgoing" :key="r.requestId" class="flex items-center gap-3 rounded-[14px] border border-border bg-card p-3.5" data-testid="friend-request-outgoing">
+            <PersonAvatar :user="r.to" :name="userName(r.to)" />
+            <span class="min-w-0 flex-1 truncate text-[15px] font-medium">{{ userName(r.to) }}</span>
+            <Badge variant="neutral">{{ t('social.requests.pending') }}</Badge>
+          </div>
+
+          <p v-if="feed.length === 0 && friends.incoming.length === 0" class="rounded-[14px] border border-border bg-card p-4 text-sm text-text-secondary">{{ t('rcpt.friends.noActivity') }}</p>
+          <template v-for="i in feed" :key="i.id">
+            <component
+              :is="activityTarget(i) ? NuxtLinkC : 'div'"
+              v-bind="activityTarget(i) ? { to: activityTarget(i)!.to, 'data-testid': activityTarget(i)!.testid } : {}"
+              class="flex items-center gap-3 rounded-[14px] border border-border bg-card p-3.5 text-foreground no-underline hover:text-foreground"
+              :class="activityTarget(i) ? 'transition-colors hover:bg-muted' : ''"
+            >
+              <PersonAvatar :user="i.user" :name="i.user ? userName(i.user) : userName(profile)" :me="!i.user" />
+              <div class="min-w-0 flex-1">
+                <p class="text-[15px] leading-snug">
+                  <template v-for="(p, n) in sentence(i)" :key="n"><b v-if="p.bold" class="font-semibold">{{ p.text }}</b><template v-else>{{ p.text }}</template></template>
+                </p>
+                <p class="truncate text-xs text-text-secondary">{{ detail(i) }}</p>
+              </div>
+              <ChevronRight v-if="activityTarget(i)" class="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
+            </component>
+          </template>
+        </section>
+
+        <!-- add a friend: by username, by invite link or QR, or by scanning a friend's code -->
+        <section id="add-friend" class="scroll-mt-4 space-y-3 rounded-[14px] border border-border bg-card p-4" data-testid="friends-add">
+          <h2 class="text-h3 font-semibold">{{ t('social.add.title') }}</h2>
           <form class="flex gap-2" @submit.prevent="addFriend">
             <Input
+              id="add-friend-input"
               v-model="addHandle"
               :placeholder="t('social.add.placeholder')"
               :aria-label="t('social.add.title')"
@@ -259,103 +367,13 @@ function openText(s: SplitListItem): string {
             <Button type="submit" size="lg" data-testid="friends-add-submit" :disabled="addBusy || !addHandle.trim()">{{ t('social.add.submit') }}</Button>
           </form>
           <p v-if="addMsg" :role="addMsg.kind === 'err' ? 'alert' : 'status'" class="text-sm" :class="addMsg.kind === 'err' ? 'text-danger' : 'text-success'">{{ t(addMsg.key) }}</p>
-          <div class="space-y-2 border-t border-border pt-3">
+          <div class="space-y-3 border-t border-border pt-3">
             <p class="text-sm text-text-secondary">{{ t('social.invite.body') }}</p>
             <Button type="button" variant="secondary" size="lg" data-testid="friends-invite-create" :disabled="inviteBusy" @click="createInvite">{{ t('social.invite.create') }}</Button>
             <p v-if="inviteError" role="alert" class="text-sm text-danger">{{ t(inviteError) }}</p>
             <InviteShare v-if="link" :link="link" />
-            <InviteScan class="pt-1" />
+            <InviteScan />
           </div>
-        </section>
-
-        <!-- requests -->
-        <section v-if="friends.incoming.length || friends.outgoing.length" class="space-y-2">
-          <h2 class="text-h2 font-semibold">{{ t('social.requests.title') }}</h2>
-          <ul class="divide-y divide-border rounded-xl border border-border bg-card">
-            <li v-for="r in friends.incoming" :key="r.requestId" class="flex items-center gap-3 p-3" data-testid="friend-request">
-              <UserAvatar :user="r.from" size="sm" />
-              <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ userName(r.from) }}</span>
-              <Button type="button" data-testid="friend-request-accept" size="lg" @click="act(() => wallet.api.acceptFriendRequest(r.requestId))">{{ t('social.requests.accept') }}</Button>
-              <Button type="button" variant="secondary" size="icon" :aria-label="t('social.requests.decline')" class="size-11" data-testid="friend-request-decline" @click="act(() => wallet.api.declineFriendRequest(r.requestId))">
-                <X aria-hidden="true" />
-              </Button>
-            </li>
-            <li v-for="r in friends.outgoing" :key="r.requestId" class="flex items-center gap-3 p-3" data-testid="friend-request-outgoing">
-              <UserAvatar :user="r.to" size="sm" />
-              <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ userName(r.to) }}</span>
-              <Badge variant="neutral">{{ t('social.requests.pending') }}</Badge>
-            </li>
-          </ul>
-        </section>
-
-        <!-- friends -->
-        <section class="space-y-2">
-          <h2 class="text-h2 font-semibold">{{ t('social.friends.title') }}</h2>
-          <p v-if="friends.friends.length === 0" class="rounded-xl border border-border bg-card p-4 text-sm text-text-secondary">{{ t('social.friends.empty') }}</p>
-          <ul v-else class="divide-y divide-border rounded-xl border border-border bg-card">
-            <li v-for="f in friends.friends" :key="f.userId" class="space-y-2 p-3" data-testid="friend-row">
-              <div class="flex items-center gap-3">
-                <UserAvatar :user="f" size="sm" />
-                <div class="min-w-0 flex-1">
-                  <p class="truncate text-sm font-medium">{{ userName(f) }}</p>
-                  <p v-if="f.handle" class="truncate font-mono text-xs text-text-secondary">@{{ f.handle }}</p>
-                </div>
-                <p
-                  class="text-right text-sm font-medium tabular-nums"
-                  :class="net(f.userId) > 0 ? 'text-success' : net(f.userId) < 0 ? 'text-danger' : 'text-text-secondary'"
-                  data-testid="friend-balance"
-                >
-                  <template v-if="net(f.userId) > 0">{{ t('social.friends.owesYou', { amount: formatEuro(net(f.userId), locale) }) }}</template>
-                  <template v-else-if="net(f.userId) < 0">{{ t('social.friends.youOwe', { amount: formatEuro(-net(f.userId), locale) }) }}</template>
-                  <template v-else>{{ t('social.friends.even') }}</template>
-                </p>
-                <Button v-if="confirmRemove !== f.userId" type="button" variant="ghost" data-testid="friend-remove" @click="confirmRemove = f.userId">{{ t('social.friends.remove') }}</Button>
-              </div>
-              <div v-if="confirmRemove === f.userId" class="space-y-2 rounded-lg border border-danger-border bg-danger-soft p-3" role="alert">
-                <p class="text-sm text-danger">{{ t('social.friends.removeConfirm', { name: userName(f) }) }}</p>
-                <div class="flex gap-2">
-                  <Button type="button" variant="destructive" size="lg" data-testid="friend-remove-confirm" @click="remove(f.userId)">{{ t('social.friends.removeYes') }}</Button>
-                  <Button type="button" variant="secondary" size="lg" @click="confirmRemove = null">{{ t('social.cancel') }}</Button>
-                </div>
-              </div>
-            </li>
-          </ul>
-        </section>
-
-        <!-- shared with me -->
-        <section class="space-y-2">
-          <h2 class="text-h2 font-semibold">{{ t('social.shared.title') }}</h2>
-          <p v-if="incomingShares.length === 0" class="rounded-xl border border-border bg-card p-4 text-sm text-text-secondary">{{ t('social.shared.empty') }}</p>
-          <ul v-else class="divide-y divide-border rounded-xl border border-border bg-card">
-            <li v-for="s in incomingShares" :key="s.id">
-              <NuxtLink :to="`/shared/${s.id}`" data-testid="share-open" class="flex min-h-14 items-center gap-3 p-3 no-underline hover:bg-muted">
-                <UserAvatar :user="s.from" size="sm" />
-                <div class="min-w-0 flex-1">
-                  <p class="truncate text-sm font-medium text-foreground">{{ s.merchantName }}</p>
-                  <p class="truncate text-xs text-text-secondary">{{ t('social.shared.from', { name: userName(s.from), date: formatDateTime(s.sharedAt, locale) }) }}</p>
-                </div>
-                <span v-if="s.myReaction" aria-hidden="true">{{ s.myReaction }}</span>
-                <span class="font-mono text-sm tabular-nums text-foreground">{{ formatEuro(s.total, locale) }}</span>
-              </NuxtLink>
-            </li>
-          </ul>
-        </section>
-
-        <!-- splits -->
-        <section class="space-y-2">
-          <h2 class="text-h2 font-semibold">{{ t('social.splits.title') }}</h2>
-          <p v-if="splits.length === 0" class="rounded-xl border border-border bg-card p-4 text-sm text-text-secondary">{{ t('social.splits.empty') }}</p>
-          <ul v-else class="divide-y divide-border rounded-xl border border-border bg-card">
-            <li v-for="s in splits" :key="s.id">
-              <NuxtLink :to="`/splits/${s.id}`" data-testid="split-open" class="flex min-h-14 items-center gap-3 p-3 no-underline hover:bg-muted">
-                <div class="min-w-0 flex-1">
-                  <p class="truncate text-sm font-medium text-foreground">{{ s.merchantName }}</p>
-                  <p class="truncate text-xs text-text-secondary">{{ formatDateTime(s.createdAt, locale) }} · {{ s.creatorIsMe ? t('social.splits.byYou') : userName(s.creator) }}</p>
-                </div>
-                <span class="text-right text-sm font-medium tabular-nums" :class="s.openMinor === 0 ? 'text-text-secondary' : s.creatorIsMe ? 'text-success' : 'text-danger'">{{ openText(s) }}</span>
-              </NuxtLink>
-            </li>
-          </ul>
         </section>
       </template>
     </template>

@@ -343,8 +343,8 @@ const hexOk = (v: string) => HEX_COLOR_RE.test(v);
 
   <div v-if="!loaded" class="px-2 text-sm text-muted-foreground">{{ t('design.loading') }}</div>
 
-  <div v-else class="grid items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)_300px]">
-    <!-- LEFT: add, layers, style -->
+  <div v-else class="grid items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)_300px]">
+    <!-- LEFT: add, layers -->
     <div class="space-y-4">
       <Card>
         <CardHeader><CardTitle class="text-base">{{ t('design.add') }}</CardTitle></CardHeader>
@@ -389,40 +389,6 @@ const hexOk = (v: string) => HEX_COLOR_RE.test(v);
           <p class="mt-1 flex items-start gap-1 text-xs text-muted-foreground"><Lock class="mt-0.5 size-3 shrink-0" aria-hidden="true" /><span>{{ t('design.lockedHint', { country: countryName }) }}</span></p>
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader><CardTitle class="text-base">{{ t('design.style') }}</CardTitle></CardHeader>
-        <CardContent class="mt-3 space-y-4">
-          <div class="space-y-2"><Label>{{ t('design.accent') }}</Label><AppColorField :model-value="tpl.style.accent" :label="t('design.accent')" :hex-label="t('design.hex')" :disabled="!canWrite" testid="design-style-accent" @update:model-value="setStyle('accent', $event)" /></div>
-          <div class="space-y-2"><Label>{{ t('design.textColor') }}</Label><AppColorField :model-value="tpl.style.text" :label="t('design.textColor')" :hex-label="t('design.hex')" :disabled="!canWrite" testid="design-style-text" @update:model-value="setStyle('text', $event)" /></div>
-          <div class="space-y-2"><Label>{{ t('design.background') }}</Label><AppColorField :model-value="tpl.style.background" :label="t('design.background')" :hex-label="t('design.hex')" :disabled="!canWrite" testid="design-style-background" @update:model-value="setStyle('background', $event)" /></div>
-          <div class="space-y-2">
-            <Label for="design-font">{{ t('design.font') }}</Label>
-            <AppNativeSelect id="design-font" :model-value="tpl.style.font" :disabled="!canWrite" data-testid="design-style-font" @update:model-value="setStyle('font', $event as ReceiptTemplate['style']['font'])">
-              <option v-for="f in TEMPLATE_FONTS" :key="f" :value="f">{{ tx('design.font', f) }}</option>
-            </AppNativeSelect>
-          </div>
-          <div class="space-y-2">
-            <Label for="design-paper">{{ t('design.paper') }}</Label>
-            <AppNativeSelect id="design-paper" :model-value="tpl.style.paper" :disabled="!canWrite" data-testid="design-style-paper" @update:model-value="setStyle('paper', $event as ReceiptTemplate['style']['paper'])">
-              <option v-for="p in TEMPLATE_PAPERS" :key="p" :value="p">{{ tx('design.paper', p) }}</option>
-            </AppNativeSelect>
-          </div>
-          <div class="space-y-2">
-            <Label>{{ t('design.logo') }}</Label>
-            <div v-if="tpl.logo" class="flex items-center gap-3 rounded-md border bg-muted p-2"><img :src="tpl.logo" alt="" class="max-h-12 max-w-[60%] object-contain" /></div>
-            <div class="flex flex-wrap gap-2">
-              <label class="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-card px-[14px] text-sm font-medium transition-colors focus-within:ring-[3px] focus-within:ring-ring hover:bg-muted" :class="canWrite ? '' : 'pointer-events-none opacity-50'">
-                <Upload class="size-4" />{{ tpl.logo ? t('design.logoReplace') : t('design.logoUpload') }}
-                <input type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" :disabled="!canWrite" data-testid="design-logo-input" @change="onLogo" />
-              </label>
-              <Button v-if="tpl.logo" variant="ghost" :disabled="!canWrite" data-testid="design-logo-remove" @click="removeLogo"><Trash2 />{{ t('design.logoRemove') }}</Button>
-            </div>
-            <p class="text-xs text-muted-foreground">{{ t('design.logoHelp') }}</p>
-            <AppErrorNote v-if="logoError" data-testid="design-logo-error">{{ logoError }}</AppErrorNote>
-          </div>
-        </CardContent>
-      </Card>
     </div>
 
     <!-- CENTER: preview -->
@@ -439,7 +405,7 @@ const hexOk = (v: string) => HEX_COLOR_RE.test(v);
         </CardHeader>
         <CardContent class="mt-3">
           <div class="overflow-x-auto rounded-md border border-border bg-muted p-4 sm:p-8" style="background-image: radial-gradient(rgba(0, 0, 0, 0.07) 1px, transparent 1px); background-size: 16px 16px">
-            <div class="mx-auto w-full" :style="{ maxWidth: frameWidth }" data-testid="design-canvas">
+            <div class="mx-auto w-full rounded-xl shadow-[0_12px_32px_-12px_rgba(20,21,43,0.25)]" :style="{ maxWidth: frameWidth }" data-testid="design-canvas">
               <ReceiptTemplateView :template="tpl" :receipt="sample" :money="money" :date-time="dateTime" :labels="labels" designer :selected-id="selectedId" @select="selectedId = $event" />
             </div>
           </div>
@@ -469,9 +435,10 @@ const hexOk = (v: string) => HEX_COLOR_RE.test(v);
       </Collapsible>
     </div>
 
-    <!-- RIGHT: properties -->
+    <!-- RIGHT: selected block properties, then template style -->
+    <div class="space-y-4">
     <Card>
-      <CardHeader><CardTitle class="text-base">{{ t('design.properties') }}</CardTitle></CardHeader>
+      <CardHeader><CardTitle class="text-base">{{ selected ? t('adm.design.selected', { type: tx('design.type', selected.type) }) : t('design.properties') }}</CardTitle></CardHeader>
       <CardContent class="mt-3">
         <div v-if="!selected" class="rounded-md border border-dashed p-4 text-sm" data-testid="design-prop-empty">
           <p class="font-medium">{{ t('design.selectBlock') }}</p>
@@ -521,6 +488,41 @@ const hexOk = (v: string) => HEX_COLOR_RE.test(v);
         </div>
       </CardContent>
     </Card>
+
+      <Card>
+        <CardHeader><CardTitle class="text-base">{{ t('design.style') }}</CardTitle></CardHeader>
+        <CardContent class="mt-3 space-y-4">
+          <div class="space-y-2"><Label>{{ t('design.accent') }}</Label><AppColorField :model-value="tpl.style.accent" :label="t('design.accent')" :hex-label="t('design.hex')" :disabled="!canWrite" testid="design-style-accent" @update:model-value="setStyle('accent', $event)" /></div>
+          <div class="space-y-2"><Label>{{ t('design.textColor') }}</Label><AppColorField :model-value="tpl.style.text" :label="t('design.textColor')" :hex-label="t('design.hex')" :disabled="!canWrite" testid="design-style-text" @update:model-value="setStyle('text', $event)" /></div>
+          <div class="space-y-2"><Label>{{ t('design.background') }}</Label><AppColorField :model-value="tpl.style.background" :label="t('design.background')" :hex-label="t('design.hex')" :disabled="!canWrite" testid="design-style-background" @update:model-value="setStyle('background', $event)" /></div>
+          <div class="space-y-2">
+            <Label for="design-font">{{ t('design.font') }}</Label>
+            <AppNativeSelect id="design-font" :model-value="tpl.style.font" :disabled="!canWrite" data-testid="design-style-font" @update:model-value="setStyle('font', $event as ReceiptTemplate['style']['font'])">
+              <option v-for="f in TEMPLATE_FONTS" :key="f" :value="f">{{ tx('design.font', f) }}</option>
+            </AppNativeSelect>
+          </div>
+          <div class="space-y-2">
+            <Label for="design-paper">{{ t('design.paper') }}</Label>
+            <AppNativeSelect id="design-paper" :model-value="tpl.style.paper" :disabled="!canWrite" data-testid="design-style-paper" @update:model-value="setStyle('paper', $event as ReceiptTemplate['style']['paper'])">
+              <option v-for="p in TEMPLATE_PAPERS" :key="p" :value="p">{{ tx('design.paper', p) }}</option>
+            </AppNativeSelect>
+          </div>
+          <div class="space-y-2">
+            <Label>{{ t('design.logo') }}</Label>
+            <div v-if="tpl.logo" class="flex items-center gap-3 rounded-md border bg-muted p-2"><img :src="tpl.logo" alt="" class="max-h-12 max-w-[60%] object-contain" /></div>
+            <div class="flex flex-wrap gap-2">
+              <label class="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-card px-[14px] text-sm font-medium transition-colors focus-within:ring-[3px] focus-within:ring-ring hover:bg-muted" :class="canWrite ? '' : 'pointer-events-none opacity-50'">
+                <Upload class="size-4" />{{ tpl.logo ? t('design.logoReplace') : t('design.logoUpload') }}
+                <input type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" :disabled="!canWrite" data-testid="design-logo-input" @change="onLogo" />
+              </label>
+              <Button v-if="tpl.logo" variant="ghost" :disabled="!canWrite" data-testid="design-logo-remove" @click="removeLogo"><Trash2 />{{ t('design.logoRemove') }}</Button>
+            </div>
+            <p class="text-xs text-muted-foreground">{{ t('design.logoHelp') }}</p>
+            <AppErrorNote v-if="logoError" data-testid="design-logo-error">{{ logoError }}</AppErrorNote>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   </div>
 
   <AlertDialog v-model:open="resetOpen">

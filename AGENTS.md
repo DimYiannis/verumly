@@ -86,6 +86,15 @@ Users from `pnpm db:seed`: dashboard `owner@example.test` / `owner-dev-password`
 - `/dashboard/reports` is a report builder: period presets, group by (day, week, month, weekday, hour, location, terminal, payment method, VAT rate, category), selectable metrics, filters (location, terminal, payment), compare with the previous period, chart + table, CSV and print. Setups can be saved as named **views** shared in the organisation (`merchant.report_views`, RLS by org, migration 0007); "Daily sales" and "VAT return" are built in.
 - Engine: `packages/dashboard-core/src/report-builder.ts` (`runReport`, one SQL statement over the latest version of every `paid`/`void` receipt, Amsterdam days); contract in `packages/schema/src/reports.ts`. Grouping by payment, VAT rate or category counts parts of a receipt, so some metrics do not apply there (the API says which in `notes`).
 
+## UI book (implemented)
+
+The approved designs live in the Claude Design canvas "Less Receipts UI book" (https://claude.ai/artifact/MapqD7ATs6xcnxDrbnMhLy, private to the owner). Chosen directions: wallet **Home A**, **Receipt B** (people first), **Friends B** (activity feed); the business dashboard follows the book as drawn.
+
+- Wallet routes: `/` is the Home (month so far, balances, recent), `/receipts` the list, `/receipts/<id>` the people-first detail, `/friends` the activity feed. Tabs: Home, Receipts, + (add), Friends, Insights; settings via the avatar.
+- API for them: `GET /v1/me/home` and `GET /v1/me/activity` (apps/buyer-api/src/routes/home.ts, contract in packages/schema/src/social.ts).
+- Dashboard: `/dashboard` redirects to `/dashboard/overview`; the organisation page is the business "Setup".
+- Not built because the data is missing (see docs/ISSUES.md): per-week insights, scan confidence badges, reminders, terminal queue and location revenue.
+
 ## Frontend conventions (design system copied from Salespore)
 
 - Tailwind 4 + shadcn-vue (reka-ui), icons from `@lucide/vue`, font Outfit (JetBrains Mono for amounts and technical values).

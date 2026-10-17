@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component } from 'vue';
 import type { MessageKey } from '~/i18n/en';
-import { ArchiveIcon, BuildingIcon, ChartColumnIcon, DownloadIcon, LayoutDashboardIcon, LogOutIcon, MapPinIcon, MonitorSmartphoneIcon, PaletteIcon, ReceiptTextIcon, TabletSmartphoneIcon, UsersIcon } from '@lucide/vue';
+import { ArchiveIcon, BuildingIcon, ChartColumnIcon, DownloadIcon, LayoutDashboardIcon, LogOutIcon, MapPinIcon, MonitorSmartphoneIcon, PaletteIcon,TabletSmartphoneIcon, UsersIcon } from '@lucide/vue';
 
 const session = sessionState();
 const { t, tx } = useLocale();
@@ -21,7 +21,7 @@ const setup = computed(() =>
     { to: '/dashboard/terminals', key: 'nav.terminals', id: 'nav-terminals', icon: TabletSmartphoneIcon, show: role.value !== 'accountant' },
     { to: '/dashboard/locations', key: 'nav.locations', id: 'nav-locations', icon: MapPinIcon, show: true },
     { to: '/dashboard/users', key: 'nav.users', id: 'nav-users', icon: UsersIcon, show: role.value === 'owner' },
-    { to: '/dashboard/organisation', key: 'nav.organisation', id: 'nav-organisation', icon: BuildingIcon, show: true },
+    { to: '/dashboard/organisation', key: 'ov.navSetup', id: 'nav-organisation', icon: BuildingIcon, show: true },
     { to: '/dashboard/template', key: 'nav.template', id: 'nav-template', icon: PaletteIcon, show: role.value !== 'accountant' },
     { to: '/simulator', key: 'nav.simulator', id: 'nav-simulator', icon: MonitorSmartphoneIcon, show: role.value !== 'accountant' },
   ] as Array<{ to: string; key: MessageKey; id: string; icon: Component; show: boolean }>).filter((l) => l.show),
@@ -35,7 +35,7 @@ const PAGES: Record<string, MessageKey> = {
   terminals: 'nav.terminals',
   locations: 'nav.locations',
   users: 'nav.users',
-  organisation: 'nav.organisation',
+  organisation: 'ov.navSetup',
   template: 'nav.template',
 };
 const crumbs = computed(() => {
@@ -62,9 +62,9 @@ async function logout() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" as-child>
-              <NuxtLink to="/dashboard/overview" aria-label="Less Receipts">
-                <div class="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground"><ReceiptTextIcon class="size-4" /></div>
-                <span class="text-base font-semibold tracking-tight">Less Receipts</span>
+              <NuxtLink to="/dashboard/overview" :aria-label="orgName">
+                <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><ArchiveIcon class="size-4" /></div>
+                <span class="truncate text-base font-semibold tracking-tight">{{ orgName }}</span>
               </NuxtLink>
             </SidebarMenuButton>
           </SidebarMenuItem>

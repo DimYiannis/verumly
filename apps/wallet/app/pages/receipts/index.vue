@@ -3,7 +3,8 @@ import { Search, SlidersHorizontal } from '@lucide/vue';
 import { z } from 'zod';
 import { ApiError } from '~/utils/api';
 import type { ReceiptFilters, ReceiptListItem, UploadStatus } from '~/utils/api-schemas';
-import { filterCachedItems, formatDayHeading, formatEuro, formatTime, groupByDay } from '~/utils/format';
+import { dayKey, filterCachedItems, formatDayHeading, formatEuro, formatTime, groupByDay } from '~/utils/format';
+import { userName } from '~/utils/social';
 
 const wallet = useWallet();
 const { t, tOr, locale } = useLocale();
@@ -21,6 +22,21 @@ const uploads = ref<UploadStatus[]>([]);
 
 const filters = reactive({ q: '', state: '', from: '', to: '', category: '', merchant: '' });
 const STATES = ['presented', 'paid', 'void'] as const;
+
+/** receiptId -> the people on its split ('shared with Anna' / 'from Lisa'); online only */
+const splitHints = ref<Record<string, { mine: boolean; names: string[] }>>({});
+const onlySplit = ref(false);
+
+const chips = computed(() => [
+  { id: 'all', label: t('rcpt.list.chipAll'), on: filters.state === '' && !onlySplit.value },
+  { id: 'paid', label: t('rcpt.list.chipPaid'), on: filters.state === 'paid' && !onlySplit.value },
+  { id: 'shared', label: t('rcpt.list.chipShared'), on: onlySplit.value },
+  { id: 'void', label: t('rcpt.list.chipCancelled'), on: filters.state === 'void' && !onlySplit.value },
+]);
+function pickChip(id: string) {
+  onlySplit.value = id === 'shared';
+  filters.state = id === 'paid' || id === 'void' ? id : '';
+}
 
 function activeFilters(): ReceiptFilters {
   const f: ReceiptFilters = {};
@@ -69,7 +85,36 @@ async function loadUploads() {
   }
 }
 
-const groups = computed(() => groupByDay(items.value));
+const visible = computed(() => (onlySplit.value ? items.value.filter((i) => splitHints.value[i.receiptId]) : items.value));
+const groups = computed(() => groupByDay(visible.value));
+
+const monthKey = dayKey(new Date().toISOString()).slice(0, 7);
+const monthTotal = computed(() => items.value.filter((i) => i.state !== 'void' && dayKey(i.createdAt).startsWith(monthKey)).reduce((a, i) => a + i.total, 0));
+const monthName = computed(() => new Intl.DateTimeFormat(locale.value === 'nl' ? 'nl-NL' : 'en-GB', { month: 'long', timeZone: 'UTC' }).format(new Date(`${monthKey}-15T12:00:00Z`)));
+
+function hintFor(receiptId: string): string | null {
+  const h = splitHints.value[receiptId];
+  if (!h || h.names.length === 0) return null;
+  return h.mine ? t('rcpt.list.sharedWith', { names: h.names.join(', ') }) : t('rcpt.list.from', { name: h.names[0]! });
+}
+
+async function loadSplitHints() {
+  try {
+    const { splits } = await wallet.api.listSplits();
+    const recent = splits.slice(0, 12);
+    const details = await Promise.all(recent.map((s) => wallet.api.getSplit(s.id).catch(() => null)));
+    const next: Record<string, { mine: boolean; names: string[] }> = {};
+    recent.forEach((s, i) => {
+      const d = details[i];
+      if (!d) return;
+      const names = s.creatorIsMe ? d.shares.filter((x) => !x.isMe).map((x) => (x.who ? userName(x.who) : (x.guestName ?? '?'))) : [userName(s.creator)];
+      next[s.receiptId] = { mine: s.creatorIsMe, names };
+    });
+    splitHints.value = next;
+  } catch {
+    splitHints.value = {};
+  }
+}
 
 let debounce: ReturnType<typeof setTimeout> | undefined;
 watch(filters, () => {
@@ -85,7 +130,10 @@ onMounted(async () => {
   if (!wallet.session.value) return;
   onboarded.value = (await wallet.kv.get('onboarded', z.boolean())) ?? false;
   await load(false);
-  if (!offlineList.value) await loadUploads();
+  if (!offlineList.value) {
+    await loadUploads();
+    void loadSplitHints();
+  }
 });
 onBeforeUnmount(() => clearTimeout(debounce));
 </script>
@@ -113,18 +161,39 @@ onBeforeUnmount(() => clearTimeout(debounce));
 
       <ArrivingSection />
 
-      <h1 class="text-h2 font-semibold">{{ t('wallet.title') }}</h1>
+      <h1 class="text-h2 font-semibold">{{ t('rcpt.list.title') }}</h1>
 
-      <form class="space-y-2" role="search" @submit.prevent="load(false)">
+      <form class="space-y-3" role="search" @submit.prevent="load(false)">
         <Label for="q" class="sr-only">{{ t('wallet.searchLabel') }}</Label>
         <div class="relative">
           <Search class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input id="q" v-model="filters.q" type="search" class="h-11 pl-9 text-base" :placeholder="t('wallet.searchPlaceholder')" data-testid="search-input" />
+          <Input id="q" v-model="filters.q" type="search" class="h-11 rounded-[10px] bg-card pl-9 text-base" :placeholder="t('wallet.searchPlaceholder')" data-testid="search-input" />
         </div>
-        <Button type="button" variant="secondary" class="w-full" :aria-expanded="showFilters" aria-controls="filters" data-testid="toggle-filters" @click="showFilters = !showFilters">
-          <SlidersHorizontal aria-hidden="true" />
-          {{ t('wallet.filters') }}
-        </Button>
+        <div class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" :aria-label="t('wallet.filters')">
+          <button
+            v-for="c in chips"
+            :key="c.id"
+            type="button"
+            :aria-pressed="c.on"
+            :data-testid="`chip-${c.id}`"
+            class="inline-flex min-h-9 shrink-0 items-center rounded-full border px-3 text-[13px] font-medium whitespace-nowrap"
+            :class="c.on ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-text-secondary'"
+            @click="pickChip(c.id)"
+          >
+            {{ c.label }}
+          </button>
+          <button
+            type="button"
+            class="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[13px] font-medium whitespace-nowrap text-text-secondary"
+            :aria-expanded="showFilters"
+            aria-controls="filters"
+            data-testid="toggle-filters"
+            @click="showFilters = !showFilters"
+          >
+            <SlidersHorizontal class="size-3.5" aria-hidden="true" />
+            {{ t('wallet.filters') }}
+          </button>
+        </div>
         <div v-show="showFilters" id="filters" class="grid grid-cols-2 gap-4 rounded-xl border border-border bg-card p-4" data-testid="filters">
           <div class="col-span-2 space-y-2">
             <Label for="f-state">{{ t('wallet.filterStatus') }}</Label>
@@ -158,6 +227,8 @@ onBeforeUnmount(() => clearTimeout(debounce));
         </div>
       </form>
 
+      <p v-if="loaded && items.length > 0" class="text-xs font-medium tracking-wide text-text-secondary uppercase" data-testid="month-total">{{ monthName }} · {{ formatEuro(monthTotal, locale) }}</p>
+
       <p v-if="offlineList" role="status" data-testid="offline-list-note" class="rounded-lg border border-warning-border bg-warning-soft p-3 text-sm text-warning">
         {{ t('wallet.offlineList') }}
       </p>
@@ -175,29 +246,34 @@ onBeforeUnmount(() => clearTimeout(debounce));
         <p class="text-text-secondary">{{ t('wallet.emptyPre') }}<NuxtLink to="/add" class="font-medium underline">{{ t('wallet.emptyLink') }}</NuxtLink>{{ t('wallet.emptyPost') }}</p>
       </div>
 
-      <section v-for="g in groups" :key="g.day" data-testid="day-group" :data-day="g.day" :aria-label="formatDayHeading(g.day, undefined, locale)">
-        <h2 class="mb-2 text-label text-text-secondary" data-testid="day-heading">{{ formatDayHeading(g.day, undefined, locale) }}</h2>
-        <ul class="space-y-2">
-          <li v-for="r in g.items" :key="r.receiptId">
-            <NuxtLink
-              :to="`/receipts/${r.receiptId}`"
-              class="flex min-h-14 items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 text-foreground no-underline transition-shadow duration-150 hover:text-foreground hover:shadow-sm"
-              data-testid="receipt-item"
-              :data-receipt-id="r.receiptId"
-              :data-state="r.state"
-            >
-              <span class="min-w-0">
-                <span class="block truncate font-medium">{{ r.merchantName }}</span>
-                <span class="mt-0.5 flex items-center gap-2 text-sm text-text-secondary">
-                  {{ formatTime(r.createdAt, locale) }}
-                  <Badge v-if="r.state === 'void'" variant="danger">{{ t('wallet.badgeVoid') }}</Badge>
+      <div v-if="groups.length" class="overflow-hidden rounded-[14px] border border-border bg-card">
+        <section v-for="g in groups" :key="g.day" data-testid="day-group" :data-day="g.day" :aria-label="formatDayHeading(g.day, undefined, locale)">
+          <h2 class="border-b border-border bg-muted px-4 py-2 text-xs font-semibold tracking-wide text-text-secondary uppercase" data-testid="day-heading">{{ formatDayHeading(g.day, undefined, locale) }}</h2>
+          <ul>
+            <li v-for="r in g.items" :key="r.receiptId" class="border-b border-border last:border-b-0">
+              <NuxtLink
+                :to="`/receipts/${r.receiptId}`"
+                class="flex min-h-16 items-center gap-3 px-4 py-3 text-foreground no-underline transition-colors duration-150 hover:bg-muted hover:text-foreground"
+                data-testid="receipt-item"
+                :data-receipt-id="r.receiptId"
+                :data-state="r.state"
+              >
+                <MerchantLogo :name="r.merchantName" />
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate text-[15px] font-medium">{{ r.merchantName }}</span>
+                  <span class="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-text-secondary">
+                    {{ formatTime(r.createdAt, locale) }}
+                    <template v-if="hintFor(r.receiptId) && r.state !== 'void'">· {{ hintFor(r.receiptId) }}</template>
+                    <Badge v-if="r.state === 'void'" variant="danger">{{ t('wallet.badgeVoid') }}</Badge>
+                  </span>
                 </span>
-              </span>
-              <span class="shrink-0 font-mono font-medium tabular-nums">{{ formatEuro(r.total, locale) }}</span>
-            </NuxtLink>
-          </li>
-        </ul>
-      </section>
+                <span class="shrink-0 font-mono text-[15px] tabular-nums" :class="r.state === 'void' ? 'text-text-secondary line-through' : ''">{{ formatEuro(r.total, locale) }}</span>
+              </NuxtLink>
+            </li>
+          </ul>
+        </section>
+      </div>
+      <p v-else-if="loaded && items.length > 0 && onlySplit" class="rounded-xl border border-border bg-card p-4 text-sm text-text-secondary">{{ t('rcpt.list.noShared') }}</p>
 
       <Button v-if="nextCursor" type="button" variant="secondary" size="lg" class="w-full" :disabled="loading" data-testid="load-more" @click="load(true)">{{ t('wallet.loadMore') }}</Button>
 

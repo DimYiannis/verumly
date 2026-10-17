@@ -61,24 +61,26 @@ async function writeTag() {
 
 <template>
   <div class="space-y-3" data-testid="invite-share">
-    <div v-if="qr" class="mx-auto w-48 rounded-xl border border-border bg-white p-2" role="img" :aria-label="t('social.invite.qrLabel')" data-testid="invite-qr" v-html="qr" />
-    <p class="text-center text-xs text-text-secondary">{{ t('social.invite.qrHint') }}</p>
-    <Input :model-value="link" readonly class="h-11 font-mono text-xs" data-testid="friends-invite-link" :aria-label="t('social.invite.link')" @focus="($event.target as HTMLInputElement).select()" />
-    <div class="flex flex-wrap gap-2">
-      <Button type="button" variant="secondary" size="lg" data-testid="friends-invite-copy" @click="copy">
-        <component :is="copied ? Check : Copy" aria-hidden="true" />
-        {{ copied ? t('social.copied') : t('social.copy') }}
-      </Button>
-      <Button v-if="canShare" type="button" size="lg" data-testid="invite-share-native" @click="share">
+    <div class="flex flex-col items-center gap-3 rounded-[14px] border border-border bg-card px-4 py-5">
+      <div v-if="qr" class="w-52 rounded-[14px] border border-border bg-white p-3.5" role="img" :aria-label="t('social.invite.qrLabel')" data-testid="invite-qr" v-html="qr" />
+      <p class="text-center text-[13px] text-text-secondary">{{ t('social.invite.qrHint') }}</p>
+    </div>
+    <Input :model-value="link" readonly class="h-11 bg-card font-mono text-xs" data-testid="friends-invite-link" :aria-label="t('social.invite.link')" @focus="($event.target as HTMLInputElement).select()" />
+    <div class="flex gap-2">
+      <Button v-if="canShare" type="button" size="lg" class="min-w-0 flex-1" data-testid="invite-share-native" @click="share">
         <Share2 aria-hidden="true" />
         {{ t('social.invite.share') }}
       </Button>
-      <Button v-if="canNfc" type="button" variant="secondary" size="lg" :disabled="nfc === 'waiting'" data-testid="invite-nfc-write" @click="writeTag">
+      <Button type="button" :variant="canShare ? 'secondary' : 'default'" size="lg" class="min-w-0 flex-1" data-testid="friends-invite-copy" @click="copy">
+        <component :is="copied ? Check : Copy" aria-hidden="true" />
+        {{ copied ? t('social.copied') : t('social.copy') }}
+      </Button>
+      <Button v-if="canNfc" type="button" variant="secondary" size="lg" class="min-w-0 flex-1" :disabled="nfc === 'waiting'" data-testid="invite-nfc-write" @click="writeTag">
         <Nfc aria-hidden="true" />
         {{ nfc === 'waiting' ? t('social.invite.nfcWaiting') : nfc === 'done' ? t('social.invite.nfcDone') : t('social.invite.nfcWrite') }}
       </Button>
     </div>
     <p v-if="nfc === 'error'" role="alert" class="text-sm text-danger">{{ t('social.invite.nfcError') }}</p>
-    <p class="text-xs text-text-secondary">{{ t('social.invite.expires') }}</p>
+    <p class="text-center text-xs text-text-secondary">{{ t('social.invite.expires') }}</p>
   </div>
 </template>

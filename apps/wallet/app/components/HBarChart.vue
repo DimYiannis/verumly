@@ -3,42 +3,25 @@ import { formatEuro } from '~/utils/format';
 
 const { locale } = useLocale();
 
-/** Horizontal bars with a label and amount per row, hand-written SVG. Values are euro cents. */
+/** Ranked rows: merchant logo, name, a thin bar and the amount. Values are euro cents. */
 const props = defineProps<{ title: string; items: { label: string; value: number; note?: string }[]; testid?: string }>();
 
-const ROW = 34;
-const W = 320;
-const LABEL_W = 110;
-const AMOUNT_W = 64;
 const max = computed(() => Math.max(1, ...props.items.map((i) => i.value)));
-const rows = computed(() =>
-  props.items.map((item, i) => ({
-    ...item,
-    y: i * ROW,
-    w: Math.round(((W - LABEL_W - AMOUNT_W) * Math.max(0, item.value)) / max.value),
-  })),
-);
+const rows = computed(() => props.items.map((item) => ({ ...item, pct: Math.max(2, Math.round((100 * Math.max(0, item.value)) / max.value)) })));
 </script>
 
 <template>
-  <figure class="rounded-xl border border-border bg-card p-4" :data-testid="testid">
-    <figcaption class="mb-3 text-h3 font-semibold">{{ title }}</figcaption>
-    <svg :viewBox="`0 0 ${W} ${Math.max(1, items.length) * ROW}`" role="img" :aria-label="`${title}: ${items.map((i) => `${i.label} ${formatEuro(i.value, locale)}`).join(', ')}`" class="w-full">
-      <title>{{ title }}</title>
-      <g v-for="r in rows" :key="r.label">
-        <text :x="0" :y="r.y + 20" font-size="12" class="fill-foreground">{{ r.label.length > 16 ? `${r.label.slice(0, 15)}…` : r.label }}</text>
-        <rect :x="LABEL_W" :y="r.y + 8" :width="Math.max(2, r.w)" height="16" rx="3" class="fill-chart-1" data-testid="bar" />
-        <text :x="W" :y="r.y + 20" text-anchor="end" font-size="11" class="fill-text-secondary font-mono">{{ formatEuro(r.value, locale) }}</text>
-      </g>
-    </svg>
-    <table class="sr-only">
-      <caption>{{ title }}</caption>
-      <tbody>
-        <tr v-for="i in items" :key="i.label">
-          <th scope="row">{{ i.label }}</th>
-          <td>{{ formatEuro(i.value, locale) }}</td>
-        </tr>
-      </tbody>
-    </table>
+  <figure class="space-y-2" :data-testid="testid">
+    <figcaption class="text-label text-text-secondary uppercase">{{ title }}</figcaption>
+    <ul class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+      <li v-for="r in rows" :key="r.label" class="flex items-center gap-3 px-4 py-3">
+        <MerchantLogo :name="r.label" />
+        <div class="min-w-0 flex-1">
+          <span class="block truncate font-medium">{{ r.label }}</span>
+          <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><i class="block h-full rounded-full bg-primary" :style="{ width: `${r.pct}%` }" data-testid="bar" /></div>
+        </div>
+        <span class="font-mono text-sm">{{ formatEuro(r.value, locale) }}</span>
+      </li>
+    </ul>
   </figure>
 </template>

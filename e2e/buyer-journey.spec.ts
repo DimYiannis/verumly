@@ -58,7 +58,7 @@ test('buyer journey on a phone: issued receipt, save, void, exactly one encrypte
   await m.getByTestId('save-button').click();
   await m.waitForURL(new RegExp(`/receipts/${qr.receiptId}`));
   expect(m.url()).not.toContain('#');
-  await m.goto(`${URLS.wallet}/`);
+  await m.goto(`${URLS.wallet}/receipts`);
   const item = m.locator(`[data-testid="receipt-item"][data-receipt-id="${qr.receiptId}"]`);
   await expect(item).toBeVisible();
   await expect(item).toHaveAttribute('data-state', 'paid');

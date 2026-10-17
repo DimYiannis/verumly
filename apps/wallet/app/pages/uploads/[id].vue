@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, Plus, X } from '@lucide/vue';
+import { ChevronLeft, CircleCheck, Plus, X } from '@lucide/vue';
 import type { MessageKey } from '~/i18n';
 import { ApiError } from '~/utils/api';
 import type { ParsedLineDto } from '@lr/schema';
@@ -121,7 +121,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="space-y-4">
-    <NuxtLink to="/" class="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary no-underline hover:text-brand-900">
+    <NuxtLink to="/receipts" class="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary no-underline hover:text-brand-900">
       <ChevronLeft class="size-4" aria-hidden="true" />
       {{ t('common.allReceipts') }}
     </NuxtLink>
@@ -164,16 +164,21 @@ onBeforeUnmount(() => {
     <template v-else-if="upload">
       <section
         v-if="upload.matchedReceiptId && !matchDeclined && upload.status === 'done'"
-        class="space-y-3 rounded-xl border-2 border-selected-border bg-card p-4"
+        class="space-y-3 rounded-xl border border-success-border bg-success-soft p-4"
         aria-labelledby="match-h"
         data-testid="match-offer"
       >
-        <h2 id="match-h" class="text-h3 font-semibold">{{ t('uploadPage.matchTitle') }}</h2>
-        <p v-if="t('uploadPage.matchEn')" class="text-sm text-text-secondary">{{ t('uploadPage.matchEn') }}</p>
-        <p v-if="upload.match" class="font-mono text-sm">
-          {{ upload.match.merchantName }} · {{ formatEuro(upload.match.total, locale) }} · {{ formatDateTime(upload.match.createdAt, locale) }}
-        </p>
-        <p>{{ t('uploadPage.matchBody') }}</p>
+        <div class="flex items-start gap-3">
+          <CircleCheck class="mt-0.5 size-5 shrink-0 text-success" aria-hidden="true" />
+          <div class="min-w-0 flex-1">
+            <h2 id="match-h" class="font-semibold">{{ t('uploadPage.matchTitle') }}</h2>
+            <p v-if="t('uploadPage.matchEn')" class="text-xs text-success">{{ t('uploadPage.matchEn') }}</p>
+            <p v-if="upload.match" class="mt-1 font-mono text-sm">
+              {{ upload.match.merchantName }} · {{ formatEuro(upload.match.total, locale) }} · {{ formatDateTime(upload.match.createdAt, locale) }}
+            </p>
+            <p class="mt-1 text-sm">{{ t('uploadPage.matchBody') }}</p>
+          </div>
+        </div>
         <div class="flex flex-col gap-2">
           <Button type="button" size="lg" data-testid="accept-match" :disabled="busy" @click="acceptMatch">{{ t('uploadPage.accept') }}</Button>
           <Button type="button" variant="secondary" size="lg" data-testid="decline-match" :disabled="busy" @click="matchDeclined = true">{{ t('uploadPage.decline') }}</Button>
@@ -190,19 +195,19 @@ onBeforeUnmount(() => {
         </ul>
         <form class="space-y-4 rounded-xl border border-border bg-card p-4" data-testid="correction-form" novalidate @submit.prevent="submitCorrections">
           <div class="space-y-2">
-            <Label for="corr-merchant">{{ t('uploadPage.merchant') }}</Label>
+            <Label for="corr-merchant" class="text-label text-text-secondary uppercase">{{ t('uploadPage.merchant') }}</Label>
             <Input id="corr-merchant" v-model="form.merchantName" class="h-11" data-testid="corr-merchant" required />
           </div>
           <div class="space-y-2">
-            <Label for="corr-printed-at">{{ t('uploadPage.dateTime') }}</Label>
+            <Label for="corr-printed-at" class="text-label text-text-secondary uppercase">{{ t('uploadPage.dateTime') }}</Label>
             <Input id="corr-printed-at" v-model="form.printedAt" type="datetime-local" class="h-11" data-testid="corr-printed-at" required />
           </div>
           <div class="space-y-2">
-            <Label for="corr-gross">{{ t('uploadPage.gross') }}</Label>
+            <Label for="corr-gross" class="text-label text-text-secondary uppercase">{{ t('uploadPage.gross') }}</Label>
             <Input id="corr-gross" v-model="form.gross" inputmode="decimal" class="h-11 font-mono" data-testid="corr-gross" required />
           </div>
           <fieldset class="space-y-3">
-            <legend class="mb-2 text-label text-text-secondary">{{ t('uploadPage.lines') }}</legend>
+            <legend class="mb-2 flex w-full items-center justify-between text-label text-text-secondary uppercase">{{ t('uploadPage.lines') }}<Badge variant="neutral">{{ form.lines.length }}</Badge></legend>
             <div v-for="(line, i) in form.lines" :key="i" class="grid grid-cols-[1fr_6rem_auto] items-end gap-2" data-testid="corr-line">
               <div class="space-y-2">
                 <Label :for="`corr-line-desc-${i}`">{{ t('uploadPage.lineDesc') }}</Label>
@@ -242,7 +247,7 @@ onBeforeUnmount(() => {
           </li>
         </ul>
         <Button as-child variant="secondary" size="lg" class="w-full">
-          <NuxtLink to="/">{{ t('uploadPage.backToWallet') }}</NuxtLink>
+          <NuxtLink to="/receipts">{{ t('uploadPage.backToWallet') }}</NuxtLink>
         </Button>
       </section>
     </template>

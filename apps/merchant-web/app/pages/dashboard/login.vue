@@ -85,13 +85,23 @@ async function submitCode() {
 </script>
 
 <template>
-  <div>
+  <div class="flex min-h-screen flex-wrap">
   <div class="fixed right-4 top-4 z-10"><AppLocaleSwitch /></div>
-  <div class="mx-auto flex min-h-screen max-w-md items-center px-4 py-8">
-    <Card class="w-full gap-6 py-8">
+  <div class="flex min-h-[320px] flex-[1_1_520px] flex-col justify-between gap-10 bg-[#1C1F6E] p-8 text-white md:p-14">
+    <span class="flex items-center gap-3 text-[28px] font-semibold tracking-tight">
+      <span class="flex size-9 items-center justify-center rounded-lg bg-white/15"><ReceiptTextIcon class="size-5" /></span>
+      <span>Less Receipts <span class="font-normal text-[#B3B6EE]">{{ t('ov.login.forBusiness') }}</span></span>
+    </span>
+    <div class="flex max-w-[520px] flex-col gap-4">
+      <h1 class="text-[34px] font-semibold leading-[40px] tracking-tight md:text-[44px] md:leading-[48px]">{{ t('ov.login.headline') }}</h1>
+      <p class="text-lg leading-7 text-[#E6E7F8]">{{ t('ov.login.sub') }}</p>
+    </div>
+    <p class="text-sm text-[#B3B6EE]">{{ t('ov.login.privacy') }}</p>
+  </div>
+  <div class="flex flex-[1_1_480px] items-center justify-center bg-muted p-6 md:p-10">
+    <Card class="w-full max-w-[400px] gap-6 py-8">
       <CardHeader class="px-8">
-        <div class="mb-4 flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground"><ReceiptTextIcon class="size-5" /></div>
-        <CardTitle class="text-2xl font-medium tracking-tight">{{ t('login.title') }}</CardTitle>
+        <CardTitle class="text-2xl font-semibold tracking-tight">{{ t('ov.login.signIn') }}</CardTitle>
         <CardDescription>{{ demo ? t('login.demoDescription') : t('login.description') }}</CardDescription>
       </CardHeader>
       <CardContent class="px-8">

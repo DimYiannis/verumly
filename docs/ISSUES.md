@@ -170,3 +170,8 @@ Big issues found in the code review (2026-10-16) and still open. Tick an item wh
 - **P2: saved views store absolute dates**, so a view saved as "last 30 days" does not move forward; only the two built-in views are relative.
 - **P2: sorting is client-side**, so with more than 500 groups the server cuts the list before the sort.
 - **P3: no scheduled/e-mailed reports, no per-user private views, no custom formulas.** Category grouping depends on the line categories the till sends (often missing: "uncategorised").
+
+## UI book gaps
+
+- **P3: designs that need data we do not have yet:** per-week insights and a Month/Year switch in the wallet; per-line confidence on scanned receipts; reminders ("Remind Anna"); terminal offline queue, location revenue and "last seen" on users in the dashboard; an Audit pack export; an accountant e-mail switch.
+- **P3: the dashboard greeting uses the e-mail name** (the session has no display name); "Arrived late" uses a 10 minute threshold chosen without a product decision.

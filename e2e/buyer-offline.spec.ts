@@ -35,7 +35,7 @@ test('buyer offline: link opens as Arriving, claim completes online, saved recei
     await m.getByTestId('save-button').click();
     await m.waitForURL(new RegExp(`/receipts/${saved.receiptId}`));
     await expect(m.getByTestId('receipt-line')).toHaveCount(1);
-    await m.goto(`${URLS.wallet}/`); // the wallet list is cached for offline use whenever it has been loaded online
+    await m.goto(`${URLS.wallet}/receipts`); // the wallet list is cached for offline use whenever it has been loaded online
     await expect(m.locator(`[data-testid="receipt-item"][data-receipt-id="${saved.receiptId}"]`)).toBeVisible();
     await m.waitForFunction(() => navigator.serviceWorker.controller !== null);
 
@@ -47,7 +47,7 @@ test('buyer offline: link opens as Arriving, claim completes online, saved recei
     await shot(m, 'arriving-state');
 
     // offline: the wallet lists the saved receipt and the arriving one ...
-    await m.goto(`${URLS.wallet}/`);
+    await m.goto(`${URLS.wallet}/receipts`);
     await expect(m.getByTestId('offline-badge')).toBeVisible();
     await expect(m.getByTestId('arriving-item')).toHaveCount(1);
     await expect(m.getByTestId('arriving-item')).toHaveAttribute('data-receipt-id', arriving.receiptId);
@@ -57,7 +57,7 @@ test('buyer offline: link opens as Arriving, claim completes online, saved recei
     await expect(m.getByTestId('cached-notice')).toBeVisible();
     await expect(m.getByTestId('receipt-line')).toHaveCount(1);
     await expect(m.getByTestId('receipt-merchant')).toContainText(world.merchantName);
-    await m.goto(`${URLS.wallet}/`);
+    await m.goto(`${URLS.wallet}/receipts`);
     await expect(m.getByTestId('arriving-item')).toHaveCount(1);
 
     // back online, no reload: the pending claim completes by itself
