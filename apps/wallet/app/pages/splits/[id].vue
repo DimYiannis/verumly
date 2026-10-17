@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, ChevronLeft, Copy } from '@lucide/vue';
+import { ChevronLeft, Link2 } from '@lucide/vue';
 import type { MessageKey } from '~/i18n';
 import type { SplitDetail } from '~/utils/api-schemas';
 import { ApiError } from '~/utils/api';
@@ -21,7 +21,6 @@ const error = ref<MessageKey | null>(null);
 const showReceipt = ref(false);
 const confirmDelete = ref(false);
 const busyShare = ref<string | null>(null);
-const copiedId = ref<string | null>(null);
 
 async function load() {
   status.value = 'loading';
@@ -66,14 +65,12 @@ async function toggle(s: SplitDetail['shares'][number]) {
 }
 
 /** Guest slots: the server keeps only a hash of the invite, so a link is created on demand (the earlier one stops working). */
+const guestLinks = ref<Record<string, string>>({});
 async function copyInvite(shareId: string, code: string | null) {
   error.value = null;
   try {
-    const link = code ?? (split.value ? (await wallet.api.createGuestInvite(split.value.id, shareId)).code : null);
-    if (link && (await copyText(inviteLink(receiptHost, link)))) {
-      copiedId.value = shareId;
-      setTimeout(() => (copiedId.value = null), 2500);
-    }
+    const made = code ?? (split.value ? (await wallet.api.createGuestInvite(split.value.id, shareId)).code : null);
+    if (made) guestLinks.value = { ...guestLinks.value, [shareId]: inviteLink(receiptHost, made) };
   } catch (e) {
     error.value = errorKey(e);
   }
@@ -151,10 +148,11 @@ async function remove() {
                 {{ s.settled ? t('split.detail.undo') : t('split.detail.settle') }}
               </Button>
               <Button v-if="split.creatorIsMe && s.who === null && !s.settled" type="button" variant="secondary" size="lg" data-testid="split-guest-invite" @click="copyInvite(s.id, s.inviteCode)">
-                <component :is="copiedId === s.id ? Check : Copy" aria-hidden="true" />
-                {{ copiedId === s.id ? t('social.copied') : t('split.detail.copyInvite') }}
+                <Link2 aria-hidden="true" />
+                {{ t('split.detail.copyInvite') }}
               </Button>
             </div>
+            <InviteShare v-if="guestLinks[s.id]" :link="guestLinks[s.id]!" class="pt-2" />
             <p v-if="split.creatorIsMe && s.who === null && !s.settled" class="text-xs text-text-secondary">{{ t('split.detail.inviteHint', { name: shareName(s) }) }}</p>
           </li>
         </ul>

@@ -67,6 +67,12 @@ test('two buyers: become friends, split a saved receipt, settle, balances follow
     await expect(sam.getByTestId('friend-row')).toHaveCount(1);
     await shot(sam, 'friends');
 
+    // --- an invite can be handed over as a QR code and a link (system share and NFC show up only where the phone has them) ---
+    await sam.getByTestId('friends-invite-create').click();
+    await expect(sam.getByTestId('invite-qr').locator('svg')).toBeVisible();
+    await expect(sam.getByTestId('friends-invite-link')).toHaveValue(/\/i\/[A-Za-z0-9_-]{16,}/);
+    await shot(sam, 'invite-qr');
+
     // --- Sam splits the receipt equally with Anna ---
     await sam.goto(`${URLS.wallet}/receipts/${receipt.receiptId}/split`);
     await sam.getByTestId('split-participant-0').click();

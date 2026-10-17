@@ -263,20 +263,8 @@ function openText(s: SplitListItem): string {
             <p class="text-sm text-text-secondary">{{ t('social.invite.body') }}</p>
             <Button type="button" variant="secondary" size="lg" data-testid="friends-invite-create" :disabled="inviteBusy" @click="createInvite">{{ t('social.invite.create') }}</Button>
             <p v-if="inviteError" role="alert" class="text-sm text-danger">{{ t(inviteError) }}</p>
-            <div v-if="link" class="space-y-2">
-              <Input :model-value="link" readonly class="h-11 font-mono text-xs" data-testid="friends-invite-link" :aria-label="t('social.invite.link')" @focus="selectAll" />
-              <div class="flex gap-2">
-                <Button type="button" variant="secondary" size="lg" data-testid="friends-invite-copy" @click="copyLink">
-                  <component :is="copied ? Check : Copy" aria-hidden="true" />
-                  {{ copied ? t('social.copied') : t('social.copy') }}
-                </Button>
-                <Button v-if="canShare" type="button" variant="secondary" size="lg" @click="shareLink">
-                  <Share2 aria-hidden="true" />
-                  {{ t('social.invite.share') }}
-                </Button>
-              </div>
-              <p class="text-xs text-text-secondary">{{ t('social.invite.expires') }}</p>
-            </div>
+            <InviteShare v-if="link" :link="link" />
+            <InviteScan class="pt-1" />
           </div>
         </section>
 

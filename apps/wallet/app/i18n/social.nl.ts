@@ -1,6 +1,18 @@
 /** Dutch strings of friends, shares and splits (keys `social.*`, `split.*`). Source dictionary for these keys. */
 export const socialNl = {
   'social.nav': 'Vrienden',
+  'social.invite.qrLabel': 'QR-code van de uitnodiging',
+  'social.invite.qrHint': 'Laat deze code scannen met de camera van een telefoon.',
+  'social.invite.nfcWrite': 'Op NFC-tag zetten',
+  'social.invite.nfcWaiting': 'Houd een tag tegen de telefoon',
+  'social.invite.nfcDone': 'Op de tag gezet',
+  'social.invite.nfcError': 'Schrijven naar de tag is niet gelukt.',
+  'social.scan.qr': 'QR scannen',
+  'social.scan.nfc': 'NFC-tag lezen',
+  'social.scan.nfcHint': 'Houd de telefoon tegen de tag.',
+  'social.scan.stop': 'Stoppen',
+  'social.scan.denied': 'Geen toegang tot de camera of NFC.',
+  'social.scan.unreadable': 'Dit is geen uitnodiging van bonnen.',
   'login.demoNote': 'Ontwikkelmodus: vul een demo-account in en log in. Geen code nodig.',
   'login.fillDemoFriend': 'Demo-vriend invullen ({name})',
   'social.title': 'Vrienden',

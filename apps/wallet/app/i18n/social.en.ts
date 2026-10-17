@@ -3,6 +3,18 @@ import type { socialNl } from './social.nl.ts';
 /** English strings of friends, shares and splits, typed against the Dutch key set. */
 export const socialEn: Record<keyof typeof socialNl, string> = {
   'social.nav': 'Friends',
+  'social.invite.qrLabel': 'Invite QR code',
+  'social.invite.qrHint': 'Let someone scan this with their phone camera.',
+  'social.invite.nfcWrite': 'Write to an NFC tag',
+  'social.invite.nfcWaiting': 'Hold a tag against the phone',
+  'social.invite.nfcDone': 'Written to the tag',
+  'social.invite.nfcError': 'Could not write to the tag.',
+  'social.scan.qr': 'Scan a QR code',
+  'social.scan.nfc': 'Read an NFC tag',
+  'social.scan.nfcHint': 'Hold the phone against the tag.',
+  'social.scan.stop': 'Stop',
+  'social.scan.denied': 'No access to the camera or NFC.',
+  'social.scan.unreadable': 'This is not a bonnen invite.',
   'login.demoNote': 'Development mode: fill in a demo account and sign in. No code needed.',
   'login.fillDemoFriend': 'Fill in the demo friend ({name})',
   'social.title': 'Friends',
