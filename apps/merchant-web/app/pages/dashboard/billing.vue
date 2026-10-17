@@ -114,8 +114,10 @@ const statusLabel = computed(() => {
   return t(mk(`bill.status.${b.status}`));
 });
 const statusVariant = computed(() => ({ trialing: 'accent', active: 'success', past_due: 'danger', canceled: 'neutral' } as const)[billing.value?.status ?? 'canceled']);
-const usageText = (n: number, max: number | null | undefined, kind: 'Locations' | 'Terminals') =>
-  max === null || max === undefined ? t(mk(`bill.usage${kind}Unlimited`), { n }) : t(mk(`bill.usage${kind}`), { n, max });
+function usageText(n: number, max: number | null | undefined, kind: 'Locations' | 'Terminals'): string {
+  if (max !== null && max !== undefined) return t(mk(`bill.usage${kind}`), { n, max });
+  return n === 1 ? t(mk(`bill.usage${kind}One`)) : t(mk(`bill.usage${kind}Unlimited`), { n });
+}
 
 /** What the plan card button does for this plan at the selected interval. */
 function action(plan: Plan): { kind: 'checkout' | 'schedule' | 'current' | 'scheduled' | 'none'; label: string } {
@@ -136,6 +138,9 @@ function planButton(plan: Plan) {
     // back to the current plan = undo the scheduled change
     return b.plan === plan && b.interval === interval.value ? undoChange() : scheduleChange(plan);
   }
+}
+function focusPlans() {
+  document.getElementById('billing-plans')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 const features = (plan: Plan): MessageKey[] =>
   CATALOGUE[plan].limits.locations === null
@@ -216,6 +221,7 @@ const features = (plan: Plan): MessageKey[] =>
     </CardContent>
     <CardFooter v-if="canWrite && (billing.status === 'active' || billing.status === 'past_due')" class="mt-6 justify-end gap-2">
       <Button v-if="billing.status === 'past_due'" :disabled="busy" data-testid="billing-pay-again" @click="payAgain">{{ t('bill.updateMethod') }}</Button>
+      <Button v-if="billing.status === 'active' && !billing.cancelAtPeriodEnd" variant="outline" data-testid="billing-change" @click="focusPlans">{{ t('bill.changePlan') }}</Button>
       <Button v-if="billing.status === 'active' && !billing.cancelAtPeriodEnd" :variant="confirmingCancel ? 'destructive' : 'outline'" :disabled="busy" :data-testid="confirmingCancel ? 'billing-cancel-confirm' : 'billing-cancel'" @click="cancel">
         {{ confirmingCancel ? t('bill.cancelConfirm') : t('bill.cancel') }}
       </Button>
@@ -223,7 +229,7 @@ const features = (plan: Plan): MessageKey[] =>
     </CardFooter>
   </Card>
 
-  <section v-if="billing" class="space-y-3">
+  <section v-if="billing" id="billing-plans" class="space-y-3">
     <div class="flex flex-wrap items-center justify-between gap-3 px-2">
       <h2 class="text-lg font-medium">{{ t('bill.choosePlan') }}</h2>
       <div class="inline-flex items-center gap-2">

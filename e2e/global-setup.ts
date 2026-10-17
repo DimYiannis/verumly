@@ -63,7 +63,7 @@ async function probeAll(): Promise<Probe[]> {
 
 /** First request to each Nuxt dev page compiles it; do that now so no test pays for it. */
 async function warmUp(): Promise<void> {
-  for (const path of ['/dashboard/login', '/dashboard', '/dashboard/terminals', '/dashboard/archive', '/simulator']) await get(`${URLS.merchantWeb}${path}`);
+  for (const path of ['/dashboard/login', '/dashboard', '/dashboard/terminals', '/dashboard/archive', '/dashboard/billing', '/billing/checkout/00000000-0000-4000-8000-000000000000', '/simulator']) await get(`${URLS.merchantWeb}${path}`);
   for (const path of ['/', '/login', '/r/00000000-0000-0000-0000-000000000000']) await get(`${URLS.wallet}${path}`);
 }
 
@@ -101,8 +101,9 @@ export default async function globalSetup(): Promise<(() => Promise<void>) | und
       cwd: root,
       detached: true,
       stdio: ['ignore', log, log],
-      // EXTRACTOR=recorded and PUSH_ALLOW_LOOPBACK=true are also the app defaults outside production; set explicitly for the record
-      env: { ...process.env, EXTRACTOR: 'recorded', PUSH_ALLOW_LOOPBACK: 'true', DEMO_MODE: 'false' },
+      // EXTRACTOR=recorded and PUSH_ALLOW_LOOPBACK=true are also the app defaults outside production; set explicitly for the record.
+      // DEMO_MODE=false keeps the TOTP flow covered; the Billing page's "Simulate renewal now" (which follows DEMO_MODE) is turned on separately
+      env: { ...process.env, EXTRACTOR: 'recorded', PUSH_ALLOW_LOOPBACK: 'true', DEMO_MODE: 'false', BILLING_SIMULATE_RENEWAL: 'true' },
     });
     closeSync(log);
     console.log(`e2e: started \`pnpm dev\` (pid ${started.pid}), log .local/e2e-pnpm-dev.log`);
