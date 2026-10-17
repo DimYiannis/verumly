@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { CircleAlertIcon } from '@lucide/vue';
-
 // Plan banner on every dashboard page: plan inactive, payment failed, or the trial ends within 3 days.
 const { t } = useLocale();
 const route = useRoute();
@@ -18,18 +16,14 @@ const text = computed(() => {
   if (n.daysLeft <= 0) return t('bill.banner.trialEndingToday');
   return n.daysLeft === 1 ? t('bill.banner.trialEndingOne') : t('bill.banner.trialEnding', { n: n.daysLeft });
 });
-const danger = computed(() => notice.value?.kind !== 'trial_ending');
+const tone = computed(() => (notice.value?.kind === 'trial_ending' ? 'warning' : 'danger'));
 </script>
 
 <template>
-  <div
-    v-if="notice"
-    role="status"
-    :class="['flex flex-wrap items-center gap-3 rounded-md border px-3 py-2 text-sm', danger ? 'border-danger-border bg-danger-soft text-danger' : 'border-warning-border bg-warning-soft text-warning']"
-    :data-testid="`billing-banner-${notice.kind}`"
-  >
-    <CircleAlertIcon class="size-4 shrink-0" />
-    <span class="min-w-0 flex-1 font-medium" data-testid="billing-banner">{{ text }}<template v-if="!canSeeBilling">. {{ t('bill.banner.askOwner') }}</template></span>
-    <NuxtLink v-if="canSeeBilling && route.path !== '/dashboard/billing'" to="/dashboard/billing" class="font-medium underline underline-offset-4" data-testid="billing-banner-action">{{ t('bill.banner.action') }}</NuxtLink>
-  </div>
+  <AppNotice v-if="notice" :tone="tone" role="status" :data-testid="`billing-banner-${notice.kind}`">
+    <span class="font-medium" data-testid="billing-banner">{{ text }}<template v-if="!canSeeBilling">. {{ t('bill.banner.askOwner') }}</template></span>
+    <template v-if="canSeeBilling && route.path !== '/dashboard/billing'" #action>
+      <NuxtLink to="/dashboard/billing" class="rounded-sm font-medium underline underline-offset-4 outline-none focus-visible:ring-[3px] focus-visible:ring-ring" data-testid="billing-banner-action">{{ t('bill.banner.action') }}</NuxtLink>
+    </template>
+  </AppNotice>
 </template>

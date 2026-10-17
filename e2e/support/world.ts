@@ -46,3 +46,13 @@ export async function provisionTerminal(world: World, label: string): Promise<Pr
 export function uniqueEmail(prefix: string): string {
   return `${prefix}-${randomBytes(4).toString('hex')}@e2e.test`;
 }
+
+/** An extra location registered straight in the database (the dashboard refuses it once a plan limit is reached). */
+export async function provisionLocation(world: World, name: string): Promise<void> {
+  const { db, close } = connectAdmin(dbEnv, { max: 2 });
+  try {
+    await createLocation(db, world.orgId, name);
+  } finally {
+    await close();
+  }
+}
