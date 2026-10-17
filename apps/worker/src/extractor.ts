@@ -132,8 +132,9 @@ export function httpExtractor(opts: HttpExtractorOptions): Extractor {
         throw new PermanentExtractionError('pdf_unsupported', 'PDF extraction needs page rasterisation, which is not implemented');
       }
       const dataUrl = `data:${mime};base64,${Buffer.from(bytes).toString('base64')}`;
-      const markdown = await ask(dataUrl, QIANFAN_PROMPTS.markdown);
-      const kie = await ask(dataUrl, QIANFAN_PROMPTS.kie);
+      // The two prompts are independent: ask them together. vLLM batches concurrent requests on the GPU, so the wall time
+      // is close to one request instead of two (the live check measured about 46 s per request).
+      const [markdown, kie] = await Promise.all([ask(dataUrl, QIANFAN_PROMPTS.markdown), ask(dataUrl, QIANFAN_PROMPTS.kie)]);
       return {
         markdown: markdown.choices[0]!.message.content,
         kie: kie.choices[0]!.message.content,

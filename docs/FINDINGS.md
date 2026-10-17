@@ -547,6 +547,19 @@ The Colab server was offline, so **no model time was measured for prepared photo
 - A model that always times out still leaves the buyer on "Reading" for up to about 16 minutes (4 attempts x 2 requests x 120 s) before `failed`. Fewer retries for timeouts would shorten it; not changed.
 - The PLUS VAT-table parsing (ISSUES #26) is unchanged.
 
+## Live timing after photo preparation (Colab T4, 2026-10-17)
+
+Measured through the wallet with `EXTRACTOR=http` on an otherwise idle queue (the first attempt was invalid: a leftover retrying job from an earlier uncropped upload held the single worker slot for about 2.5 minutes). Times are wall clock from choosing the file to a final status.
+
+| Input | Change | Result |
+| --- | --- | --- |
+| Real PLUS photo, uncropped 1512 x 1512 | none (before) | no result: the model request ran past 120 s (and past Cloudflare's roughly 100 s limit) |
+| Same photo, prepared by the wallet (419 x 1512 JPEG, 80 KB, 0.3 s to prepare) | requests sent one after the other | `needs_review` after **100 s** |
+| Same photo, prepared | the markdown and KIE requests sent together | `needs_review` after **62 s** |
+| MOCK supermarkt image (already tight) | requests one after the other / together | 51 s / **39 s** |
+
+So cropping turned a failure into a result, and sending the two prompts together cut about 40% of the wait (38 s on the real photo, 12 s on the mock image). One photo and one mock image on a shared T4: these are single measurements, not a benchmark. The real photo still ends as `needs_review` (OCR errors, ISSUES #26).
+
 # Handoff to reviewer
 
 ## What works end to end, and the test that proves it

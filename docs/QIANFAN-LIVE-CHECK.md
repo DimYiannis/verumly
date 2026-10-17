@@ -22,7 +22,7 @@ The zero-false-`done` rule held: nothing wrong reached `done`.
 
 ### 1. Photos where the receipt is small in the frame never finish
 
-- **Status: mostly fixed, not yet re-measured live.** The wallet now crops and checks the photo before upload (`apps/wallet/app/utils/photo-analysis.ts`); on the real sample the upload shrinks from 1512 x 1512 to 419 x 1512 px (about 72% fewer pixels). The live model time with the new crop has not been measured because the Colab server was offline. Remaining: the long wait before `failed` when the model always times out.
+- **Status: mostly fixed, re-measured live.** The wallet now crops and checks the photo before upload (`apps/wallet/app/utils/photo-analysis.ts`); on the real sample the upload shrinks from 1512 x 1512 to 419 x 1512 px (about 72% fewer pixels). Measured later the same day: the prepared real photo is read in 100 s with the requests one after the other and in 62 s with them sent together; an uncropped photo never finished. Remaining: the long wait before `failed` when the model always times out.
 
 - **What happened:** the uncropped photo made the model run longer than the worker's 120 s request timeout, and longer than Cloudflare's roughly 100 s limit (a direct request returned an HTML error page after 126 s). The upload stayed on "Reading" through all retries, for minutes, and the buyer was never told what to do.
 - **Cropping fixed it:** the same receipt cropped to the strip was read in 46 s.

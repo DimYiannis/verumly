@@ -84,7 +84,33 @@ describe('http extractor (OpenAI-compatible Qianfan endpoint)', () => {
     seen.length = 0;
     queue.push(400);
     await expect(ex.extract(PNG)).rejects.toMatchObject({ code: 'extractor_rejected' });
-    expect(seen).toHaveLength(1);
+    // the two prompts are sent together, and a rejection is not retried: each prompt was sent exactly once
+    expect(seen).toHaveLength(2);
+    expect(new Set(seen.map((r) => JSON.stringify(r.body))).size).toBe(2);
+  });
+
+  it('asks the markdown and the KIE prompt concurrently (the second request starts before the first has answered)', async () => {
+    const slow = createServer((req, res) => {
+      starts.push(Date.now());
+      req.resume();
+      setTimeout(() => {
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify({ choices: [{ message: { content: 'x' } }] }));
+      }, 300);
+    });
+    const starts: number[] = [];
+    await new Promise<void>((r) => slow.listen(0, '127.0.0.1', r));
+    const addr = slow.address();
+    if (typeof addr !== 'object' || addr === null) throw new Error('no address');
+    try {
+      const t0 = Date.now();
+      await httpExtractor({ url: `http://127.0.0.1:${addr.port}`, model: 'm' }).extract(PNG);
+      expect(starts).toHaveLength(2);
+      expect(starts[1]! - starts[0]!, 'second request started before the first answered').toBeLessThan(250);
+      expect(Date.now() - t0, 'wall time is about one request, not two').toBeLessThan(550);
+    } finally {
+      await new Promise<void>((r) => slow.close(() => r()));
+    }
   });
 
   it('a 4xx from the model server is permanent, a 5xx is retryable; PDFs and unknown files are refused with a code', async () => {
