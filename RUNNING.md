@@ -101,7 +101,31 @@ The dashboard login only works if the seed ran. If it doesn't recognise the owne
 ### Other things to try in the wallet
 - **Insights:** spend per month, per category and top merchants. It's most interesting with `buyer@example.test`.
 - **Settings:** consents (all off by default), push opt-in, data export, delete account, logout.
-- **Add receipt (photo):** upload a photo of a paper receipt. Extraction uses the recorded mock outputs (`EXTRACTOR=recorded`); a real Qianfan server is not wired in. **Browser upload to the local S3 mock has not been verified** and may fail; the API side is tested.
+- **Add receipt (photo):** see "Photo receipts" below.
+
+## Photo receipts
+
+In the wallet, **Add receipt** takes a photo of a paper receipt. The photo goes straight from the browser to storage, the worker reads it with Qianfan-OCR, the Dutch parser turns the text into lines, and the result is stored with a category per line and VAT per rate.
+
+**Accepted formats: JPEG, PNG and WEBP.** PDF and HEIC are refused before upload with a message. (On an iPhone the file picker hands over JPEG, not HEIC.)
+
+**What you see:** the upload page shows Uploading, Reading, then Done, Needs review or Failed (with the reason). The detail page shows the shop, date, lines with category and VAT rate, VAT per rate, total, payment method and the photo. You can change a line's category (it stays as you set it), correct a "needs review" receipt, or delete the upload (the photo is deleted too). Insights include photo receipts and show VAT per rate.
+
+### Recorded (default, no GPU)
+
+`EXTRACTOR=recorded` replays stored Qianfan output, so it only reads the six mock receipts in `fixtures/receipts-nl/mock/*.png`. Use one of those images to try it. Any other photo fails with a "no recording" reason.
+
+### Live Qianfan (any real photo)
+
+1. On Google Colab (T4 GPU runtime), open and run `tools/qianfan/colab_serve.ipynb`. It installs vLLM, serves `baidu/Qianfan-OCR`, and opens a Cloudflare tunnel. It prints the **base URL** and the model **revision**. Set an API key when asked: the tunnel is public.
+2. Start the stack with those values (use a new shell; never commit them):
+   ```sh
+   EXTRACTOR=http QIANFAN_URL=https://<name>.trycloudflare.com QIANFAN_API_KEY=<key> QIANFAN_REVISION=<revision> pnpm dev --env-mode=loose
+   ```
+   `QIANFAN_URL` is the base URL (the worker adds `/v1/chat/completions`). `QIANFAN_API_KEY` must equal the `--api-key` given to vLLM. Without `QIANFAN_REVISION` the stored revision is `unknown`.
+3. Upload a photo in the wallet. A slow first request is normal while the model warms up.
+
+Details and manual `curl` examples: `tools/qianfan/serve.md`. The Colab tunnel changes every run, so update `QIANFAN_URL` each time.
 
 ## 4. Demo with a real phone (QR scanned by the phone camera)
 

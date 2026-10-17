@@ -342,6 +342,53 @@ Hop 6 reads the archive and VAT report through `@lr/dashboard-core` (`searchArch
 - The worker and the admin are warned at startup (no URL, no secrets in the message) if they point at port 6543 (transaction pooler).
 - Role passwords are still set by `migrate` from the `*_DB_PASSWORD` variables, which must equal the passwords inside the URLs.
 
+## Qianfan path (ISSUES #11, #12)
+
+- `QIANFAN_URL` is the server base URL; `chatCompletionsUrl()` appends `/v1/chat/completions` once, tolerating trailing slashes and a full URL. Default `http://127.0.0.1:8000`.
+- 408 and 429 are transient (extractor throws a plain Error, so the existing job retry/backoff applies); other 4xx stay permanent.
+- `modelRevision` = `QIANFAN_REVISION` else `"unknown"`; the served model name / response `model` is never used.
+- `QIANFAN_API_KEY` optional, sent as `Authorization: Bearer`, never logged. Pair with `vllm serve --api-key`.
+- `tools/qianfan/colab_serve.ipynb`: vLLM (float16, T4) + cloudflared quick tunnel; if the revision field is empty it pins the model repo's current HEAD sha and prints it.
+- Corpus: `loadCorpus({ only: 'mock' })` forces the mock corpus. Worker test helpers use it and a recorded extractor on `fixtures/receipts-nl/mock`. receipt-nl corpus/eval tests deliberately keep real-if-present (they measure the corpus).
+- Seed: `loadSeedCorpus` uses the real corpus only with >= 3 receipts that have truth + image (hash-checked) + recording (`MIN_REAL_FOR_SEED`), else mock; it prints which. Seed reads the corpus dir from `env.FIXTURES_DIR`.
+
+## Decisions: photo receipts end to end (steps 3 to 5; branch `feat/qianfan-photo`)
+
+## Step 3: upload from the browser
+
+- **Probe first.** A presigned `PUT` from a real Chromium page (origin `http://localhost:3001`, a plain Node server, not a route-fulfilled page) to adobe/s3mock on `http://127.0.0.1:9090` **succeeds** (status 200, object stored with the right size). s3mock answers the CORS preflight itself, so no bucket CORS rule and no proxy are needed locally. The e2e spec `e2e/photo-upload.spec.ts` keeps this under test: it waits for the browser's own `PUT` response from :9090 and then reads the object back with `@lr/storage`. (A first probe against a `page.route`-fulfilled page failed with Chromium's "loopback address space" permission error: that was an artefact of the fake page, not of S3.)
+- **Kept: the presigned PUT.** The browser sends the bytes straight to S3; buyer-api stays out of the data path (spec v2 §13). The signature covers the length. Rejected: proxying the body through buyer-api (extra copy of up to 10 MB per upload, a second raw-body route to harden) because it was not needed.
+- **Fixed a hosted-only bug found on the way: `@lr/storage` presigned URLs carried `x-amz-checksum-crc32=AAAAAA==` (CRC32 of an empty body).** The AWS SDK v3 adds that checksum by default; s3mock ignores it, real S3 and S3-compatible services compare it with the uploaded bytes and answer `BadDigest`. The client now uses `requestChecksumCalculation: 'WHEN_REQUIRED'` (+ `responseChecksumValidation`). Unit test: `packages/storage/test/presign.test.ts`.
+- **Hosted, not verified here:** (a) the presigned host must be reachable from the browser (`S3_ENDPOINT` is also the host in the URL), so for the phone/tunnel demo S3 has to be exposed over HTTPS as well (an http S3 behind an https wallet is blocked as mixed content); (b) the bucket must answer CORS for the wallet origin (`PUT`, header `content-type`). Supabase Storage's S3 endpoint and a boxd-hosted s3mock were **not** tested. If (b) cannot be configured, the fallback is `PUT /v1/me/uploads/:id/content` on buyer-api that streams the body to S3 (same session auth, size and type checks); it is not built.
+- **Formats.** `UPLOAD_CONTENT_TYPES` is now `image/jpeg`, `image/png`, `image/webp`. PDF and HEIC are refused by `POST /v1/me/uploads` (400, no row, no object) and by the wallet **before** upload (`validateUploadFile`; the message says "PDF and HEIC files cannot be read"; the pickers use `accept="image/jpeg,image/png,image/webp"`, which also makes iOS hand over JPEG instead of HEIC). The existing buyer-api test that expected a `application/pdf` request to be 201 and the wallet test that expected PDF to validate were changed to expect the refusal: that is the requested behaviour change, not a weakened test.
+- **Status UX.** `/uploads/:id` shows three steps (Uploading, Reading, Result) with the result step turning into Done / Needs review / Failed; a failed upload lists the reason (`uploadFailure.<code>` texts, raw code if unknown).
+
+## Step 4: categories and VAT per line
+
+- **Storage: inside `buyer.uploads.extracted` JSON, no new table, no migration.** Each parsed line gets `category`, `sensitive` and `userCategory` (all optional in `parsedLine`). `category`/`sensitive` are the effective stored values (worker at extraction, `categoriseLines` again after every correction); `userCategory` is the buyer's choice, and while set it *is* `category`, `sensitive` is `false`. Grants: unchanged (`buyer_api` and `worker` already have `SELECT/INSERT/UPDATE/DELETE` on `buyer.uploads`, migration 0001).
+- **The server never trusts `category`/`sensitive` from a client**; only `userCategory` (an enum, `LINE_CATEGORIES` in `@lr/schema`) is read. Shared logic is `categoriseLines` in `@lr/receipt-nl`, used by the worker and buyer-api.
+- **Merchant fallback** (`packages/receipt-nl/src/merchant-rules.ts`): whole-word, case/accent/punctuation-insensitive match on the shop name (`normaliseName`), applied only when no line keyword matched. Order in `categoriseLine`: apotheek shop (every line health, existing rule) > line keywords > shop rule > `overig`. Kruidvat/Etos/Trekpleister/Apotheek rows are `gezondheid` + sensitive, so a Kruidvat line without a keyword is health data, while Kruidvat "Shampoo" stays `huishouden` (keyword wins; the existing worker test pins this). No new category keys were needed (`huishouden` and `vervoer` already existed). The same rule now also feeds the `categorise` cron job for `merchant.receipt_lines` (it already passed the merchant name), so official receipts get shop fallbacks too.
+- **Buyer edits use their own endpoint `PUT /v1/me/uploads/:id/categories`** (`done` and `needs_review`) and *not* PATCH on `done` uploads: opening PATCH on `done` would let anyone re-run matching with typed totals/times on every upload (ISSUES #1). `PATCH` still only works on `needs_review`; its lines carry `userCategory` and re-categorisation skips those lines. Matching is unchanged.
+- **Insights read stored categories only.** Legacy upload rows with no stored `category` count as `overig` (no on-the-fly guess). Health stays hidden: a line counts as `overig` when it is `sensitive` **or** its category is `gezondheid` (a buyer-chosen health category is not flagged, but is still never shown as health).
+- **VAT per rate:** `vatPerRate: [{rate, vat}]` (21, 9, 0, only rates that occur, highest first) = sum of `vatSummary[].vat` over claimed `paid`/`fiscalised` receipts (current version) + `vatBreakdown[].vat` of `done` uploads. The wallet page always shows the three rates (0 when absent). Per-line `vatRate` and the per-rate `vatBreakdown` (base, VAT) are shown on the upload detail page.
+
+## Step 5: managing photo receipts
+
+- **Photo through buyer-api**: `GET /v1/me/uploads/:id/photo` (bearer, owner only, `private, no-store`); the wallet fetches the blob with its token and shows it with an object URL. Chosen over a presigned GET so it works wherever buyer-api is reachable, with no S3 exposure and no `<img>` cross-origin question.
+- **Delete**: `DELETE /v1/me/uploads/:id` removes the S3 object first, then the row (if S3 fails the row stays and the buyer can retry, so no photo outlives its row). 404 for anyone but the owner; 503 without storage. In the wallet an inline confirm (not `window.confirm`, which is not testable and ugly on phones).
+- **List**: uploads are not part of the receipt list; they have their own section. `GET /v1/me/uploads?category=` filters by the stored category of any line, and the wallet's category filter now also filters that section (and reloads it on every filter change).
+
+## `data-testid`s added (stable for Playwright)
+
+Wallet `/add`: `upload-formats`, `upload-step` (existing), `upload-error` (existing), `file-input-library` / `file-input` (existing).
+Wallet `/uploads/:id`: `upload-status` (the step list; `data-status` = upload status), `upload-step-pending_upload` / `upload-step-processing` / `upload-step-result` (`data-state` = done|active|todo), `upload-done`, `upload-detail`, `upload-merchant`, `upload-date`, `upload-total`, `upload-payment`, `upload-draft-lines`, `upload-line` (`data-category`, `data-vat-rate`, `data-user-category`), `line-vat-{i}`, `line-edited-{i}`, `line-category-{i}` (select), `line-category-reset-{i}`, `upload-vat`, `upload-vat-row` (`data-rate`), `upload-vat-amount`, `upload-photo-section`, `upload-photo`, `upload-photo-failed`, `upload-failed`, `upload-failed-reason`, `upload-delete-section`, `delete-upload`, `delete-confirm`, `confirm-delete`, `cancel-delete`, correction form: `corr-line-category-{i}`, `corr-line-vat-{i}` (existing `corr-*` unchanged).
+Wallet `/` : `upload-item` now has `data-upload-id` and `data-status`. Wallet `/insights`: `chart-vat` (existing: `chart-months`, `chart-categories`, `chart-merchants`).
+
+## Other
+
+- New e2e dependency: `@lr/storage` in `e2e/package.json` (reads the S3 object back to prove upload and delete).
+- API docs (`docs/API.md`) list the new endpoints; no DB migration in this step.
+
 ## Deferred (v2 §17)
 
 Not built in this run, by design:

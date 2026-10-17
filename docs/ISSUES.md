@@ -62,11 +62,11 @@ Big issues found in the code review (2026-10-16) and still open. Tick an item wh
     - reject control characters and invalid dates in the schema
     - stop adding versions to a receipt after a refusal
     - on `unauthorized`, pause the uploader instead of dead-lettering
-- [ ] **#11 Adding a real receipt breaks the tests and the seed.**
+- [x] **#11 Adding a real receipt breaks the tests and the seed.** Fixed on `feat/qianfan-photo`: worker tests load `mock/` explicitly, the seed falls back to mock below 3 usable real receipts, covered by `packages/receipt-nl/test/corpus-selection.test.ts`.
   - **Where:** `scripts/lib/corpus.ts:47`, `scripts/seed.ts:296`, worker tests
   - **Problem:** one real `*.truth.json` switches the whole corpus to real files. The worker tests look up mock IDs and fail, and the seed needs at least 3 receipts. This breaks the spec rule that "the code must not change when real files arrive".
   - **Fix:** the worker tests load `mock/` explicitly, and the seed falls back to mock receipts.
-- [ ] **#12 The Qianfan extractor fails if you follow the docs.**
+- [x] **#12 The Qianfan extractor fails if you follow the docs.** Fixed on `feat/qianfan-photo`: base-URL semantics, 408/429 retried, `QIANFAN_REVISION`, optional `QIANFAN_API_KEY`. **Not yet proven against a live endpoint** (see FINDINGS).
   - **Where:** `apps/worker/src/extractor.ts:82,94,112`, `tools/qianfan/serve.md:32`
   - **Problems:**
     - **URL mismatch:** `serve.md` says to give the base URL, but the code posts to the URL as given, so every upload fails.

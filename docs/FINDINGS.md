@@ -433,6 +433,56 @@ Screenshots (overwritten each run): `docs/e2e-screenshots/{qr-on-simulator,recei
 - Reuse mode takes whatever database the running stack uses; setting `PG_DATABASE` for the suite only affects a stack that global setup starts itself (see decisions).
 - The wallet's `dev` script now builds and serves the production build (see decisions: the service worker needed for the offline scenario exists only in a build); HMR is `pnpm --filter @lr/wallet dev:hmr`.
 
+## Qianfan path: verification log
+
+Run on the mock corpus (MOCK numbers).
+
+- `pnpm --filter @lr/worker test`: PASS, 8 files, 60 tests (new: URL handling, 408/429 transient, 400 permanent, revision source, auth header).
+- `pnpm --filter @lr/receipt-nl test`: PASS, 7 files, 177 tests (new `corpus-selection.test.ts`: temp real-style dir, 1 real receipt id `real-0001` derived from mock-weegschaal; real preferred by `loadCorpus`, `only:'mock'` ignores it, seed falls back to mock with <3 real, uses real at 3, eval runs on real).
+- `pnpm eval:extraction`: PASS, "GATE OK: zero false done (6 receipts evaluated)", MOCK corpus.
+- `pnpm db:seed`: PASS (DB already seeded, 0 created, so the corpus line is not printed; fallback covered by the corpus-selection test).
+- `pnpm lint`, `pnpm typecheck`, `pnpm test:privacy` (0 hits in 35 searches): PASS.
+- Notebook `tools/qianfan/colab_serve.ipynb` parses as JSON (python json.load). Not executed (no GPU/Colab here).
+
+## Manual check with a real file present
+Temporarily copied mock-weegschaal's png/truth (id `real-tmp-1`, `mock` flag dropped) and its `<sha>.qianfan.json` into fixtures/receipts-nl/:
+- `pnpm test`: PASS across all packages (worker 60/60 unchanged; receipt-nl 172 tests as corpus tests then run on the 1 real receipt).
+- `pnpm eval:extraction`: "Corpus: REAL (1 receipts ...)", GATE OK, 1 receipt evaluated.
+- `pnpm db:seed`: ran, already seeded so no upload step. Files then removed; `git status fixtures` clean.
+To repeat: drop 1 real truth+image+recording, run the three commands; remove them. Seed fallback on a fresh DB prints `Seed corpus: MOCK (... ; real corpus has 1 usable receipts, need 3)`.
+
+## Findings: photo receipts end to end (steps 3 to 6, PhotoFeature part)
+
+All numbers below were observed on this machine (Docker: Postgres 5433, s3mock 9090, Mailpit 8025). Everything uses the **MOCK** corpus (`fixtures/receipts-nl/mock/`) and `EXTRACTOR=recorded`.
+
+## Verification log
+
+| Command | Result |
+| --- | --- |
+| Chromium probe: presigned PUT of a mock PNG from `http://localhost:3001` (plain Node server) to s3mock `http://127.0.0.1:9090` | **PASS**: status 200, `HEAD` size 84194 = file size. (First attempt from a `page.route`-fulfilled page: blocked with "loopback address space" permission: probe artefact, see decisions.) Probe script was throwaway and removed; the e2e spec keeps the check. |
+| `pnpm lint && pnpm typecheck && pnpm test && pnpm build` | **PASS** (exit 0). typecheck 25/25 tasks, build 13/13. Tests: config 7, storage 1, compliance 8, crypto 17, schema 2, receipt-nl 209, wallet 85, terminal-sdk 119, merchant-api 116, worker 68 (9 files), buyer-api 83 (9 files), db 72, dashboard-core 37, merchant-web 13. |
+| `pnpm test:journey` | **PASS**: 6 hops |
+| `pnpm test:privacy` | **PASS**: 0 hits in 35 needle×haystack searches; 6 controls ok |
+| `pnpm eval:extraction` | **PASS** (gate): MOCK corpus, 6 receipts, 4 done, 2 needs_review, 0 false done (unchanged by this work) |
+| `pnpm test:e2e` (nothing listening on 3000/3001/4001/4002; the suite started its own stack) | **PASS** twice on the final code: 9 passed (1.1 min each). Of those 4 are `e2e/photo-upload.spec.ts` (full flow, PDF/HEIC refusal, unreadable photo with reason, needs-review correction with category). An earlier run with 8 tests (before the 4th was added) also passed twice. |
+
+New tests (counts are of the tests added, all passing): `packages/receipt-nl/test/merchant-rules.test.ts` 32 (merchant rules, normalisation, "Albert Heijn" vs "AH", precedence, `categoriseLines`, user-edit precedence); `apps/worker/test/photo-categories.test.ts` 8 (extraction stores categories, PATCH re-categorises, user category kept after PATCH and never sensitive, insights follow edits + VAT per rate, list category filter, DELETE row + S3 object, DELETE of someone else's upload is 404, PDF/HEIC refused); `apps/buyer-api/test/uploads-api.test.ts` +7 (PDF/HEIC refused with no row, DELETE guards and 503, photo endpoint, category endpoint, category filter); `apps/buyer-api/test/insights.test.ts` +1 and the existing expectations extended with `vatPerRate`; `apps/wallet/test/api.test.ts` +2 (PDF/HEIC never presigned, new API calls); `packages/storage/test/presign.test.ts` 1.
+
+## Changed existing tests (spec change, not weakened)
+
+- `apps/buyer-api/test/uploads-api.test.ts`: a `application/pdf` upload request used to be 201; now PDF and HEIC are 400 (plus webp/jpeg are 201).
+- `apps/wallet/test/api.test.ts`: `validateUploadFile` used to accept PDF; now refuses it.
+- `apps/buyer-api/test/insights.test.ts`: the upload fixture line now carries the stored `category`/`sensitive` (what the worker writes now); insights no longer categorise at read time.
+
+## Open / not verified
+
+- **Hosted storage**: browser PUT against Supabase Storage's S3 API or a boxd-hosted s3mock was not tested (CORS for the wallet origin; the presigned host must be browser-reachable over HTTPS). The SDK checksum fix matters there. Fallback (upload through buyer-api) is described in `docs/decisions/photo-feature.md`, not built.
+- **Phone / Safari / HEIC**: no real phone camera test. HEIC is refused in the wallet; iOS usually converts to JPEG when `accept` lists only JPEG/PNG/WebP, not verified.
+- `pnpm --filter @lr/wallet smoke` (not part of the checks) fails at its first step (`presented-banner` never appears: the demo no longer has pre-bills). It stops before reaching the upload part. Not looked into; I did not run it on `main`.
+- Legacy upload rows without stored categories count as `overig` in insights (no migration backfills them). Only affects uploads created before this change.
+- The worker package is shared with the QianfanPath work; the numbers above were taken before its changes landed in `apps/worker/src/extractor*.ts`/`env.ts` (not present in the working tree at the time). Re-run `pnpm --filter @lr/worker test` after merging.
+- The wallet `docs/e2e-screenshots/` set was not refreshed: only `photo-upload-detail.png` and `photo-insights.png` are new (the run also rewrote the old screenshots; those were reverted).
+
 # Handoff to reviewer
 
 ## What works end to end, and the test that proves it
