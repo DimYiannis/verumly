@@ -11,7 +11,8 @@ const rows = ref<Row[]>([]);
 const error = ref('');
 const loading = ref(false);
 const offset = ref(0);
-const filters = reactive({ q: '', state: '', from: '', to: '', amount: '' });
+const route = useRoute();
+const filters = reactive({ q: '', state: route.query.state === 'void' ? 'void' : '', from: '', to: '', amount: '' });
 
 function euroToCents(s: string): number | undefined {
   const m = /^\s*(\d+)(?:[.,](\d{1,2}))?\s*$/.exec(s);
