@@ -72,25 +72,24 @@ The dashboard login only works if the seed ran. If it doesn't recognise the owne
 1. In the same browser, open http://localhost:3000/simulator.
 2. Click **Set up demo terminal**. This needs the dashboard session from step 1. The browser generates the till's signing keys and registers the public key, and the till appears under **Dashboard → Terminals**.
 
-### Step 3: Sell and present the bill (cashier)
+### Step 3: Sell and issue the receipt (cashier)
 1. Click products (Koffie and Appeltaart at 9%, Bier and Wijn at 21%) to fill the cart.
-2. Click **Present**. A large QR code appears. This is the pre-bill (the "rekening"), version 1.
+2. Click **Issue receipt**. A large QR code appears. An issued receipt is taken as paid, so there is no pre-bill and no payment step.
 3. The receipt URL is printed under the QR: `http://localhost:3001/r/<id>#<secret>`.
 
 ### Step 4: Open the receipt as the buyer
 1. Copy the URL under the QR.
 2. Open it in a **different browser profile or an incognito window**, so the buyer's session stays separate from the shop owner's. For a phone-shaped view, turn on Chrome DevTools → device toolbar → iPhone.
-3. The receipt shows with a yellow **"Not a final receipt — this is the bill, the final receipt follows after payment"** banner. Note that the `#secret` part is gone from the address bar.
+3. The receipt shows. Note that the `#secret` part is gone from the address bar.
 
 ### Step 5: Save it to the wallet
 1. Click **Save to wallet**.
-2. Enter an email address: any new address creates an account, or use `buyer@example.test`.
-3. Open Mailpit at http://localhost:8025, copy the 6-digit code, and enter it.
-4. The **"Save this receipt?"** sheet shows the shop, total and time. Click **Save to wallet**; **Not mine** closes it without saving. The receipt is now in the wallet.
+2. In demo mode (the default in development) the login is a plain form: press **Fill in the demo account**, then **Sign in**. No code is needed. With `DEMO_MODE=false`, enter an email and the 6-digit code from Mailpit (http://localhost:8025) instead.
+3. The **"Save this receipt?"** sheet shows the shop, total and time. Click **Save to wallet**; **Not mine** closes it without saving. The receipt is now in the wallet.
 
-### Step 6: Change and pay (cashier)
-1. Back in the simulator: add an item, then **Present** again (this creates version 2). Then click **Pay card** or **Pay cash**. Pay cash rounds the total to 5 cents.
-2. Reload the receipt in the wallet. It shows the new version, marked final, with the version history. In the Netherlands, `paid` is the final state.
+### Step 6: Void (cashier)
+1. Back in the simulator: click **Void**. This creates version 2.
+2. Reload the receipt in the wallet. It shows the voided version, with the version history.
 3. **Dashboard → Archive** shows the same receipt with its versions. It shows **no** information about who saved it: that's the privacy model.
 
 ### Step 7: Offline demos (optional)
@@ -123,7 +122,7 @@ pnpm dev --env-mode=loose
 ```
 
 Then:
-1. On the laptop, open the simulator. It's still on `http://localhost:3000`, and the QR now points to the tunnel. Present a bill.
+1. On the laptop, open the simulator. It's still on `http://localhost:3000`, and the QR now points to the tunnel. Issue a receipt.
 2. Scan the QR with the **phone camera** and open the link. Then follow Steps 5–6 above on the phone. The login code still arrives in Mailpit on the laptop.
 3. **Use Android + Chrome for the smoothest demo.** On iPhone the link opens in Safari. That works for viewing and saving, but push needs the wallet added to the Home Screen first (iOS 16.4+), and the Home Screen app has separate storage from Safari.
 4. **Push:** in the wallet go to **Settings → push opt-in**, allow notifications, then pay the bill in the simulator. A notification should arrive. **Real push to a phone has not been verified yet.**

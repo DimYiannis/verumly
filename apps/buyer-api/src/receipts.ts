@@ -2,7 +2,7 @@ import { and, asc, count, eq, gt } from 'drizzle-orm';
 import { verifySecret } from '@lr/crypto';
 import { tables, type Db } from '@lr/db';
 import { isFinalState } from '@lr/receipt-nl';
-import { crf as crfSchema, type Crf, type ReceiptPreview } from '@lr/schema';
+import { crf as crfSchema, receiptTemplate, type Crf, type ReceiptPreview, type ReceiptTemplate } from '@lr/schema';
 
 export const MAX_FAILED_SECRETS_PER_HOUR = 10;
 
@@ -17,6 +17,8 @@ export interface ReceiptRow {
   claimableUntil: Date;
   locationName: string;
   crf: Crf;
+  /** the merchant's receipt layout, null = the wallet default */
+  template: ReceiptTemplate | null;
 }
 
 /** Load a receipt (never `open`) with its latest CRF and location name. */
@@ -33,8 +35,10 @@ export async function loadReceipt(db: Db, receiptId: string): Promise<ReceiptRow
       claimableUntil: tables.receipts.claimableUntil,
       locationName: tables.locations.name,
       payload: tables.receiptVersions.payload,
+      template: tables.organizations.receiptTemplate,
     })
     .from(tables.receipts)
+    .innerJoin(tables.organizations, eq(tables.organizations.id, tables.receipts.orgId))
     .innerJoin(tables.locations, eq(tables.locations.id, tables.receipts.locationId))
     .innerJoin(
       tables.receiptVersions,
@@ -42,8 +46,9 @@ export async function loadReceipt(db: Db, receiptId: string): Promise<ReceiptRow
     )
     .where(eq(tables.receipts.id, receiptId));
   if (!row) return undefined;
-  const { payload, ...rest } = row;
-  return { ...rest, crf: crfSchema.parse(payload) };
+  const { payload, template, ...rest } = row;
+  const tpl = receiptTemplate.safeParse(template);
+  return { ...rest, crf: crfSchema.parse(payload), template: tpl.success ? tpl.data : null };
 }
 
 export type SecretCheck =

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { MessageKey } from '~/i18n';
 import { ApiError } from '~/utils/api';
 
 const emit = defineEmits<{ done: [] }>();
@@ -7,25 +8,39 @@ const step = ref<'email' | 'code'>('email');
 const email = ref('');
 const code = ref('');
 const busy = ref(false);
-const error = ref<string | null>(null);
-const info = ref<string | null>(null);
+const { t } = useLocale();
+const error = ref<MessageKey | null>(null);
+/** the address the code was sent to, once it was */
+const sentTo = ref<string | null>(null);
 
-function messageFor(e: unknown): string {
+function messageFor(e: unknown): MessageKey {
   if (e instanceof ApiError) {
-    if (e.isNetwork) return 'No connection. Try again once you are online.';
-    if (e.status === 429) return 'Too many attempts. Wait a moment and try again later.';
-    if (e.status === 401) return 'This code is incorrect or has expired.';
+    if (e.isNetwork) return 'login.err.offline';
+    if (e.status === 429) return 'login.err.rateLimited';
+    if (e.status === 401) return 'login.err.badCode';
   }
-  return 'Something went wrong. Please try again.';
+  return 'login.err.generic';
 }
+
+/** development stub: the seeded buyer, when the server runs with DEMO_MODE (no email code then) */
+const demoEmail = ref<string | null>(null);
+onMounted(async () => {
+  const d = await wallet.api.demoInfo();
+  if (d.enabled && d.email) demoEmail.value = d.email;
+});
 
 async function sendCode() {
   busy.value = true;
   error.value = null;
   try {
+    if (demoEmail.value) {
+      await wallet.demoLogin(demoEmail.value);
+      emit('done');
+      return;
+    }
     await wallet.api.emailStart(email.value.trim());
     step.value = 'code';
-    info.value = `We sent a 6-digit code to ${email.value.trim()}.`;
+    sentTo.value = email.value.trim();
   } catch (e) {
     error.value = messageFor(e);
   } finally {
@@ -49,39 +64,44 @@ async function verify() {
 
 <template>
   <div data-testid="email-login">
-    <form v-if="step === 'email'" class="space-y-3" @submit.prevent="sendCode">
-      <label class="block font-medium" for="login-email">Email address</label>
-      <input
-        id="login-email"
-        v-model="email"
-        class="input"
-        type="email"
-        name="email"
-        autocomplete="email"
-        inputmode="email"
-        required
-        data-testid="login-email"
-      />
-      <button type="submit" class="btn btn-primary w-full" :disabled="busy" data-testid="login-send">Send me a code</button>
+    <form v-if="step === 'email'" class="space-y-4" @submit.prevent="sendCode">
+      <div class="space-y-2">
+        <Label for="login-email" class="text-sm font-medium text-foreground">{{ t('login.email') }}</Label>
+        <Input
+          id="login-email"
+          v-model="email"
+          class="h-11 text-base"
+          type="email"
+          name="email"
+          autocomplete="email"
+          inputmode="email"
+          required
+          data-testid="login-email"
+        />
+      </div>
+      <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-send">{{ demoEmail ? t('login.signIn') : t('login.sendCode') }}</Button>
+      <Button v-if="demoEmail" type="button" size="lg" variant="secondary" class="w-full" :disabled="busy" data-testid="login-fill-demo" @click="email = demoEmail ?? ''">{{ t('login.fillDemo') }}</Button>
     </form>
-    <form v-else class="space-y-3" @submit.prevent="verify">
-      <p data-testid="login-info">{{ info }}</p>
-      <label class="block font-medium" for="login-code">Code</label>
-      <input
-        id="login-code"
-        v-model="code"
-        class="input text-center text-2xl tracking-[0.5em]"
-        name="code"
-        autocomplete="one-time-code"
-        inputmode="numeric"
-        pattern="[0-9]{6}"
-        maxlength="6"
-        required
-        data-testid="login-code"
-      />
-      <button type="submit" class="btn btn-primary w-full" :disabled="busy" data-testid="login-verify">Log in</button>
-      <button type="button" class="btn btn-secondary w-full" :disabled="busy" @click="step = 'email'">Use a different email address</button>
+    <form v-else class="space-y-4" @submit.prevent="verify">
+      <p class="text-sm text-text-secondary" data-testid="login-info">{{ sentTo === null ? '' : t('login.codeSent', { email: sentTo }) }}</p>
+      <div class="space-y-2">
+        <Label for="login-code" class="text-sm font-medium text-foreground">{{ t('login.code') }}</Label>
+        <Input
+          id="login-code"
+          v-model="code"
+          class="h-14 text-center font-mono text-2xl tracking-[0.5em]"
+          name="code"
+          autocomplete="one-time-code"
+          inputmode="numeric"
+          pattern="[0-9]{6}"
+          maxlength="6"
+          required
+          data-testid="login-code"
+        />
+      </div>
+      <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-verify">{{ t('login.verify') }}</Button>
+      <Button type="button" size="lg" variant="secondary" class="w-full" :disabled="busy" @click="step = 'email'">{{ t('login.otherEmail') }}</Button>
     </form>
-    <p role="alert" data-testid="login-error" class="mt-3 text-red-800">{{ error }}</p>
+    <p role="alert" data-testid="login-error" class="mt-3 text-sm text-danger">{{ error ? t(error) : '' }}</p>
   </div>
 </template>

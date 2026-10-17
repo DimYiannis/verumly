@@ -12,6 +12,8 @@ const envSchema = dbEnvSchema.extend(s3EnvSchema.shape).extend({
   DASHBOARD_COOKIE_SECURE: z.enum(['true', 'false']).optional(),
   /** login / TOTP attempts per client IP per 5 minutes */
   LOGIN_RATE_LIMIT: z.coerce.number().int().positive().default(20),
+  /** demo sign-in as the seeded owner, no TOTP typing. On outside production unless set; never enable it on a real deployment */
+  DEMO_MODE: z.stringbool().default(process.env.NODE_ENV !== 'production'),
 });
 
 export interface WebEnv extends z.infer<typeof envSchema> {

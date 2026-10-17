@@ -1,52 +1,47 @@
 <script setup lang="ts">
+import type { MessageKey } from '~/i18n';
 import { ApiError } from '~/utils/api';
 import type { Insights } from '~/utils/api-schemas';
 
 definePageMeta({ middleware: 'auth' });
-useHead({ title: 'Insights' });
+const { t, tOr } = useLocale();
+useHead({ title: () => t('insights.title') });
 
 const wallet = useWallet();
 const data = ref<Insights | null>(null);
-const error = ref<string | null>(null);
+const error = ref<MessageKey | null>(null);
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 function monthLabel(month: string): string {
   const m = /^\d{4}-(\d{2})$/.exec(month);
-  return (m && MONTHS[Number(m[1]) - 1]) || month;
+  return (m && t('insights.months').split(',')[Number(m[1]) - 1]) || month;
 }
-
-const CATEGORY_LABEL: Record<string, string> = {
-  dining: 'Dining',
-  boodschappen: 'Groceries',
-  huishouden: 'Household',
-  vervoer: 'Transport',
-  kleding: 'Clothing',
-  elektronica: 'Electronics',
-  statiegeld: 'Deposit',
-  gezondheid: 'Health',
-  overig: 'Other',
-};
 
 onMounted(async () => {
   try {
     data.value = await wallet.api.insights();
   } catch (e) {
-    error.value = e instanceof ApiError && e.isNetwork ? 'Insights are only available online.' : 'Loading insights failed.';
+    error.value = e instanceof ApiError && e.isNetwork ? 'insights.err.offline' : 'insights.err.failed';
   }
 });
 </script>
 
 <template>
   <div class="space-y-4">
-    <h1 class="text-2xl font-bold">Insights</h1>
-    <p v-if="error" role="alert" class="card">{{ error }}</p>
-    <p v-else-if="!data" role="status">Loading…</p>
+    <h1 class="text-h2 font-semibold">{{ t('insights.title') }}</h1>
+    <p v-if="error" role="alert" class="rounded-xl border border-danger-border bg-danger-soft p-4 text-sm text-danger">{{ t(error) }}</p>
+    <div v-else-if="!data" class="space-y-4">
+      <p role="status" class="flex items-center gap-2 text-sm text-text-secondary">
+        <Spinner role="presentation" aria-hidden="true" />
+        {{ t('common.loading') }}
+      </p>
+      <Skeleton class="h-48 w-full" />
+    </div>
     <template v-else>
-      <p v-if="data.perMonth.length === 0" class="card" data-testid="no-insights">No data yet. Save a few receipts to see your spending.</p>
+      <p v-if="data.perMonth.length === 0" class="rounded-xl border border-border bg-card p-4 text-text-secondary" data-testid="no-insights">{{ t('insights.empty') }}</p>
       <template v-else>
-        <BarChart testid="chart-months" title="Spending per month" :items="data.perMonth.map((m) => ({ label: monthLabel(m.month), value: m.total }))" />
-        <HBarChart testid="chart-categories" title="By category" :items="data.perCategory.map((c) => ({ label: CATEGORY_LABEL[c.category] ?? c.category, value: c.total }))" />
-        <HBarChart testid="chart-merchants" title="Most visited shops" :items="data.topMerchants.map((m) => ({ label: m.merchantName, value: m.total }))" />
+        <BarChart testid="chart-months" :title="t('insights.perMonth')" :items="data.perMonth.map((m) => ({ label: monthLabel(m.month), value: m.total }))" />
+        <HBarChart testid="chart-categories" :title="t('insights.perCategory')" :items="data.perCategory.map((c) => ({ label: tOr('category', c.category), value: c.total }))" />
+        <HBarChart testid="chart-merchants" :title="t('insights.topMerchants')" :items="data.topMerchants.map((m) => ({ label: m.merchantName, value: m.total }))" />
       </template>
     </template>
   </div>

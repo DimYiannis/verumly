@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { migrate as drizzleMigrate } from 'drizzle-orm/node-postgres/migrator';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
@@ -5,7 +6,7 @@ import { PgBoss } from 'pg-boss';
 import { adminDbUrl, dbEnvSchema, DB_ROLES, loadEnv, sessionModeWarning, usesDbUrls, type DbEnv } from '@lr/config';
 import { BOSS_SCHEMA, QUEUES } from './queues.ts';
 
-const migrationsFolder = new URL('../migrations', import.meta.url).pathname;
+const migrationsFolder = fileURLToPath(new URL('../migrations', import.meta.url));
 
 const PASSWORD_KEY = {
   merchant_api: 'MERCHANT_API_DB_PASSWORD',

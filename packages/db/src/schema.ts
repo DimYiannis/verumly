@@ -33,6 +33,10 @@ export const organizations = merchant.table('organizations', {
   country: text('country').notNull().default('NL'),
   plan: text('plan').notNull().default('free'),
   retentionYears: integer('retention_years').notNull().default(7),
+  /** country-specific legal settings (see @lr/compliance): { values: {...}, confirmedAt } */
+  compliance: jsonb('compliance').notNull().default({}),
+  /** receipt layout drawn in the dashboard designer (see receiptTemplate in @lr/schema); null = default */
+  receiptTemplate: jsonb('receipt_template'),
   createdAt: ts('created_at').notNull().defaultNow(),
 });
 

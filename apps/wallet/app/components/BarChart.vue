@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { formatEuro } from '~/utils/format';
 
+const { locale } = useLocale();
+
 /** Vertical bars, hand-written SVG (no chart library). Values are euro cents. */
 const props = defineProps<{ title: string; items: { label: string; value: number }[]; testid?: string }>();
 
@@ -20,14 +22,14 @@ const bars = computed(() =>
 </script>
 
 <template>
-  <figure class="card" :data-testid="testid">
-    <figcaption class="mb-2 font-semibold">{{ title }}</figcaption>
-    <svg :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="`${title}: ${items.map((i) => `${i.label} ${formatEuro(i.value)}`).join(', ')}`" class="w-full">
+  <figure class="rounded-xl border border-border bg-card p-4" :data-testid="testid">
+    <figcaption class="mb-3 text-h3 font-semibold">{{ title }}</figcaption>
+    <svg :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="`${title}: ${items.map((i) => `${i.label} ${formatEuro(i.value, locale)}`).join(', ')}`" class="w-full">
       <title>{{ title }}</title>
-      <line :x1="0" :x2="W" :y1="H - PAD_BOTTOM" :y2="H - PAD_BOTTOM" stroke="#94a3b8" stroke-width="1" />
+      <line :x1="0" :x2="W" :y1="H - PAD_BOTTOM" :y2="H - PAD_BOTTOM" class="stroke-border" stroke-width="1" />
       <g v-for="b in bars" :key="b.label">
-        <rect :x="b.x" :y="b.y" :width="b.w" :height="b.h" rx="3" fill="#0f766e" data-testid="bar" />
-        <text :x="b.x + b.w / 2" :y="H - 8" text-anchor="middle" font-size="10" fill="#334155">{{ b.label }}</text>
+        <rect :x="b.x" :y="b.y" :width="b.w" :height="b.h" rx="3" class="fill-chart-1" data-testid="bar" />
+        <text :x="b.x + b.w / 2" :y="H - 8" text-anchor="middle" font-size="10" class="fill-text-secondary">{{ b.label }}</text>
       </g>
     </svg>
     <table class="sr-only">
@@ -35,7 +37,7 @@ const bars = computed(() =>
       <tbody>
         <tr v-for="i in items" :key="i.label">
           <th scope="row">{{ i.label }}</th>
-          <td>{{ formatEuro(i.value) }}</td>
+          <td>{{ formatEuro(i.value, locale) }}</td>
         </tr>
       </tbody>
     </table>

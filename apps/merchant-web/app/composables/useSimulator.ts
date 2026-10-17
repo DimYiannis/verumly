@@ -51,6 +51,7 @@ function readCreds(): SimCreds | null {
  * `/sim-api` proxy. Credentials (terminal id, API key, signing key) live in localStorage — this is a demo POS.
  */
 export function useSimulator() {
+  const { t: tr } = useLocale();
   const creds = ref<SimCreds | null>(null);
   const cart = ref<CartLine[]>([]);
   const current = ref<Current | null>(null);
@@ -68,7 +69,8 @@ export function useSimulator() {
   const state = computed(() => current.value?.crf.state ?? null);
   const total = computed(() => (current.value ? current.value.crf.totals.gross : cart.value.reduce((s, l) => s + l.unitPrice * l.qty, 0)));
   const rounding = computed(() => current.value?.crf.totals.rounding ?? 0);
-  const editable = computed(() => state.value === null || state.value === 'presented');
+  // a receipt is issued once, already paid: nothing is edited afterwards
+  const editable = computed(() => state.value === null);
 
   async function show(receiptId: string, qrUrl?: string) {
     const r = await store?.getReceipt(receiptId);
@@ -85,7 +87,7 @@ export function useSimulator() {
     try {
       await fn();
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'failed';
+      error.value = e instanceof Error ? e.message : tr('sim.errFailed');
     } finally {
       busy.value = false;
     }
@@ -131,13 +133,13 @@ export function useSimulator() {
   function setupDemoTerminal() {
     return run(async () => {
       const s = await $fetch<{ state: string }>('/api/dashboard/session');
-      if (s.state !== 'ready') throw new Error('Log in to the dashboard first, then set up the demo terminal.');
+      if (s.state !== 'ready') throw new Error(tr('sim.errLogin'));
       const [org, locs] = await Promise.all([
         $fetch<{ legalName: string; kvkNumber: string; vatNumber: string | null }>('/api/dashboard/org'),
         $fetch<Array<{ id: string }>>('/api/dashboard/locations'),
       ]);
       const location = locs[0];
-      if (!location) throw new Error('Create a location first.');
+      if (!location) throw new Error(tr('sim.errLocation'));
       const keys = generateKeyPair();
       const t = await $fetch<{ terminalId: string; apiKey: string }>('/api/dashboard/terminals', {
         method: 'POST',
@@ -165,44 +167,20 @@ export function useSimulator() {
     localStorage.removeItem(CURRENT_KEY);
   }
 
-  /** Add item. While the bill is presented, the change goes out as a new live version. */
   function addItem(sku: string) {
-    return run(async () => {
-      const p = PRODUCTS.find((x) => x.sku === sku);
-      if (!p || !editable.value) return;
-      const line = cart.value.find((l) => l.sku === sku);
-      if (line) line.qty += 1;
-      else cart.value.push({ sku: p.sku, description: p.label, unitPrice: p.unitPrice, vatRate: p.vatRate, qty: 1 });
-      if (current.value && sdk) {
-        await sdk.addVersion(current.value.receiptId, { state: 'presented', lines: lines.value });
-        await show(current.value.receiptId, current.value.qrUrl);
-      }
-    });
+    const p = PRODUCTS.find((x) => x.sku === sku);
+    if (!p || !editable.value) return;
+    const line = cart.value.find((l) => l.sku === sku);
+    if (line) line.qty += 1;
+    else cart.value.push({ sku: p.sku, description: p.label, unitPrice: p.unitPrice, vatRate: p.vatRate, qty: 1 });
   }
 
-  function present() {
-    return run(async () => {
-      if (!sdk || cart.value.length === 0) return;
-      const draft: Draft = { state: 'presented', lines: lines.value };
-      if (current.value) {
-        await sdk.addVersion(current.value.receiptId, draft);
-        await show(current.value.receiptId, current.value.qrUrl);
-      } else {
-        await show((await sdk.createReceipt(draft)).receiptId);
-      }
-    });
-  }
-
-  function pay(method: 'card' | 'cash') {
+  /** Issues the receipt: the sale is taken as paid (the shop only issues a receipt after it was paid). */
+  function issue() {
     return run(async () => {
       if (!sdk || cart.value.length === 0 || !editable.value) return;
-      const draft: Draft = { state: 'paid', lines: lines.value, payments: [{ method }] };
-      if (current.value) {
-        await sdk.addVersion(current.value.receiptId, draft);
-        await show(current.value.receiptId, current.value.qrUrl);
-      } else {
-        await show((await sdk.createReceipt(draft)).receiptId);
-      }
+      const draft: Draft = { state: 'paid', lines: lines.value, payments: [{ method: 'card' }] };
+      await show((await sdk.createReceipt(draft)).receiptId);
     });
   }
 
@@ -221,5 +199,5 @@ export function useSimulator() {
     else sdk.startFlusher({ idleMs: 500 });
   }
 
-  return { creds, cart, current, qrSvg, offline, stats, error, busy, state, total, rounding, editable, init, dispose, setupDemoTerminal, forgetTerminal, newSale, addItem, present, pay, voidSale, setOffline };
+  return { creds, cart, current, qrSvg, offline, stats, error, busy, state, total, rounding, editable, init, dispose, setupDemoTerminal, forgetTerminal, newSale, addItem, issue, voidSale, setOffline };
 }

@@ -1,0 +1,213 @@
+{
+"countries": {
+"PL": {
+"receiptObligation": "Always for B2C sales by taxpayers required to use a cash register (receipt = paragon fiskalny from kasa rejestrująca). Exemption mainly via turnover threshold PLN 20,000/yr for B2C sales and listed exempt activities/payment methods (e.g. bank transfer, mail order); certain sectors must use a register from the first zloty regardless of turnover (fuel, gastronomy/restaurants, hotels/accommodation, hairdressing/beauty, medical, legal, construction, car repair, e-cigarettes, heating fuels etc.). New categories phased in 2025-2027 (car washes, parking, vending, self-service ticketing; dates reported inconsistently - unverified). Invoice on request of consumer within 3 months.",
+"digitalReceipt": "Yes: kasa online / software-based registers can issue an e-receipt (e-paragon) to the buyer by email/app/link instead of paper, with the buyer's consent/at buyer's request (receipt must be offered; paper or electronic form). Exact consent wording: unverified - check Rozporządzenie MF w sprawie kas rejestrujących.",
+"mandatoryFields": "Fiscal receipt content per MF regulation on cash registers: seller name and address of point of sale, seller NIP, date and time, sequential receipt number, item description, quantity, unit price, VAT rate letter per line, VAT amounts per rate, total gross, fiscal logo, register unique number. Buyer NIP optional (receipt with buyer NIP = simplified invoice only until 31 Dec 2026). Simplified invoice concept threshold: unverified.",
+"fiscalSystem": "Kasa fiskalna (fiscal memory) or kasa online (cash register transmitting to the Centralne Repozytorium Kas, CRK) incl. software-based/virtual registers (kasa wirtualna) for some sectors. Online register mandatory for specified sectors (fuel, gastronomy, hotels, hairdressing, etc., phased). Adds fiscal logo, unique register number, receipt number. Registration: since 2019+ done through online notification (obligation to report register to tax office head for registration number reported as abolished - verify); the register must be linked with the CRK (service activation).",
+"realTimeReporting": "Kasy online transmit data to CRK (Centralne Repozytorium Kas) run by Krajowa Administracja Skarbowa; regulation in force since 1 July 2025 tightened fiscal receipts, certificates, SHA2 and real-time/on-demand upload. Also JPK_V7 VAT reporting (monthly). KSeF e-invoicing mandatory from 2026 (large taxpayers Feb 2026, others Apr 2026) with receipt-based simplified invoices excluded until 31.12.2026; from 1 Jan 2027 receipts with buyer NIP no longer count as invoices (draft regulation removes invoice function from registers).",
+"receiptIdentifiers": "Fiscal logo (PL), sequential receipt number, register unique number (numer unikatowy), NIP. A QR/e-receipt link is optional for e-receipts; no mandatory QR on paper receipt (unverified).",
+"retentionYears": "5 years counted from end of calendar year of tax obligation (Ordynacja podatkowa/ VAT act) for sales records; fiscal register copies/e-journal: 5 years (e-journal also stored in device). Format: electronic allowed if readable.",
+"vat": "Standard 23%; reduced 8% (restaurant/catering PKWiU 56, accommodation, some food) and 5% (basic foodstuffs), 0%. Currency PLN (zloty; euro not adopted).",
+"other": "VAT ID format: PL + 10 digits (NIP, checksum) - regex ^PL\\d{10}$. Tips: not part of VAT base if voluntary and paid by customer; showing as separate non-fiscal line recommended - unverified. Cash rounding: no legal rounding to 0.05; amounts to 0.01 zloty. Language: Polish for receipt (consumer law; unverified specifics). Business must hold NIP, REGON, register serial numbers.",
+"settingsNeeded": [
+{"key":"seller_name","label":"Registered business name","type":"text","required":true,"validation":"1-200 chars","help":"Appears on receipt."},
+{"key":"seller_address","label":"Point of sale address","type":"text","required":true,"validation":"","help":"Address of sale point."},
+{"key":"vat_id","label":"NIP","type":"text","required":true,"validation":"^\\d{10}$ (with checksum)","help":"10 digits, no PL prefix."},
+{"key":"register_type","label":"Fiscal device type","type":"select","required":true,"validation":"kasa_fiskalna|kasa_online|kasa_wirtualna|exempt","help":"Per sector."},
+{"key":"register_unique_no","label":"Register unique number","type":"text","required":true,"validation":"^[A-Z]{3}\\d{8}$ (unverified)","help":"Numer unikatowy of the register."},
+{"key":"vat_rate_letters","label":"VAT rate mapping","type":"select","required":true,"validation":"A=23,B=8,C=5,D=0,E=zw","help":"Per-line VAT letters."},
+{"key":"eReceiptEnabled","label":"Offer e-receipt","type":"boolean","required":false,"validation":"","help":"Requires buyer request/consent."}
+],
+"confidence": "medium",
+"adviserMustVerify": "Which sector obligations apply to the merchant, exact content of fiscal receipt per current Regulation, e-receipt consent mechanics, KSeF/register changes effective 1 Jan 2027, reduced VAT rate classification of restaurant items.",
+"sources": ["https://www.gov.pl/web/finanse/kasy-rejestrujace","https://www.fiscal-requirements.com/news/5917-change-of-the-cash-register-technical-requirements-in-poland-as-the-e-invoicing-transition-ends-in-2027","https://www.podatki.biz/i9310/paragon-kasy-fiskalnej-faktura/paragon-kasy-fiskalnej-faktura.htm"],
+"lastChecked": "2026-10-17"
+},
+"CZ": {
+"receiptObligation": "Currently (until the new law starts) no general EET: EET was abolished in 2023. Consumer-protection and accounting rules: seller issues a receipt/proof of sale on request / for cash sales under Act 563/1991 and Act 235/2004 (simplified tax document for VAT up to EUR 400 equivalent / CZK 10,000 historically; unverified). EET 2.0 (new Act on Registration of Sales, passed by Chamber 9 Sep 2026 per reports; awaiting president and publication; effective expected 1 Jan 2027, pilot/full operation possibly Feb 2027) will require recording of all in-person payments (cash, card, QR, vouchers) with exemption for businesses with annual income up to CZK 1 million and certain lump-sum payers. Receipt issuing: not tied to registration; can be electronic.",
+"digitalReceipt": "Yes - electronic receipts are accepted; under draft EET 2.0, printed receipt not required and e-receipt can be provided. Consumer consent condition: unverified.",
+"mandatoryFields": "Simplified tax document (zjednodušený daňový doklad, VAT Act s.30): supplier name and address, DIC, date of supply/issue, document number, description of goods/service, total price incl. VAT, VAT rate or amount. EET 2.0 receipts: unverified final content.",
+"fiscalSystem": "No certified fiscal till today. EET 2.0 (expected 2027): near-real-time reporting; no mandatory dedicated cash register hardware per draft; fiscal identification code (FIK/ similar) details unverified. Registration of business with Financial Administration under draft: unverified.",
+"realTimeReporting": "Today none. EET 2.0 from 2027: immediate recording of each payment to the Financial Administration (Finanční správa) of the Czech Republic.",
+"receiptIdentifiers": "Today: sequential document number. EET 2.0: receipt identifier/QR - unverified.",
+"retentionYears": "VAT records and documents: 10 years from end of tax period (VAT Act s.35a). Accounting documents: 5 years (Act 563/1991) - 10 for VAT-related.",
+"vat": "Standard 21%; reduced 12% (food incl. restaurant food, accommodation, etc., after 2024 consolidation); alcohol and some drinks 21%. Currency CZK (koruna; euro not adopted).",
+"other": "VAT ID: CZ + 8-10 digits (^CZ\\d{8,10}$). Tips: unverified. Cash rounding: legal rounding to whole CZK for cash (haléře abolished) - rounding to 1 CZK. Language: Czech (consumer law) - unverified. Merchant must have ICO and DIC.",
+"settingsNeeded": [
+{"key":"seller_name","label":"Business name","type":"text","required":true,"validation":"","help":""},
+{"key":"seller_address","label":"Address","type":"text","required":true,"validation":"","help":""},
+{"key":"ico","label":"IČO","type":"text","required":true,"validation":"^\\d{8}$","help":"Company ID."},
+{"key":"vat_id","label":"DIČ","type":"text","required":false,"validation":"^CZ\\d{8,10}$","help":"Only if VAT payer."},
+{"key":"vat_payer","label":"VAT payer","type":"boolean","required":true,"validation":"","help":""},
+{"key":"eet_exempt","label":"Exempt from sales registration (income <= CZK 1m)","type":"boolean","required":false,"validation":"","help":"For EET 2.0 from 2027."},
+{"key":"rounding_cash","label":"Round cash to whole CZK","type":"boolean","required":true,"validation":"","help":""}
+],
+"confidence": "low",
+"adviserMustVerify": "Final enacted text and effective date of EET 2.0, exemption threshold, receipt content, any certification requirement for POS software.",
+"sources": ["https://www.epravo.cz/top/aktualne/eet-20-je-na-svete-od-ledna-2027-budou-podnikatele-evidovat-i-platby-kartou-a-qr-kodem-121639.html","https://www.zakonyprolidi.cz/cs/2004-235","https://www.financnisprava.cz"],
+"lastChecked": "2026-10-17"
+},
+"SK": {
+"receiptObligation": "Always: seller must issue a receipt (pokladničný doklad) for each sale when registering sales; Act No. 384/2025 Coll. on sales records effective 1 Jan 2026 extends eKasa obligation to practically all entrepreneurs selling to consumers incl. services and craftsmen (previously exempt), with limited exemptions (unverified details). Cashless payment above EUR 1 reportedly from March 2026 - unverified.",
+"digitalReceipt": "Yes: eKasa allows electronic receipt (email, QR link, via app); consumer can opt for electronic instead of paper. Consent condition: unverified.",
+"mandatoryFields": "Receipt from eKasa: seller name, address, IČO, DIČ/IČ DPH, date and time, items, price, VAT rate and amount, total, receipt ID (UID), eKasa/ECR code (KPK), QR code. Exact lists unverified.",
+"fiscalSystem": "eKasa (online/cloud/virtual/portable) only; legacy cash registers with fiscal memory not permitted from 2026. Each receipt receives a unique ID (UID) from the Financial Administration. Registration of the register (KPK/ECR) with the Finančná správa SR required (via portal).",
+"realTimeReporting": "Online real-time transmission of each receipt to the Finančná správa SR (eKasa system); offline mode allowed with delayed upload.",
+"receiptIdentifiers": "Unique receipt ID (UID), QR code, KPK (register code), receipt number; verifiable in the Bločkovnica/eKasa app.",
+"retentionYears": "Accounting and VAT records: 10 years (Act 431/2002, VAT Act s.76); receipt data stored in eKasa for 10 years (unverified).",
+"vat": "Standard 23% (from 2025); reduced 19% and 5% (food and accommodation categories - classification of restaurant services unverified). Currency EUR.",
+"other": "VAT ID: SK + 10 digits (^SK\\d{10}$). Tips: unverified. Cash rounding: for cash to 5 cents (euro cent rounding per EU rules) - verify. Language: Slovak. Merchant needs IČO, DIČ, optional IČ DPH.",
+"settingsNeeded": [
+{"key":"seller_name","label":"Business name","type":"text","required":true,"validation":"","help":""},
+{"key":"seller_address","label":"Point of sale address","type":"text","required":true,"validation":"","help":""},
+{"key":"ico","label":"IČO","type":"text","required":true,"validation":"^\\d{8}$","help":""},
+{"key":"dic","label":"DIČ","type":"text","required":true,"validation":"^\\d{10}$","help":""},
+{"key":"vat_id","label":"IČ DPH","type":"text","required":false,"validation":"^SK\\d{10}$","help":""},
+{"key":"ekasa_cash_register_code","label":"eKasa register code (KPK/ECR)","type":"text","required":true,"validation":"unverified","help":"Issued on registration."},
+{"key":"ekasa_mode","label":"eKasa type","type":"select","required":true,"validation":"online|cloud|virtual|portable","help":""}
+],
+"confidence": "medium",
+"adviserMustVerify": "Act 384/2025 details: exemptions, device types, qr format, e-receipt consent, VAT classification of hospitality.",
+"sources": ["https://marosavat.com/vat-news/slovakia-full-ekasa-obligation-january-2026","https://www.fiscal-requirements.com/news/4866-important-notice-changes-to-cash-register-rules-from-1-january-2026-in-slovakia","https://www.financnasprava.sk"],
+"lastChecked": "2026-10-17"
+},
+"HU": {
+"receiptObligation": "Always: receipt (nyugta) must be issued for B2C sales; or invoice. Exemptions limited.",
+"digitalReceipt": "Yes: e-receipts allowed; B2C digital receipts mandate planned from 1 Sep 2026 (voluntary from July 2025) via ePénztárgép (e-cash register, incl. cloud/mobile app). Customer personal data not shared with NAV. Consent condition: unverified. NAV archives digital receipts 10 years.",
+"mandatoryFields": "Nyugta: seller name and address, tax number, date, sequential serial number, item/service description, quantity, price, VAT rate and amount, total, register/AP number (AP) on online registers. Exact list per Government Decree 48/2013 NGM / Act CXXVII 2007 VAT s.166: unverified.",
+"fiscalSystem": "Online pénztárgép (NAV online cash register) with AP number, data sent real time; new NAV-approved hardware-based e-cash registers (ePénztárgép) since 2025; existing online registers can be used until 1 July 2028. Registration with NAV required (registration of register).",
+"realTimeReporting": "Online cash registers send each receipt to NAV in real time; from 1 Sep 2026 manual and computer-generated receipts must be reported daily within 3 calendar days summarised by VAT rate; transition without fines until 31 Dec 2026, fines from 1 Jan 2027 (per money.hu - verify). Also NAV Online Számla for invoices.",
+"receiptIdentifiers": "Sequential number, AP number, e-receipt ID; QR on e-receipt - unverified.",
+"retentionYears": "Accounting records 8 years (Act C 2000); tax limitation 5 years; NAV archives e-receipts 10 years.",
+"vat": "Standard 27%; reduced 18% (some food/dairy/accommodation exceptions) and 5% (restaurant services, basic food) - classification of restaurant/hotel rates unverified. Currency HUF (forint).",
+"other": "VAT ID: HU + 8 digits (^HU\\d{8}$); tax number 8-1-2 format (^\\d{8}-\\d-\\d{2}$). Tips: unverified (service charge VAT-treated). Cash rounding: cash payments rounded to 5 HUF (legal). Language: Hungarian. Merchant needs adószám, NAV register ID.",
+"settingsNeeded": [
+{"key":"seller_name","label":"Business name","type":"text","required":true,"validation":"","help":""},
+{"key":"seller_address","label":"Address","type":"text","required":true,"validation":"","help":""},
+{"key":"tax_number","label":"Adószám","type":"text","required":true,"validation":"^\\d{8}-\\d-\\d{2}$","help":""},
+{"key":"vat_id","label":"EU VAT ID","type":"text","required":false,"validation":"^HU\\d{8}$","help":""},
+{"key":"nav_register_id","label":"Cash register AP number","type":"text","required":true,"validation":"unverified","help":""},
+{"key":"register_type","label":"Register type","type":"select","required":true,"validation":"online_register|e_register|manual_receipt","help":""},
+{"key":"cash_rounding_5","label":"Round cash to 5 HUF","type":"boolean","required":true,"validation":"","help":""}
+],
+"confidence": "medium",
+"adviserMustVerify": "1 Sep 2026 reporting regime, exact fines start date, 2028 hardware switch, VAT classification of restaurant sales.",
+"sources": ["https://www.fiscal-requirements.com/news/5413-hungary-to-mandate-b2c-digital-receipts-from-september-2026","https://tudastar.szamlazz.hu/en/gyik/mandatory-receipt-data-reporting","https://nav.gov.hu/sajtoszoba/hirek/az-e-penztargepeke-a-jovo-ma-lepett-hatalyba-a-rendelet"],
+"lastChecked": "2026-10-17"
+},
+"RO": {
+"receiptObligation": "Always: fiscal receipt (bon fiscal) from fiscal electronic cash register (AMEF) for cash/card B2C sales (OUG 28/1999); Law 317/2024 (late 2024/2025): for card payments the receipt must still be issued but electronic, printed only on customer request. Exemptions: listed activities (e.g. certain services, online sales with courier payments etc.) - details unverified.",
+"digitalReceipt": "Yes for card payments (electronic on request-printing exception); a 2026 draft Government Decision would make the fiscal receipt digital with QR code and unique identifiers - adoption status unverified.",
+"mandatoryFields": "Fiscal receipt per OUG 28/1999 and Order 3/2023 (verify): seller name, CUI, address, date/time, fiscal series of the register, receipt ID number, items, quantity, VAT rate and amount, total, fiscal mark. Since Sept 2025: QR code + date/time + receipt identification number + register fiscal series printed.",
+"fiscalSystem": "Casa de marcat electronică fiscală (AMEF) with fiscal memory, transmitting data to ANAF (e-Transport/SAF? no: via system of data transmission 'sistemul de transmitere' since 2023). Fiscal registration of the register with ANAF required (fiscalization by authorised service), 'Registrul special'. Some sectors exempt.",
+"realTimeReporting": "Register data transmitted to ANAF (daily/real time via fiscal data transmission) - exact mechanism unverified. e-Factura B2B mandatory; B2C e-Factura (B2C invoices) mandatory from 2025/2026 - verify. Distinct from receipts.",
+"receiptIdentifiers": "QR code, fiscal receipt ID, register fiscal series, date/time (mandatory since 1 Sep 2025; fines up to RON 4,000 reported).",
+"retentionYears": "Fiscal journal and accounting documents: 10 years (Accounting Law 82/1991; receipts often 10 years; some records 5 years - verify).",
+"vat": "Standard 21% (from 1 Aug 2025); reduced 11% (food, restaurants/catering, accommodation from Aug 2025 after consolidation) and 11% - classification unverified. Currency RON (leu).",
+"other": "VAT ID: RO + 2-10 digits (^RO\\d{2,10}$); CUI. Tips: unverified. Cash rounding: unverified. Language: Romanian. Merchant needs CUI, fiscal register serial no.",
+"settingsNeeded": [
+{"key":"seller_name","label":"Business name","type":"text","required":true,"validation":"","help":""},
+{"key":"seller_address","label":"Address","type":"text","required":true,"validation":"","help":""},
+{"key":"cui","label":"CUI/CIF","type":"text","required":true,"validation":"^(RO)?\\d{2,10}$","help":""},
+{"key":"vat_payer","label":"VAT registered","type":"boolean","required":true,"validation":"","help":""},
+{"key":"amef_serial","label":"Fiscal series of register","type":"text","required":true,"validation":"unverified","help":""},
+{"key":"card_receipt_electronic","label":"Electronic receipt for card payments","type":"boolean","required":false,"validation":"","help":"Print on request."}
+],
+"confidence": "low",
+"adviserMustVerify": "Status of the 2026 digital receipt decision, e-Factura B2C scope, VAT rates, ANAF transmission rules.",
+"sources": ["https://contabilul.manager.ro/a/29941/modernizari-la-casele-de-marcat-bonul-fiscal-va-fi-digital-cu-cod-qr-si-identificatori-unici.html","https://www.fiscalitatea.ro/case-de-marcat-electronice-noutati-fiscale-care-se-aplica-in-2025-23925/","https://static.anaf.ro"],
+"lastChecked": "2026-10-17"
+},
+"BG": {
+"receiptObligation": "Always: fiscal receipt (касов бон) from a registered fiscal device (Ordinance H-18) for every sale to consumers, except listed exemptions (e.g. certain services, remote sales with bank payment). Invoice on request.",
+"digitalReceipt": "Amendments to Ordinance H-18 (reported) allow electronic receipt generation via integrated systems; details and consumer consent unverified.",
+"mandatoryFields": "Fiscal receipt: seller name, EIK/BULSTAT, address of site, date/time, sequential receipt number, items, VAT group, total, fiscal memory number, in 2026 dual display (EUR first then BGN with exchange rate 1.95583).",
+"fiscalSystem": "Fiscal devices registered with NRA (НАП): ECR/FPR, or integrated system (ERP with fiscal device or virtual POS). Device approved by NRA register, registration with NRA required. Adds unique sale number (УНП), fiscal memory number, QR code on receipt.",
+"realTimeReporting": "Fiscal devices transmit sales data to NRA (online server) in real time. Plus SUPTO (certified accounting software for restaurants/trade) - verify.",
+"receiptIdentifiers": "Unique Sale Number (УНП) format: 8-char device ID + '-' + shop code + '-' + sequential 7 digits, QR code, fiscal memory number.",
+"retentionYears": "VAT records 5 years; accounting documents 10 years (Accountancy Act): unverified.",
+"vat": "Standard 20%; reduced 9% (accommodation; restaurant services reverted to 20% from 2025 - unverified); 0%. Currency EUR from 1 Jan 2026 (euro adopted; dual display throughout 2026, BGN no longer legal tender after 2026 transition - verify date).",
+"other": "VAT ID: BG + 9-10 digits (^BG\\d{9,10}$); EIK. Tips: unverified. Cash rounding: euro-cent rounding to 0.05 for cash per EU rules - verify. Language: Bulgarian (Cyrillic). Merchant needs EIK, NRA device registration.",
+"settingsNeeded": [
+{"key":"seller_name","label":"Business name","type":"text","required":true,"validation":"","help":""},
+{"key":"seller_address","label":"Site address","type":"text","required":true,"validation":"","help":""},
+{"key":"eik","label":"EIK/BULSTAT","type":"text","required":true,"validation":"^\\d{9}(\\d{4})?$","help":""},
+{"key":"vat_id","label":"VAT number","type":"text","required":false,"validation":"^BG\\d{9,10}$","help":""},
+{"key":"fiscal_device_id","label":"Fiscal device ID","type":"text","required":true,"validation":"^[A-Z]{2}\\d{6}$ (unverified)","help":"Used in UNP."},
+{"key":"site_code","label":"Site code","type":"text","required":true,"validation":"^\\d{7}$ (unverified)","help":""},
+{"key":"dual_currency","label":"Show BGN equivalent (2026)","type":"boolean","required":true,"validation":"","help":""}
+],
+"confidence": "medium",
+"adviserMustVerify": "Current text of Ordinance H-18, UNP format, virtual POS acceptance, end of dual display, restaurant VAT rate.",
+"sources": ["https://www.fiscal-requirements.com/news/4025-bulgarias-ministry-of-finance-updates-receipt-rules-in-relation-to-euro-adoption","https://nra.bg"],
+"lastChecked": "2026-10-17"
+},
+"LT": {
+"receiptObligation": "Always for cash sales: cash register receipt (kasos čekis) or other proof; mandatory use of i.EKA (software-based) or cash register for B2C cash/card sales. Exemptions for certain activities.",
+"digitalReceipt": "Yes: i.EKA allows e-receipt on email/app; paper on request. Consumer opt-in details unverified.",
+"mandatoryFields": "Seller name, code, address, VAT code, date/time, receipt number, items, VAT, total - unverified specifics.",
+"fiscalSystem": "i.EKA (hybrid: hardware-based and software-based), VMI-registered; mandatory for all taxpayers from May 2025 (per fiscal-requirements). Registration with State Tax Inspectorate (VMI) required. Adds unique receipt ID.",
+"realTimeReporting": "Receipt data to VMI via i.EKA system; i.SAF invoice data separate.",
+"receiptIdentifiers": "Unique receipt ID/QR - unverified.",
+"retentionYears": "10 years (accounting documents) - unverified.",
+"vat": "Standard 21%; reduced 9% (accommodation, some) and 5%. Currency EUR.",
+"other": "VAT ID: LT + 9 or 12 digits (^LT(\\d{9}|\\d{12})$). Cash rounding to 5 cents since 1 May 2025 (VA-39). Language: Lithuanian. Tips: unverified.",
+"settingsNeeded": [
+{"key":"seller_name","label":"Business name","type":"text","required":true,"validation":"","help":""},
+{"key":"seller_address","label":"Address","type":"text","required":true,"validation":"","help":""},
+{"key":"company_code","label":"Company code","type":"text","required":true,"validation":"^\\d{9}$","help":""},
+{"key":"vat_id","label":"VAT code","type":"text","required":false,"validation":"^LT(\\d{9}|\\d{12})$","help":""},
+{"key":"ieka_register_id","label":"i.EKA/register ID","type":"text","required":true,"validation":"unverified","help":""},
+{"key":"cash_rounding_5","label":"Round cash to 5 cents","type":"boolean","required":true,"validation":"","help":""}
+],
+"confidence": "low",
+"adviserMustVerify": "Order VA-85/VA-39 content, receipt fields, i.EKA registration.",
+"sources": ["https://www.fiscal-requirements.com/news/5365-lithuania-updates-cash-register-regulation-extended-deadlines-and-procedural-clarifications","https://www.fiscal-requirements.com/news/1490-cash-register-requirements-in-lithuania","https://www.vmi.lt"],
+"lastChecked": "2026-10-17"
+},
+"LV": {
+"receiptObligation": "Always: fiscal receipt from VID-certified fiscal device (kases aparāts) for cash/card payments (Cabinet Reg. 95/2014); exemptions per list.",
+"digitalReceipt": "Unverified.",
+"mandatoryFields": "Unverified (Cabinet Regulation 95/2014 requirements).",
+"fiscalSystem": "Hardware-based fiscalization since 2014; devices certified by VID; registration with VID.",
+"realTimeReporting": "Unverified (cash register data sent to VID?).",
+"receiptIdentifiers": "Unverified.",
+"retentionYears": "Unverified.",
+"vat": "Standard 21%; reduced 12% and 5% - unverified classification of hospitality. Currency EUR.",
+"other": "VAT ID: LV + 11 digits (^LV\\d{11}$). Cash rounding: 5 cent legal rounding for cash - verify. Language: Latvian. B2C e-invoicing not required.",
+"settingsNeeded": [
+{"key":"seller_name","label":"Business name","type":"text","required":true,"validation":"","help":""},
+{"key":"seller_address","label":"Address","type":"text","required":true,"validation":"","help":""},
+{"key":"reg_number","label":"Registration number","type":"text","required":true,"validation":"^\\d{11}$","help":""},
+{"key":"vat_id","label":"VAT number","type":"text","required":false,"validation":"^LV\\d{11}$","help":""},
+{"key":"fiscal_device_no","label":"Fiscal device number","type":"text","required":true,"validation":"unverified","help":""}
+],
+"confidence": "low",
+"adviserMustVerify": "Nearly everything: fiscal device rules, e-receipts, VAT rates, retention.",
+"sources": ["https://www.fiscal-requirements.com/countries/33-latvia","https://www.fiscal-requirements.com/news/4500-penalties-for-non-compliance-with-the-fiscalization-in-latvia","https://www.vid.gov.lv"],
+"lastChecked": "2026-10-17"
+},
+"EE": {
+"receiptObligation": "Unverified (not researched). Believed: no fiscal cash register requirement; seller issues receipt/proof of sale on request.",
+"digitalReceipt": "Unverified (believed accepted).",
+"mandatoryFields": "Unverified.",
+"fiscalSystem": "Unverified: believed no mandatory fiscal till or registration.",
+"realTimeReporting": "Unverified (e-invoicing B2B/B2G only).",
+"receiptIdentifiers": "Unverified.",
+"retentionYears": "Unverified (believed 7 years accounting).",
+"vat": "Standard 24% (from 1 July 2025, verify); reduced 9% and 13% accommodation - unverified. Currency EUR.",
+"other": "VAT ID: EE + 9 digits (^EE\\d{9}$). Language: Estonian. Cash rounding: 5 cents - unverified.",
+"settingsNeeded": [
+{"key":"seller_name","label":"Business name","type":"text","required":true,"validation":"","help":""},
+{"key":"seller_address","label":"Address","type":"text","required":true,"validation":"","help":""},
+{"key":"reg_code","label":"Registry code","type":"text","required":true,"validation":"^\\d{8}$","help":""},
+{"key":"vat_id","label":"KMKR number","type":"text","required":false,"validation":"^EE\\d{9}$","help":""}
+],
+"confidence": "low",
+"adviserMustVerify": "Everything - Estonia was not researched with sources.",
+"sources": ["https://www.emta.ee"],
+"lastChecked": "2026-10-17"
+}
+}
+}

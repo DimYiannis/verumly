@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { Search, SlidersHorizontal } from '@lucide/vue';
 import { z } from 'zod';
 import { ApiError } from '~/utils/api';
 import type { ReceiptFilters, ReceiptListItem, UploadStatus } from '~/utils/api-schemas';
 import { filterCachedItems, formatDayHeading, formatEuro, formatTime, groupByDay } from '~/utils/format';
 
 const wallet = useWallet();
-useHead({ title: 'My receipts' });
+const { t, tOr, locale } = useLocale();
+useHead({ title: () => t('wallet.title') });
 
 const items = ref<ReceiptListItem[]>([]);
 const nextCursor = ref<string | null>(null);
@@ -68,14 +70,6 @@ async function loadUploads() {
 }
 
 const groups = computed(() => groupByDay(items.value));
-const UPLOAD_LABEL: Record<UploadStatus['status'], string> = {
-  pending_upload: 'Uploading…',
-  processing: 'Reading…',
-  replaced: 'Replaced by the official receipt',
-  done: 'Read',
-  needs_review: 'Check the details',
-  failed: 'Failed',
-};
 
 let debounce: ReturnType<typeof setTimeout> | undefined;
 watch(filters, () => {
@@ -99,104 +93,125 @@ onBeforeUnmount(() => clearTimeout(debounce));
 <template>
   <div>
     <section v-if="!wallet.session.value" class="space-y-4" data-testid="landing">
-      <h1 class="text-3xl font-bold">Your receipts, digital</h1>
-      <p class="text-lg">Scan the QR code on the receipt with your phone's camera. The receipt is then kept safely in your wallet, even offline.</p>
-      <NuxtLink to="/login" class="btn btn-primary w-full" data-testid="login-link">Log in</NuxtLink>
+      <h1 class="text-h1 font-semibold">{{ t('wallet.landingTitle') }}</h1>
+      <p class="text-text-secondary">{{ t('wallet.landingBody') }}</p>
+      <Button as-child size="lg" class="w-full">
+        <NuxtLink to="/login" data-testid="login-link">{{ t('common.login') }}</NuxtLink>
+      </Button>
       <InstallHint />
     </section>
 
-    <template v-else>
+    <div v-else class="space-y-4">
       <NuxtLink
         v-if="!onboarded"
         to="/onboarding"
         data-testid="onboarding-prompt"
-        class="mb-4 block rounded-xl border border-brand-600 bg-brand-50 p-3 font-medium text-brand-900"
+        class="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-selected-border bg-selected p-3 text-sm font-medium text-accent-foreground no-underline hover:text-accent-foreground"
       >
-        Set your preferences (notifications and privacy) →
+        {{ t('wallet.onboardingPrompt') }}
       </NuxtLink>
 
       <ArrivingSection />
 
-      <h1 class="mb-3 text-2xl font-bold">My receipts</h1>
+      <h1 class="text-h2 font-semibold">{{ t('wallet.title') }}</h1>
 
-      <form class="mb-4 space-y-2" role="search" @submit.prevent="load(false)">
-        <label for="q" class="sr-only">Search receipts</label>
-        <input id="q" v-model="filters.q" type="search" class="input" placeholder="Search shop or product" data-testid="search-input" />
-        <button type="button" class="btn btn-secondary w-full" :aria-expanded="showFilters" aria-controls="filters" data-testid="toggle-filters" @click="showFilters = !showFilters">
-          Filters
-        </button>
-        <div v-show="showFilters" id="filters" class="card grid grid-cols-2 gap-3" data-testid="filters">
-          <label class="col-span-2 block text-sm font-medium">
-            Status
-            <select v-model="filters.state" class="input mt-1" data-testid="filter-state">
-              <option value="">All</option>
-              <option value="presented">Bill</option>
-              <option value="paid">Paid</option>
-              <option value="void">Void</option>
+      <form class="space-y-2" role="search" @submit.prevent="load(false)">
+        <Label for="q" class="sr-only">{{ t('wallet.searchLabel') }}</Label>
+        <div class="relative">
+          <Search class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input id="q" v-model="filters.q" type="search" class="h-11 pl-9 text-base" :placeholder="t('wallet.searchPlaceholder')" data-testid="search-input" />
+        </div>
+        <Button type="button" variant="secondary" class="w-full" :aria-expanded="showFilters" aria-controls="filters" data-testid="toggle-filters" @click="showFilters = !showFilters">
+          <SlidersHorizontal aria-hidden="true" />
+          {{ t('wallet.filters') }}
+        </Button>
+        <div v-show="showFilters" id="filters" class="grid grid-cols-2 gap-4 rounded-xl border border-border bg-card p-4" data-testid="filters">
+          <div class="col-span-2 space-y-2">
+            <Label for="f-state">{{ t('wallet.filterStatus') }}</Label>
+            <select
+              id="f-state"
+              v-model="filters.state"
+              class="h-11 w-full rounded-md border border-input bg-card px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-ring"
+              data-testid="filter-state"
+            >
+              <option value="">{{ t('wallet.filterAll') }}</option>
+              <option value="paid">{{ t('wallet.filterPaid') }}</option>
+              <option value="void">{{ t('wallet.filterVoid') }}</option>
             </select>
-          </label>
-          <label class="block text-sm font-medium">
-            From
-            <input v-model="filters.from" type="date" class="input mt-1" data-testid="filter-from" />
-          </label>
-          <label class="block text-sm font-medium">
-            To
-            <input v-model="filters.to" type="date" class="input mt-1" data-testid="filter-to" />
-          </label>
-          <label class="block text-sm font-medium">
-            Shop
-            <input v-model="filters.merchant" type="text" class="input mt-1" data-testid="filter-merchant" />
-          </label>
-          <label class="block text-sm font-medium">
-            Category
-            <input v-model="filters.category" type="text" class="input mt-1" data-testid="filter-category" />
-          </label>
+          </div>
+          <div class="space-y-2">
+            <Label for="f-from">{{ t('wallet.filterFrom') }}</Label>
+            <Input id="f-from" v-model="filters.from" type="date" class="h-11" data-testid="filter-from" />
+          </div>
+          <div class="space-y-2">
+            <Label for="f-to">{{ t('wallet.filterTo') }}</Label>
+            <Input id="f-to" v-model="filters.to" type="date" class="h-11" data-testid="filter-to" />
+          </div>
+          <div class="space-y-2">
+            <Label for="f-merchant">{{ t('wallet.filterMerchant') }}</Label>
+            <Input id="f-merchant" v-model="filters.merchant" type="text" class="h-11" data-testid="filter-merchant" />
+          </div>
+          <div class="space-y-2">
+            <Label for="f-category">{{ t('wallet.filterCategory') }}</Label>
+            <Input id="f-category" v-model="filters.category" type="text" class="h-11" data-testid="filter-category" />
+          </div>
         </div>
       </form>
 
-      <p v-if="offlineList" role="status" data-testid="offline-list-note" class="mb-3 rounded-xl bg-amber-100 p-3 text-sm text-amber-950">
-        Offline: you see the receipts saved on this device.
+      <p v-if="offlineList" role="status" data-testid="offline-list-note" class="rounded-lg border border-warning-border bg-warning-soft p-3 text-sm text-warning">
+        {{ t('wallet.offlineList') }}
       </p>
-      <p v-if="failed" role="alert" class="mb-3 rounded-xl bg-red-50 p-3 text-red-900">The receipts could not be loaded.</p>
-      <p v-if="loading && !loaded" role="status">Loading…</p>
-
-      <div v-if="loaded && items.length === 0 && !failed" class="card" data-testid="empty-wallet">
-        <p>No receipts yet. Scan a QR code at the till, or <NuxtLink to="/add" class="font-semibold underline">add an old receipt</NuxtLink>.</p>
+      <p v-if="failed" role="alert" class="rounded-lg border border-danger-border bg-danger-soft p-3 text-sm text-danger">{{ t('wallet.loadFailed') }}</p>
+      <div v-if="loading && !loaded" class="space-y-2">
+        <p role="status" class="flex items-center gap-2 text-sm text-text-secondary">
+          <Spinner role="presentation" aria-hidden="true" />
+          {{ t('common.loading') }}
+        </p>
+        <Skeleton class="h-16 w-full" />
+        <Skeleton class="h-16 w-full" />
       </div>
 
-      <section v-for="g in groups" :key="g.day" class="mb-5" data-testid="day-group" :data-day="g.day" :aria-label="formatDayHeading(g.day)">
-        <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-700" data-testid="day-heading">{{ formatDayHeading(g.day) }}</h2>
+      <div v-if="loaded && items.length === 0 && !failed" class="rounded-xl border border-border bg-card p-4" data-testid="empty-wallet">
+        <p class="text-text-secondary">{{ t('wallet.emptyPre') }}<NuxtLink to="/add" class="font-medium underline">{{ t('wallet.emptyLink') }}</NuxtLink>{{ t('wallet.emptyPost') }}</p>
+      </div>
+
+      <section v-for="g in groups" :key="g.day" data-testid="day-group" :data-day="g.day" :aria-label="formatDayHeading(g.day, undefined, locale)">
+        <h2 class="mb-2 text-label text-text-secondary" data-testid="day-heading">{{ formatDayHeading(g.day, undefined, locale) }}</h2>
         <ul class="space-y-2">
           <li v-for="r in g.items" :key="r.receiptId">
-            <NuxtLink :to="`/receipts/${r.receiptId}`" class="card flex items-center justify-between gap-3" data-testid="receipt-item" :data-receipt-id="r.receiptId" :data-state="r.state">
-              <span>
-                <span class="block font-semibold">{{ r.merchantName }}</span>
-                <span class="block text-sm text-slate-700">
-                  {{ formatTime(r.createdAt) }}
-                  <span v-if="r.state === 'presented'" class="ml-1 rounded bg-amber-100 px-2 py-0.5 text-amber-950">Bill</span>
-                  <span v-else-if="r.state === 'void'" class="ml-1 rounded bg-red-100 px-2 py-0.5 text-red-900">Void</span>
-                  <span v-else-if="r.final" class="ml-1 rounded bg-brand-100 px-2 py-0.5 text-brand-900">Final</span>
+            <NuxtLink
+              :to="`/receipts/${r.receiptId}`"
+              class="flex min-h-14 items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 text-foreground no-underline transition-shadow duration-150 hover:text-foreground hover:shadow-sm"
+              data-testid="receipt-item"
+              :data-receipt-id="r.receiptId"
+              :data-state="r.state"
+            >
+              <span class="min-w-0">
+                <span class="block truncate font-medium">{{ r.merchantName }}</span>
+                <span class="mt-0.5 flex items-center gap-2 text-sm text-text-secondary">
+                  {{ formatTime(r.createdAt, locale) }}
+                  <Badge v-if="r.state === 'void'" variant="danger">{{ t('wallet.badgeVoid') }}</Badge>
                 </span>
               </span>
-              <span class="font-semibold tabular-nums">{{ formatEuro(r.total) }}</span>
+              <span class="shrink-0 font-mono font-medium tabular-nums">{{ formatEuro(r.total, locale) }}</span>
             </NuxtLink>
           </li>
         </ul>
       </section>
 
-      <button v-if="nextCursor" type="button" class="btn btn-secondary w-full" :disabled="loading" data-testid="load-more" @click="load(true)">Load more</button>
+      <Button v-if="nextCursor" type="button" variant="secondary" size="lg" class="w-full" :disabled="loading" data-testid="load-more" @click="load(true)">{{ t('wallet.loadMore') }}</Button>
 
-      <section v-if="uploads.length > 0" class="mt-8" aria-labelledby="uploads-h" data-testid="uploads-section">
-        <h2 id="uploads-h" class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-700">Added photos</h2>
+      <section v-if="uploads.length > 0" aria-labelledby="uploads-h" data-testid="uploads-section">
+        <h2 id="uploads-h" class="mb-2 text-label text-text-secondary">{{ t('wallet.uploads') }}</h2>
         <ul class="space-y-2">
           <li v-for="u in uploads" :key="u.uploadId">
-            <NuxtLink :to="`/uploads/${u.uploadId}`" class="card block" data-testid="upload-item">
-              <span class="font-semibold">{{ u.draft?.merchantName ?? 'Unknown shop' }}</span>
-              <span class="block text-sm text-slate-700">{{ UPLOAD_LABEL[u.status] }}</span>
+            <NuxtLink :to="`/uploads/${u.uploadId}`" class="block rounded-lg border border-border bg-card p-4 text-foreground no-underline transition-shadow duration-150 hover:text-foreground hover:shadow-sm" data-testid="upload-item">
+              <span class="font-medium">{{ u.draft?.merchantName ?? t('common.unknownMerchant') }}</span>
+              <span class="block text-sm text-text-secondary">{{ tOr('upload', u.status) }}</span>
             </NuxtLink>
           </li>
         </ul>
       </section>
-    </template>
+    </div>
   </div>
 </template>

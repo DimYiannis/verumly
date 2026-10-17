@@ -13,8 +13,8 @@ test('merchant offline: 3 sales while the till is offline all reach the dashboar
 
   for (const sku of ['koffie', 'appeltaart', 'bier']) {
     await page.getByTestId(`sim-add-${sku}`).click();
-    await page.getByTestId('sim-pay-card').click();
-    await expect(page.getByTestId('sim-state')).toHaveText('paid');
+    await page.getByTestId('sim-issue').click();
+    await expect(page.getByTestId('sim-state')).toHaveText('issued');
     await page.getByTestId('sim-new-sale').click();
     await expect(page.getByTestId('sim-state')).toHaveText('none');
   }

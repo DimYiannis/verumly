@@ -52,10 +52,10 @@ When no real corpus exists in `fixtures/receipts-nl/`, the corpus tests and eval
 ## Phone demo
 
 1. Log into the dashboard (http://localhost:3000/dashboard), set up a demo terminal, open `/simulator` on the laptop.
-2. In the simulator, add items and press **Present**: a large QR appears.
-3. Scan the QR with the phone's own camera. The wallet opens the receipt (pre-bill banner "Not a final receipt — this is the bill, the final receipt follows after payment").
-4. Log in with the emailed code and press **Save this receipt?** → Save. The receipt is in the wallet.
-5. Edit the sale in the simulator (**Add item**), then **Pay card** / **Pay cash** (cash applies 5-cent rounding). The wallet shows the new version, and in NL `paid` is final. Push is sent on each new version if you opted in.
+2. In the simulator, add items and press **Issue receipt**: a large QR appears (an issued receipt is taken as paid).
+3. Scan the QR with the phone's own camera. The wallet opens the receipt.
+4. Log in (demo mode: **Fill in the demo account**, **Sign in**) and press **Save this receipt?** → Save. The receipt is in the wallet.
+5. Press **Void** in the simulator. The wallet shows the new version. Push is sent on each new version if you opted in.
 
 For a phone on the same Wi-Fi, set `RECEIPT_HOST` to the laptop's LAN address over HTTPS (service workers and push need a secure context), or use a tunnel.
 

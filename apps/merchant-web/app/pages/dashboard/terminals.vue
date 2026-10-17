@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { generateKeyPair } from '@lr/crypto';
+import { KeyRoundIcon } from '@lucide/vue';
 
 definePageMeta({ layout: 'dashboard', middleware: 'dashboard-auth' });
 
 interface Term { id: string; label: string; locationId: string; locationName: string; signingPublicKey: string; lastSeenAt: string | null; revokedAt: string | null; createdAt: string }
 interface Loc { id: string; name: string }
 
+const { t: tl } = useLocale();
 const rows = ref<Term[]>([]);
 const locations = ref<Loc[]>([]);
 const error = ref('');
@@ -55,51 +57,77 @@ async function revoke(id: string) {
 </script>
 
 <template>
-  <h1 class="mb-4 text-xl font-semibold">Terminals</h1>
-  <p v-if="error" class="mb-3 text-sm text-red-700" role="alert" data-testid="error">{{ error }}</p>
+  <AppPageHeading :title="tl('nav.terminals')" :description="tl('terminals.description')" />
+  <AppErrorNote v-if="error" data-testid="error">{{ error }}</AppErrorNote>
 
-  <div v-if="created" class="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4" data-testid="terminal-created">
-    <p class="mb-2 text-sm font-medium">Terminal API key — copy it now. It is shown only once and cannot be recovered.</p>
-    <code class="block break-all rounded bg-white p-2 text-sm" data-testid="terminal-key">{{ created.apiKey }}</code>
-    <p class="mt-2 text-xs text-slate-600">Terminal id: <code data-testid="terminal-id">{{ created.terminalId }}</code></p>
-    <button class="mt-3 rounded border border-slate-400 px-3 py-1 text-sm" data-testid="terminal-key-dismiss" @click="created = null">I have saved the key</button>
-  </div>
+  <Card v-if="created" class="border-warning-border bg-warning-soft" data-testid="terminal-created">
+    <CardHeader>
+      <CardTitle class="flex items-center gap-2 text-base"><KeyRoundIcon class="size-4" />{{ tl('terminals.keyTitle') }}</CardTitle>
+      <CardDescription class="text-text-secondary">{{ tl('terminals.keyHelp') }}</CardDescription>
+    </CardHeader>
+    <CardContent class="space-y-3">
+      <code class="block break-all rounded-md border bg-card p-3 font-mono text-sm" data-testid="terminal-key">{{ created.apiKey }}</code>
+      <p class="text-xs text-text-secondary">{{ tl('terminals.id') }} <code class="font-mono" data-testid="terminal-id">{{ created.terminalId }}</code></p>
+    </CardContent>
+    <CardFooter class="bg-transparent">
+      <Button variant="outline" data-testid="terminal-key-dismiss" @click="created = null">{{ tl('terminals.keySaved') }}</Button>
+    </CardFooter>
+  </Card>
 
-  <table class="w-full overflow-hidden rounded-lg border border-slate-200 bg-white text-sm">
-    <thead class="bg-slate-100 text-left"><tr><th class="p-2">Label</th><th class="p-2">Location</th><th class="p-2">Public key</th><th class="p-2">Last seen</th><th class="p-2">Status</th><th class="p-2" /></tr></thead>
-    <tbody>
-      <tr v-for="t in rows" :key="t.id" class="border-t border-slate-100" data-testid="terminal-row" :data-terminal-id="t.id">
-        <td class="p-2" data-testid="terminal-label-cell">{{ t.label }}</td>
-        <td class="p-2">{{ t.locationName }}</td>
-        <td class="p-2 font-mono text-xs">{{ t.signingPublicKey.slice(0, 12) }}…</td>
-        <td class="p-2">{{ t.lastSeenAt ? amsterdam(t.lastSeenAt) : '—' }}</td>
-        <td class="p-2" data-testid="terminal-status">{{ t.revokedAt ? 'revoked' : 'active' }}</td>
-        <td class="p-2 text-right">
-          <button v-if="!t.revokedAt" :class="confirming === t.id ? 'rounded bg-red-700 px-2 py-1 text-white' : 'text-red-700 underline'" :data-testid="confirming === t.id ? 'terminal-revoke-confirm' : 'terminal-revoke'" @click="revoke(t.id)">
-            {{ confirming === t.id ? 'Confirm revoke' : 'Revoke' }}
-          </button>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+  <Card>
+    <CardContent>
+      <div class="overflow-hidden rounded-md border">
+        <Table>
+          <TableHeader class="bg-muted [&_th]:text-xs [&_th]:font-medium [&_th]:text-text-secondary">
+            <TableRow class="hover:bg-muted"><TableHead class="px-4">{{ tl('common.label') }}</TableHead><TableHead>{{ tl('common.location') }}</TableHead><TableHead>{{ tl('terminals.publicKey') }}</TableHead><TableHead>{{ tl('terminals.lastSeen') }}</TableHead><TableHead>{{ tl('common.status') }}</TableHead><TableHead class="px-4" /></TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="t in rows" :key="t.id" class="h-[52px]" data-testid="terminal-row" :data-terminal-id="t.id">
+              <TableCell class="px-4 font-medium" data-testid="terminal-label-cell">{{ t.label }}</TableCell>
+              <TableCell>{{ t.locationName }}</TableCell>
+              <TableCell class="font-mono text-xs text-muted-foreground">{{ t.signingPublicKey.slice(0, 12) }}…</TableCell>
+              <TableCell>{{ t.lastSeenAt ? amsterdam(t.lastSeenAt) : '-' }}</TableCell>
+              <TableCell><AppStatusBadge :status="t.revokedAt ? 'revoked' : 'active'" data-testid="terminal-status" /></TableCell>
+              <TableCell class="px-4 text-right">
+                <Button v-if="!t.revokedAt" :variant="confirming === t.id ? 'destructive' : 'ghost'" :class="confirming === t.id ? '' : 'text-danger hover:text-danger'" :data-testid="confirming === t.id ? 'terminal-revoke-confirm' : 'terminal-revoke'" @click="revoke(t.id)">
+                  {{ confirming === t.id ? tl('terminals.confirmRevoke') : tl('terminals.revoke') }}
+                </Button>
+              </TableCell>
+            </TableRow>
+            <TableRow v-if="!rows.length" class="hover:bg-transparent"><TableCell colspan="6" class="h-[52px] text-center text-muted-foreground">{{ tl('terminals.empty') }}</TableCell></TableRow>
+          </TableBody>
+        </Table>
+      </div>
+    </CardContent>
+  </Card>
 
-  <form class="mt-6 max-w-2xl space-y-3 rounded-lg border border-slate-200 bg-white p-4" @submit.prevent="create">
-    <h2 class="font-medium">Register a terminal</h2>
-    <div class="flex flex-wrap gap-3">
-      <label class="text-sm">Label<input v-model="form.label" required data-testid="terminal-label" class="mt-1 block rounded border border-slate-300 px-3 py-2" /></label>
-      <label class="text-sm">Location
-        <select v-model="form.locationId" required data-testid="terminal-location" class="mt-1 block rounded border border-slate-300 px-3 py-2">
-          <option v-for="l in locations" :key="l.id" :value="l.id">{{ l.name }}</option>
-        </select>
-      </label>
-    </div>
-    <label class="block text-sm">Ed25519 public key (32 bytes, base64url) — the private key stays on the terminal
-      <input v-model="form.publicKey" required data-testid="terminal-public-key" class="mt-1 block w-full rounded border border-slate-300 px-3 py-2 font-mono text-xs" />
-    </label>
-    <div class="flex flex-wrap items-center gap-3">
-      <button type="button" class="rounded border border-slate-300 px-3 py-1 text-sm" data-testid="terminal-generate" @click="generate">Generate a keypair in this browser</button>
-      <button data-testid="terminal-create" class="rounded bg-slate-900 px-4 py-2 text-white">Create terminal</button>
-    </div>
-    <p v-if="generatedPrivateKey" class="text-xs text-slate-600">Private key (copy to the terminal now; it is never sent to the server): <code class="break-all" data-testid="terminal-private-key">{{ generatedPrivateKey }}</code></p>
-  </form>
+  <Card>
+    <form @submit.prevent="create">
+      <CardHeader>
+        <CardTitle class="text-base">{{ tl('terminals.register') }}</CardTitle>
+        <CardDescription>{{ tl('terminals.registerHelp') }}</CardDescription>
+      </CardHeader>
+      <CardContent class="mt-4 space-y-6">
+        <div class="grid gap-6 sm:grid-cols-2">
+          <div class="space-y-2"><Label for="terminal-label">{{ tl('common.label') }}</Label><Input id="terminal-label" v-model="form.label" required data-testid="terminal-label" /></div>
+          <div class="space-y-2">
+            <Label for="terminal-location">{{ tl('common.location') }}</Label>
+            <AppNativeSelect id="terminal-location" v-model="form.locationId" required data-testid="terminal-location">
+              <option v-for="l in locations" :key="l.id" :value="l.id">{{ l.name }}</option>
+            </AppNativeSelect>
+          </div>
+        </div>
+        <div class="space-y-2">
+          <Label for="terminal-public-key">{{ tl('terminals.publicKeyLabel') }}</Label>
+          <Input id="terminal-public-key" v-model="form.publicKey" required class="font-mono text-xs" data-testid="terminal-public-key" />
+          <p class="text-xs text-muted-foreground">{{ tl('terminals.publicKeyHelp') }}</p>
+        </div>
+        <p v-if="generatedPrivateKey" class="text-xs text-text-secondary">{{ tl('terminals.privateKey') }} <code class="break-all font-mono" data-testid="terminal-private-key">{{ generatedPrivateKey }}</code></p>
+      </CardContent>
+      <CardFooter class="mt-6 justify-end gap-2">
+        <Button type="button" variant="outline" data-testid="terminal-generate" @click="generate">{{ tl('terminals.generate') }}</Button>
+        <Button data-testid="terminal-create">{{ tl('terminals.create') }}</Button>
+      </CardFooter>
+    </form>
+  </Card>
 </template>

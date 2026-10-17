@@ -1,56 +1,52 @@
 <script setup lang="ts">
 import { ApiError } from '~/utils/api';
+import type { MessageKey } from '~/i18n';
 import type { Consents } from '~/utils/api-schemas';
 
 const model = defineModel<Consents>({ required: true });
 const wallet = useWallet();
-const error = ref<string | null>(null);
-const saved = ref('');
+const { t } = useLocale();
+const error = ref<MessageKey | null>(null);
+const saved = ref(false);
 
-const ROWS: { key: keyof Consents; label: string; hint: string }[] = [
-  { key: 'analytics', label: 'Insights', hint: 'Calculate spending per month, category and shop from your receipts.' },
-  { key: 'marketing', label: 'Offers', hint: 'Shops may show you offers. Off by default.' },
-  { key: 'push', label: 'Notifications', hint: 'Permission to send notifications when a receipt is updated.' },
+const ROWS: { key: keyof Consents; label: MessageKey; hint: MessageKey }[] = [
+  { key: 'analytics', label: 'consent.analytics', hint: 'consent.analyticsHint' },
+  { key: 'marketing', label: 'consent.marketing', hint: 'consent.marketingHint' },
+  { key: 'push', label: 'consent.push', hint: 'consent.pushHint' },
 ];
-
-function onChange(key: keyof Consents, event: Event) {
-  if (event.target instanceof HTMLInputElement) void toggle(key, event.target.checked);
-}
 
 async function toggle(key: keyof Consents, value: boolean) {
   error.value = null;
-  saved.value = '';
+  saved.value = false;
   const previous = model.value[key];
   model.value = { ...model.value, [key]: value };
   try {
     model.value = (await wallet.api.putConsents({ [key]: value })).consents;
-    saved.value = 'Saved.';
+    saved.value = true;
   } catch (e) {
     model.value = { ...model.value, [key]: previous };
-    error.value = e instanceof ApiError && e.isNetwork ? 'No connection; the change was not saved.' : 'Saving failed.';
+    error.value = e instanceof ApiError && e.isNetwork ? 'consent.err.offline' : 'consent.err.failed';
   }
 }
 </script>
 
 <template>
-  <fieldset class="card space-y-3" data-testid="consents">
-    <legend class="px-1 font-semibold">Permissions</legend>
-    <div v-for="row in ROWS" :key="row.key" class="flex items-start gap-3">
-      <input
+  <fieldset class="space-y-4 rounded-xl border border-border bg-card p-4" data-testid="consents">
+    <legend class="px-1 text-h3 font-semibold">{{ t('consent.title') }}</legend>
+    <div v-for="row in ROWS" :key="row.key" class="flex items-start justify-between gap-4">
+      <Label :for="`consent-${row.key}`" class="block min-h-11 flex-1 cursor-pointer py-1 text-base font-normal text-foreground">
+        <span class="block font-medium">{{ t(row.label) }}</span>
+        <span class="mt-0.5 block text-sm text-text-secondary">{{ t(row.hint) }}</span>
+      </Label>
+      <Switch
         :id="`consent-${row.key}`"
-        type="checkbox"
-        role="switch"
-        class="mt-1 size-6 shrink-0 accent-brand-700"
-        :checked="model[row.key]"
+        class="mt-2"
+        :model-value="model[row.key]"
         :data-testid="`consent-${row.key}`"
-        @change="onChange(row.key, $event)"
+        @update:model-value="(v: boolean) => toggle(row.key, v)"
       />
-      <label :for="`consent-${row.key}`">
-        <span class="block font-medium">{{ row.label }}</span>
-        <span class="block text-sm text-slate-800">{{ row.hint }}</span>
-      </label>
     </div>
-    <p role="status" data-testid="consent-status" class="text-sm text-slate-800">{{ saved }}</p>
-    <p v-if="error" role="alert" class="text-red-800">{{ error }}</p>
+    <p role="status" data-testid="consent-status" class="text-sm text-text-secondary">{{ saved ? t('consent.saved') : '' }}</p>
+    <p v-if="error" role="alert" class="text-sm text-danger">{{ t(error) }}</p>
   </fieldset>
 </template>

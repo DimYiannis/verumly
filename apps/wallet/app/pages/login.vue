@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { z } from 'zod';
 
+const { t } = useLocale();
 const wallet = useWallet();
 const route = useRoute();
 
@@ -19,8 +20,8 @@ async function done() {
 
 <template>
   <section class="space-y-4">
-    <h1 class="text-2xl font-bold">Log in</h1>
-    <p>Enter your email address. You will receive a 6-digit code; no password needed.</p>
-    <div class="card"><EmailLogin @done="done" /></div>
+    <h1 class="text-h1 font-semibold">{{ t('login.title') }}</h1>
+    <p class="text-text-secondary">{{ t('login.body') }}</p>
+    <div class="rounded-xl border border-border bg-card p-4"><EmailLogin @done="done" /></div>
   </section>
 </template>
