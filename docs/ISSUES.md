@@ -175,3 +175,5 @@ Big issues found in the code review (2026-10-16) and still open. Tick an item wh
 
 - **P3: designs that need data we do not have yet:** per-week insights and a Month/Year switch in the wallet; per-line confidence on scanned receipts; reminders ("Remind Anna"); terminal offline queue, location revenue and "last seen" on users in the dashboard; an Audit pack export; an accountant e-mail switch.
 - **P3: the dashboard greeting uses the e-mail name** (the session has no display name); "Arrived late" uses a 10 minute threshold chosen without a product decision.
+
+- **P3: overview location filter** fetches 60 archive rows and filters by location name in the browser (the archive endpoint has no location parameter), so a location with only old receipts can show fewer than 8 rows.

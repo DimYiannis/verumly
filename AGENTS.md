@@ -88,7 +88,7 @@ Users from `pnpm db:seed`: dashboard `owner@example.test` / `owner-dev-password`
 
 ## UI book (implemented)
 
-The approved designs live in the Claude Design canvas "Less Receipts UI book" (https://claude.ai/artifact/MapqD7ATs6xcnxDrbnMhLy, private to the owner). Chosen directions: wallet **Home A**, **Receipt B** (people first), **Friends B** (activity feed); the business dashboard follows the book as drawn.
+The approved designs live in the Claude Design canvas "Less Receipts UI book" (https://claude.ai/artifact/MapqD7ATs6xcnxDrbnMhLy, private to the owner). Chosen directions: wallet **Home A**, **Receipt B** (people first), **Friends B** (activity feed); the business dashboard follows the book, with the **live operations overview (Home B)** as its landing page (today's sales by hour against the usual weekday, terminals, what needs a look, top items, last receipts).
 
 - Wallet routes: `/` is the Home (month so far, balances, recent), `/receipts` the list, `/receipts/<id>` the people-first detail, `/friends` the activity feed. Tabs: Home, Receipts, + (add), Friends, Insights; settings via the avatar.
 - API for them: `GET /v1/me/home` and `GET /v1/me/activity` (apps/buyer-api/src/routes/home.ts, contract in packages/schema/src/social.ts).
