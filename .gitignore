@@ -12,3 +12,4 @@ coverage
 *.sqlite
 .local
 .env.supabase
+.env.qianfan

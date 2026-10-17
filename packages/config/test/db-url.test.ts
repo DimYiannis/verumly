@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adminDbUrl, dbEnvSchema, loadEnv, roleDbUrl, sessionModeWarning, urlPort } from '../src/index.ts';
+import { adminDbUrl, adminPoolMax, bossPoolMax, dbEnvSchema, loadEnv, poolMax, roleDbUrl, sessionModeWarning, urlPort } from '../src/index.ts';
 
 const env = (vars: Record<string, string>) => loadEnv(dbEnvSchema, vars);
 const ALL = {
@@ -58,5 +58,38 @@ describe('transaction pooler guard', () => {
     expect(w).not.toContain('p1');
     expect(w).not.toContain('pooler.example');
     expect(sessionModeWarning('WORKER_DB_URL', ALL.WORKER_DB_URL)).toBeUndefined();
+  });
+});
+
+describe('pool sizes', () => {
+  const HOSTED = {
+    PG_ADMIN_URL: 'postgres://postgres.ref:p@host:5432/postgres',
+    MERCHANT_API_DB_URL: 'postgres://merchant_api.ref:p@host:6543/postgres',
+    BUYER_API_DB_URL: 'postgres://buyer_api.ref:p@host:6543/postgres',
+    WORKER_DB_URL: 'postgres://worker.ref:p@host:5432/postgres',
+    DASHBOARD_DB_URL: 'postgres://dashboard.ref:p@host:6543/postgres',
+  };
+
+  it('keeps the local defaults (10 query, 4 pg-boss, 4 admin) when no URL variable is set', () => {
+    const e = env({});
+    expect([poolMax(e), bossPoolMax(e), adminPoolMax(e)]).toEqual([10, 4, 4]);
+  });
+
+  it('uses small defaults (3, 2, 2) on a hosted database: one app is at most 5 connections per role, well under 15', () => {
+    const e = env(HOSTED);
+    expect([poolMax(e), bossPoolMax(e), adminPoolMax(e)]).toEqual([3, 2, 2]);
+    expect(poolMax(e) + bossPoolMax(e)).toBeLessThanOrEqual(15);
+  });
+
+  it('PG_POOL_MAX, PG_BOSS_POOL_MAX and PG_ADMIN_POOL_MAX override the defaults in both modes', () => {
+    const set = { PG_POOL_MAX: '6', PG_BOSS_POOL_MAX: '3', PG_ADMIN_POOL_MAX: '1' };
+    for (const base of [{}, HOSTED]) {
+      const e = env({ ...base, ...set });
+      expect([poolMax(e), bossPoolMax(e), adminPoolMax(e)]).toEqual([6, 3, 1]);
+    }
+  });
+
+  it('rejects a pool size that is not a positive whole number', () => {
+    for (const bad of ['0', '-1', '2.5', 'many']) expect(() => env({ PG_POOL_MAX: bad })).toThrow(/PG_POOL_MAX/);
   });
 });
