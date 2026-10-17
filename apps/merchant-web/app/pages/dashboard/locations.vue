@@ -10,6 +10,7 @@ const canWrite = computed(() => session.value.user?.role !== 'accountant');
 const rows = ref<Loc[]>([]);
 const termCount = ref<Record<string, number>>({});
 const error = ref('');
+const refusal = ref<PlanRefusal | null>(null);
 const draft = reactive({ name: '', address: '', postcode: '' });
 const editing = ref<string | null>(null);
 const edit = reactive({ name: '', address: '', postcode: '' });
@@ -39,7 +40,7 @@ function focusForm() {
 }
 
 async function add() {
-  if (await attempt(error, () => $fetch<unknown>('/api/dashboard/locations', { method: 'POST', body: body(draft) }))) {
+  if (await attemptPlan(error, refusal, () => $fetch<unknown>('/api/dashboard/locations', { method: 'POST', body: body(draft) }))) {
     Object.assign(draft, { name: '', address: '', postcode: '' });
     await load();
   }
@@ -64,6 +65,7 @@ async function remove(id: string) {
     <Button v-if="canWrite" data-testid="location-new" @click="focusForm"><PlusIcon />{{ t('adm.loc.add') }}</Button>
   </AppPageHeading>
   <AppErrorNote v-if="error" data-testid="error">{{ error }}</AppErrorNote>
+  <AppPlanRefusal v-if="refusal" :code="refusal" />
 
   <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
     <div class="flex flex-col gap-3">

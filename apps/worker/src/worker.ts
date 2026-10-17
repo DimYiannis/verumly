@@ -1,6 +1,7 @@
 import type { ExportJob, ExtractUploadJob, NotifyVersionJob, PgBoss, RollupDailyJob } from '@lr/db';
 import { QUEUES } from '@lr/db';
 import type { WorkerCtx } from './context.ts';
+import { billingRenewals } from './jobs/billing-renewals.ts';
 import { categorise } from './jobs/categorise.ts';
 import { runExport } from './jobs/export.ts';
 import { extractUpload } from './jobs/extract-upload.ts';
@@ -15,6 +16,8 @@ export const SCHEDULES = {
   retention: '30 3 * * *',
   /** every 10 minutes: categorise lines of newly ingested receipts */
   categorise: '*/10 * * * *',
+  /** every 15 minutes: trial ends, renewals, retries and the end of the grace period */
+  billingRenewals: '*/15 * * * *',
 } as const;
 
 /** Register every job handler and the cron schedules on a started pg-boss (role `worker`, `schedule: true`). */
@@ -38,7 +41,11 @@ export async function registerJobs(boss: PgBoss, ctx: WorkerCtx, opts: { polling
   await boss.work(QUEUES.categorise, poll, async () => {
     await categorise(ctx);
   });
+  await boss.work(QUEUES.billingRenewals, poll, async () => {
+    await billingRenewals(ctx);
+  });
   await boss.schedule(QUEUES.rollupDaily, SCHEDULES.rollupDaily, {}, { tz: 'Europe/Amsterdam' });
   await boss.schedule(QUEUES.retention, SCHEDULES.retention, {}, { tz: 'Europe/Amsterdam' });
   await boss.schedule(QUEUES.categorise, SCHEDULES.categorise, {}, { tz: 'Europe/Amsterdam' });
+  await boss.schedule(QUEUES.billingRenewals, SCHEDULES.billingRenewals, {}, { tz: 'Europe/Amsterdam' });
 }

@@ -36,6 +36,7 @@ Object.assign(process.env, {
   MERCHANT_API_URL: `http://127.0.0.1:${merchantPort}`,
   DASHBOARD_COOKIE_SECURE: 'false',
   DASHBOARD_ENCRYPTION_KEY: Buffer.alloc(32, 9).toString('base64'),
+  DEMO_MODE: 'false',
 });
 
 await setup({ rootDir: fileURLToPath(new URL('..', import.meta.url)), server: true, build: true, dev: false });
@@ -118,7 +119,7 @@ describe('security envelope', () => {
   });
 
   it('requires a session for every dashboard endpoint', async () => {
-    for (const p of ['org', 'locations', 'terminals', 'users', 'archive', 'exports', 'reports?from=2026-01-01&to=2026-01-02']) {
+    for (const p of ['org', 'locations', 'terminals', 'users', 'archive', 'exports', 'reports?from=2026-01-01&to=2026-01-02', 'billing', 'billing/notice', 'billing/invoices']) {
       expect((await new Browser().req(`/api/dashboard/${p}`)).status, p).toBe(401);
     }
   });
@@ -232,11 +233,53 @@ describe('dashboard flow over HTTP', () => {
   });
 
   it('serves the simulator and dashboard pages', async () => {
-    for (const p of ['/simulator', '/dashboard/login', '/dashboard/archive']) {
+    for (const p of ['/simulator', '/dashboard/login', '/dashboard/archive', '/dashboard/billing', '/billing/checkout/00000000-0000-4000-8000-000000000000']) {
       const res = await fetch(url(p));
       expect(res.status, p).toBe(200);
       expect(res.headers.get('x-frame-options')).toBe('DENY');
     }
+  });
+});
+
+describe('billing over HTTP (runs last: it moves the organisation to Starter)', () => {
+  it('owner: trial → checkout → pay (card 4242) → active, invoice PDF; the plan limit is a 402 with its code', async () => {
+    const owner = await signInOwner();
+    expect(await (await owner.req('/api/dashboard/billing/notice')).json()).toEqual({ notice: null });
+    const before = (await (await owner.req('/api/dashboard/billing')).json()) as { status: string; canSimulateRenewal: boolean };
+    expect(before.status).toBe('trialing');
+    const started = await owner.post('/api/dashboard/billing/checkout', { plan: 'starter', interval: 'monthly' });
+    expect(started.status).toBe(200);
+    const { id } = (await started.json()) as { id: string };
+    const checkout = (await (await owner.req(`/api/dashboard/billing/checkout/${id}`)).json()) as { merchantName: string; net: number; vat: number; gross: number };
+    expect(checkout).toMatchObject({ net: 1900, vat: 399, gross: 2299 });
+    expect(checkout.merchantName).toBeTruthy();
+    expect((await owner.post(`/api/dashboard/billing/checkout/${id}/pay`, { method: 'card', number: '4242 4242 4242 4241', expiry: '12/30', cvc: '123' })).status).toBe(400);
+    const paid = await owner.post(`/api/dashboard/billing/checkout/${id}/pay`, { method: 'card', number: '4242 4242 4242 4242', expiry: '12/30', cvc: '123' });
+    expect(await paid.json()).toMatchObject({ status: 'paid' });
+    const after = (await (await owner.req('/api/dashboard/billing')).json()) as { status: string; plan: string; method: string };
+    expect(after).toMatchObject({ status: 'active', plan: 'starter', method: 'Card •••• 4242' });
+    const invoices = (await (await owner.req('/api/dashboard/billing/invoices')).json()) as Array<{ id: string; number: string }>;
+    expect(invoices).toHaveLength(1);
+    const pdf = await owner.req(`/api/dashboard/billing/invoices/${invoices[0]!.id}/pdf`);
+    expect(pdf.status).toBe(200);
+    expect(pdf.headers.get('content-type')).toBe('application/pdf');
+    expect(pdf.headers.get('content-disposition')).toContain(invoices[0]!.number);
+    // starter allows one location: the second is refused with 402 and the code the page uses for its Billing link
+    const refused = await owner.post('/api/dashboard/locations', { name: 'Tweede zaak' });
+    expect(refused.status).toBe(402);
+    expect(((await refused.json()) as { data?: { code?: string } }).data?.code).toBe('plan_limit');
+    // the demo renewal button follows DEMO_MODE, which is off here
+    expect(before.canSimulateRenewal).toBe(false);
+    expect((await owner.post('/api/dashboard/billing/simulate-renewal', {})).status).toBe(404);
+  });
+
+  it('accountant reads billing and invoices but cannot start a checkout or change the plan', async () => {
+    const acct = await signInAccountant();
+    expect((await acct.req('/api/dashboard/billing')).status).toBe(200);
+    expect((await acct.req('/api/dashboard/billing/invoices')).status).toBe(200);
+    expect((await acct.post('/api/dashboard/billing/checkout', { plan: 'business', interval: 'monthly' })).status).toBe(403);
+    expect((await acct.post('/api/dashboard/billing/change', { plan: 'business', interval: 'monthly' })).status).toBe(403);
+    expect((await acct.post('/api/dashboard/billing/cancel', {})).status).toBe(403);
   });
 });
 

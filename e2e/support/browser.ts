@@ -5,10 +5,10 @@ import { clearMailFor, mailpitCode } from './mailpit.ts';
 
 const screenshotDir = fileURLToPath(new URL('../../docs/e2e-screenshots/', import.meta.url));
 
-/** One named screenshot per key step, kept in the repo (`docs/e2e-screenshots/<name>.png`). */
+/** One named screenshot per key step, kept in the repo (`docs/e2e-screenshots/<name>.png`). Transitions are finished first. */
 export async function shot(page: Page, name: string): Promise<void> {
   mkdirSync(screenshotDir, { recursive: true });
-  await page.screenshot({ path: `${screenshotDir}${name}.png` });
+  await page.screenshot({ path: `${screenshotDir}${name}.png`, animations: 'disabled' });
 }
 
 /**

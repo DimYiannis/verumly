@@ -1,6 +1,7 @@
 import { asc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { tables, withOrg, type Db } from '@lr/db';
+import { assertPlanAllows } from './billing.ts';
 import { DashboardError, isForeignKeyViolation } from './errors.ts';
 import { requireRole, type Actor } from './roles.ts';
 
@@ -33,7 +34,10 @@ export async function listLocations(db: Db, actor: Actor) {
 export async function createLocation(db: Db, actor: Actor, input: unknown) {
   requireRole(actor, 'locations.write');
   const v = parse(input);
-  const [row] = await withOrg(db, actor.orgId, (tx) => tx.insert(tables.locations).values({ ...v, orgId: actor.orgId }).returning(cols));
+  const [row] = await withOrg(db, actor.orgId, async (tx) => {
+    await assertPlanAllows(tx, actor.orgId, 'locations');
+    return tx.insert(tables.locations).values({ ...v, orgId: actor.orgId }).returning(cols);
+  });
   return row!;
 }
 

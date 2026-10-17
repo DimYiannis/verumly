@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { generateVAPIDKeys } from 'web-push';
+import { demoProvider } from '@lr/billing';
 import { loadEnv, s3EnvSchema } from '@lr/config';
 import { connect, type DbHandle } from '@lr/db';
 import { createLocation, createOrg, createTerminal } from '@lr/db/provision';
@@ -38,6 +39,7 @@ export async function createWorkerWorld(opts: { leadThreshold?: number } = {}): 
     extractor: recordedExtractor(MOCK_FIXTURES),
     vapid: { subject: 'mailto:test@receipts.test', ...vapid },
     leadThreshold: opts.leadThreshold ?? 20,
+    payments: demoProvider,
     log: () => {},
     now: () => new Date(),
   };

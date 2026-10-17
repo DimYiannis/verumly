@@ -4,9 +4,10 @@ import { fileURLToPath } from 'node:url';
 import { and, count, desc, eq, isNull, or } from 'drizzle-orm';
 import { z } from 'zod';
 import { MemoryStore, TerminalSdk, type DraftLine } from '@lr/terminal-sdk';
+import { addInterval, amsterdamYear, paymentProvider, priceFor, VAT_RATE } from '@lr/billing';
 import { createMerchantUser } from '@lr/dashboard-core';
 import { loadEnv, usesDbUrls } from '@lr/config';
-import { connect, connectAdmin, tables, type Db } from '@lr/db';
+import { connect, connectAdmin, sql, tables, type Db } from '@lr/db';
 import { createLocation, createOrg, createTerminal } from '@lr/db/provision';
 import { parseExtraction, truthPrintedAtUtc } from '@lr/receipt-nl';
 import { createObjectStore } from '@lr/storage';
@@ -198,6 +199,7 @@ export async function runSeed(opts: SeedOptions): Promise<SeedResult> {
       await createMerchantUser(db, { orgId: org.id, email: SEED.ownerEmail, password: SEED.ownerPassword, role: 'owner' });
       log(`dashboard user ${SEED.ownerEmail} / ${SEED.ownerPassword} (dev only; TOTP is enrolled at first login)`);
     }
+    await seedSubscription(db, org.id, now, log);
     let [buyer] = await db.select({ id: tables.users.id }).from(tables.users).where(eq(tables.users.email, SEED.buyerEmail));
     if (!buyer) [buyer] = await db.insert(tables.users).values({ email: SEED.buyerEmail }).returning({ id: tables.users.id });
     const buyerId = buyer!.id;
@@ -308,6 +310,7 @@ export async function runSeed(opts: SeedOptions): Promise<SeedResult> {
       extractor: createExtractor(opts.env),
       vapid: null,
       leadThreshold: opts.env.LEAD_THRESHOLD,
+      payments: paymentProvider(opts.env.BILLING_PROVIDER),
       log: () => {},
       now: () => now,
     };
@@ -350,6 +353,52 @@ export async function runSeed(opts: SeedOptions): Promise<SeedResult> {
     await merchantHandle.close();
     await admin.close();
   }
+}
+
+/**
+ * Café Het Plein pays for Business monthly with a card (demo test card 4242): the current period started about ten days
+ * ago, and the two periods so far each have a paid invoice. Skipped when the organisation already has a subscription.
+ */
+async function seedSubscription(db: Db, orgId: string, now: Date, log: (line: string) => void): Promise<void> {
+  const [existing] = await db.select({ orgId: tables.subscriptions.orgId }).from(tables.subscriptions).where(eq(tables.subscriptions.orgId, orgId));
+  if (existing) return;
+  const previous = new Date(now.getTime() - 40 * 86_400_000);
+  const current = addInterval(previous, 'monthly');
+  const end = addInterval(current, 'monthly');
+  const label = 'Card •••• 4242';
+  const [mandate] = await db.insert(tables.billingMandates).values({ orgId, method: 'card', label, failsRenewals: false, createdAt: previous }).returning({ id: tables.billingMandates.id });
+  await db.insert(tables.subscriptions).values({
+    orgId,
+    plan: 'business',
+    interval: 'monthly',
+    status: 'active',
+    currentPeriodStart: current,
+    currentPeriodEnd: end,
+    mandateId: mandate!.id,
+    createdAt: previous,
+    updatedAt: current,
+  });
+  const amounts = priceFor('business', 'monthly');
+  for (const [start, stop] of [[previous, current], [current, end]] as const) {
+    const seq = await db.execute<{ n: string }>(sql`select nextval('merchant.invoice_number_seq')::text as n`);
+    await db.insert(tables.invoices).values({
+      orgId,
+      number: `LR-${amsterdamYear(start)}-${seq.rows[0]!.n.padStart(6, '0')}`,
+      plan: 'business',
+      interval: 'monthly',
+      periodStart: start,
+      periodEnd: stop,
+      netMinor: amounts.net,
+      vatRate: VAT_RATE,
+      vatMinor: amounts.vat,
+      grossMinor: amounts.gross,
+      status: 'paid',
+      methodLabel: label,
+      paidAt: start,
+      createdAt: start,
+    });
+  }
+  log(`subscription: Business monthly, ${label}, 2 paid invoices`);
 }
 
 /** The "official" side of an upload match: a second organisation (the corpus merchant) with a paid receipt at the printed time. */

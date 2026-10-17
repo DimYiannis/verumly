@@ -4,11 +4,12 @@ import { DashboardError, ForbiddenError, requireRole, resolveSession, SESSION_TT
 import { getCtx, type Ctx } from './ctx.ts';
 import { useEnv } from './env.ts';
 
-const STATUS = { validation: 400, not_found: 404, conflict: 409, unauthenticated: 401 } as const;
+// plan_inactive / plan_limit: 402 Payment Required; the code travels in `data` so the page can offer the Billing link
+const STATUS = { validation: 400, not_found: 404, conflict: 409, unauthenticated: 401, plan_inactive: 402, plan_limit: 402 } as const;
 
 /** Domain errors become their HTTP status; anything else is a bare 500 (error text can contain SQL parameters). */
 function toHttpError(e: unknown) {
-  if (e instanceof DashboardError) return createError({ statusCode: STATUS[e.code], statusMessage: e.message });
+  if (e instanceof DashboardError) return createError({ statusCode: STATUS[e.code], statusMessage: e.message, data: { code: e.code } });
   if (e instanceof ForbiddenError) return createError({ statusCode: 403, statusMessage: 'forbidden' });
   if (e instanceof z.ZodError) return createError({ statusCode: 400, statusMessage: 'invalid request' });
   if (typeof e === 'object' && e !== null && 'statusCode' in e) return e;

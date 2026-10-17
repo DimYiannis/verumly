@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { BILLING_PROVIDERS } from '@lr/billing';
 import { dbEnvSchema, loadEnv, s3EnvSchema } from '@lr/config';
 
 /** Public development key (see .env.example). Only used outside production. */
@@ -14,11 +15,20 @@ const envSchema = dbEnvSchema.extend(s3EnvSchema.shape).extend({
   LOGIN_RATE_LIMIT: z.coerce.number().int().positive().default(20),
   /** demo sign-in as the seeded owner, no TOTP typing. On outside production unless set; never enable it on a real deployment */
   DEMO_MODE: z.stringbool().default(process.env.NODE_ENV !== 'production'),
+  /** payment provider for merchant subscriptions; only the demo provider exists (no money moves) */
+  BILLING_PROVIDER: z.enum(BILLING_PROVIDERS).default('demo'),
+  /**
+   * the "Simulate renewal now" button on the Billing page. Follows DEMO_MODE unless set; the E2E stack runs with
+   * DEMO_MODE=false (to cover TOTP) and turns this on by itself
+   */
+  BILLING_SIMULATE_RENEWAL: z.stringbool().optional(),
 });
 
 export interface WebEnv extends z.infer<typeof envSchema> {
   encryptionKey: string;
   cookieSecure: boolean;
+  /** BILLING_SIMULATE_RENEWAL, defaulting to DEMO_MODE */
+  billingSimulation: boolean;
 }
 
 let cached: WebEnv | undefined;
@@ -32,6 +42,11 @@ export function useEnv(): WebEnv {
   if (Buffer.from(encryptionKey, 'base64').length !== 32) {
     throw new Error('Invalid environment:\n  DASHBOARD_ENCRYPTION_KEY: required in production, must be 32 bytes base64');
   }
-  cached = { ...e, encryptionKey, cookieSecure: e.DASHBOARD_COOKIE_SECURE ? e.DASHBOARD_COOKIE_SECURE === 'true' : production };
+  cached = {
+    ...e,
+    encryptionKey,
+    cookieSecure: e.DASHBOARD_COOKIE_SECURE ? e.DASHBOARD_COOKIE_SECURE === 'true' : production,
+    billingSimulation: e.BILLING_SIMULATE_RENEWAL ?? e.DEMO_MODE,
+  };
   return cached;
 }

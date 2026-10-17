@@ -33,10 +33,10 @@ async function until<T>(read: () => Promise<T | undefined>, what: string, timeou
 }
 
 describe('pg-boss wiring (role `worker`)', () => {
-  it('registers the three cron schedules (rollup, retention, categorise)', async () => {
+  it('registers the four cron schedules (rollup, retention, categorise, billing renewals)', async () => {
     const schedules = await workerBoss.getSchedules();
     expect(schedules.map((s) => [s.name, s.cron]).sort()).toEqual(
-      [[QUEUES.categorise, SCHEDULES.categorise], [QUEUES.retention, SCHEDULES.retention], [QUEUES.rollupDaily, SCHEDULES.rollupDaily]].sort(),
+      [[QUEUES.categorise, SCHEDULES.categorise], [QUEUES.retention, SCHEDULES.retention], [QUEUES.rollupDaily, SCHEDULES.rollupDaily], [QUEUES.billingRenewals, SCHEDULES.billingRenewals]].sort(),
     );
   });
 

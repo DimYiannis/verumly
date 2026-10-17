@@ -185,3 +185,12 @@ Big issues found in the code review (2026-10-16) and still open. Tick an item wh
 
 - **P3: WebP logos are left out of the PDF** (pdfkit reads PNG and JPEG only). The designer now saves PNG, else JPEG; a logo saved earlier as WebP shows in the wallet but not in the PDF until it is uploaded again.
 - **P3: PDF wording is English** (labels such as Rate, Net, VAT, Card), whatever the wallet language is.
+
+## Billing (merchant subscriptions)
+
+- **P2: no real payment provider.** Only the demo provider exists; Mollie (iDEAL first payment, SEPA Direct Debit mandate, webhooks, refunds, chargebacks) is the next step behind `PaymentProvider`.
+- **P2: no proration.** Upgrades and downgrades take effect at the next renewal; there is no immediate upgrade with a prorated charge or credit.
+- **P2: no dunning e-mails.** A failed renewal shows a dashboard banner only; nobody is e-mailed before the plan stops after 7 days, and there are no receipts of payment by e-mail.
+- **P2: EU reverse charge is not handled.** Every invoice charges Dutch BTW 21%, also for a business in another EU country with a valid VAT id.
+- **P2: invoices lack legal fields.** The PDF is a demo invoice: no seller address, KvK and BTW-id of Less Receipts, no buyer address, no credit notes; failed attempts also take an invoice number. Not a tax invoice.
+- **P3: limits are checked when adding, not afterwards.** Moving from Business to Starter keeps existing extra locations and terminals; only new ones are refused.

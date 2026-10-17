@@ -55,3 +55,24 @@ Authenticated (`Authorization: Bearer <session token>`; email code via Mailpit l
 ## Dashboard (merchant-web)
 
 Nitro routes under `/api/dashboard/**`, session cookie (httpOnly, SameSite=Lax) after password and TOTP; roles owner, manager, accountant (read-only). The browser simulator reaches merchant-api through the same-origin proxy `/sim-api/**`.
+
+### Billing (`/api/dashboard/billing/**`)
+
+Demo payments only (see RUNNING.md "Billing (demo payments)"). Read: owner and accountant (`billing.read`); changes: owner (`billing.write`); managers get 403. Amounts are euro cents; `net` excludes BTW, `vat` is 21%, `gross` includes it.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/dashboard/billing` | Subscription: `status` (`trialing`, `active`, `past_due`, `canceled`), plan, interval, trial/period dates, pending change, method label, next charge, usage and limits, `canSimulateRenewal`. Creates the 14-day trial on first call. |
+| GET | `/api/dashboard/billing/notice` | Any signed-in role: `{ notice: null \| { kind: 'inactive' } \| { kind: 'past_due' } \| { kind: 'trial_ending', daysLeft } }` for the banner. |
+| GET | `/api/dashboard/billing/invoices` | Invoices, newest first. |
+| GET | `/api/dashboard/billing/invoices/:id/pdf` | Invoice PDF (`invoice-<number>.pdf`). |
+| POST | `/api/dashboard/billing/checkout` | `{ plan: 'starter' \| 'business', interval: 'monthly' \| 'annual' }` → `{ id }`. Refused (409) while the subscription is active. |
+| GET | `/api/dashboard/billing/checkout/:id` | Checkout summary (merchant name, net, vat, gross, period, status). Another organisation's id → 404. |
+| POST | `/api/dashboard/billing/checkout/:id/pay` | `{ method: 'card', number, expiry: 'MM/YY', cvc }` or `{ method: 'ideal', bank }` → `{ status: 'paid', invoiceId }` or `{ status: 'failed', reason }`. Bad format → 400; expired or already completed → 409. |
+| POST | `/api/dashboard/billing/change` | `{ plan, interval }`: scheduled for the next renewal (active only). |
+| DELETE | `/api/dashboard/billing/change` | Undo the scheduled change. |
+| POST | `/api/dashboard/billing/cancel` | Cancel at the end of the period. |
+| POST | `/api/dashboard/billing/resume` | Undo the cancel before the period ends. |
+| POST | `/api/dashboard/billing/simulate-renewal` | Demo only (`BILLING_SIMULATE_RENEWAL`, default `DEMO_MODE`; else 404): ends the period now and renews → `{ result: 'renewed' \| 'renewal_failed' \| 'ended' \| 'skipped' }`. |
+
+`POST /api/dashboard/locations` and `POST /api/dashboard/terminals` answer **402** with `data.code` `plan_inactive` (canceled subscription) or `plan_limit` (Starter: 1 location, 2 active terminals).

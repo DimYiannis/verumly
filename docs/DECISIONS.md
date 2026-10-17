@@ -476,3 +476,53 @@ Not built in this run, by design:
 ## Postgres 17
 
 The Supabase project runs PostgreSQL 17.11, so `docker-compose.yml` and the CI service use `postgres:17` (was 16). The full local suite was re-run on a fresh 17.11 volume. One CPU-bound test in `packages/receipt-nl` (the single-digit-corruption sweep) exceeded vitest's default 5 s limit on a loaded machine; it now has an explicit 120 s timeout. Its assertion is unchanged.
+
+## Billing (merchant subscriptions, demo payments)
+
+- **Demo provider only.** `BILLING_PROVIDER` accepts only `demo`; payments are decided by test inputs (cards 4242 / 0341 / 0002, iDEAL bank "Demo: weigeren") in `@lr/billing`. The provider sits behind a `PaymentProvider` interface (`firstPayment`, `chargeMandate`) so Mollie (iDEAL first payment + SEPA recurring) can be added without touching the lifecycle. Card numbers and CVC only pass through the provider call; the database keeps a method label (`Card •••• 4242`).
+- **Prices are B2B and exclude BTW.** Starter €19/€190, Business €49/€490 net; BTW 21% is added per invoice (`vat = round(net × 21 / 100)` half-up). Money is always shown as excl., BTW and incl.
+- **No proration.** A plan or interval change on an active subscription is stored as `pending_plan`/`pending_interval` and applied at the next renewal; it can be undone until then. Cancel = `cancel_at_period_end`, resumable until the period ends.
+- **Never block ingest or reading.** Billing is enforced only in the dashboard: a canceled subscription refuses new locations and terminals (`plan_inactive`), Starter refuses a 2nd location and a 3rd active terminal (`plan_limit`). Both are HTTP 402 with `data.code`, so the page links to Billing. merchant-api, the archive, reports and exports ignore billing. `merchant_api` and `buyer_api` have no grant on any billing table (proven in `packages/db/test/roles.test.ts`).
+- **Lazy trial.** There is no backfill: `ensureSubscription` inserts a 14-day Business trial the first time an organisation's subscription is read (Billing page, banner, or a location/terminal create). Existing organisations therefore get their trial when they next use the dashboard.
+- **Periods on the Amsterdam wall clock.** Monthly adds a calendar month with end-of-month clamping, annual a year (29 Feb → 28 Feb), computed on Europe/Amsterdam dates and stored as timestamptz, so a renewal keeps its local time across summer time.
+- **Renewal engine lives in dashboard-core** (`renewSubscription`, `runRenewals`) and is called by the worker job `billing-renewals` (every 15 minutes, role `worker`) and by the demo button (role `dashboard`, via `withOrg`). Each subscription is processed on a `FOR UPDATE` row lock, and a partial unique index (`org_id, period_start` where `status = 'paid'`) makes paying a period twice impossible.
+- **Retries and grace.** A failed renewal applies any pending change, records a failed invoice and sets `past_due`; the worker retries once per 24 h; after 7 days in `past_due` the subscription is `canceled`. A successful retry starts the new period at the original period end (no free days).
+- **Checkout is also allowed from `past_due`** (not only `trialing`/`canceled`): this is how "update your payment method" works in the demo. The new payment starts a fresh period at payment time and replaces the mandate. Two checkouts for an already active subscription are refused.
+- **Failed renewals get an invoice number too** (`LR-<year>-<6 digits>`, one global sequence `merchant.invoice_number_seq`), so the invoices table shows every attempt. The year is the Amsterdam year of the invoice date.
+- **Banner for every role, details only for owner and accountant.** `GET /api/dashboard/billing/notice` tells any signed-in user whether the plan is inactive, past due or the trial ends within 3 days; the Billing page needs `billing.read` (owner, accountant) and changes need `billing.write` (owner). Managers see the banner with "ask the owner".
+- **"Simulate renewal now" follows `DEMO_MODE`, overridable with `BILLING_SIMULATE_RENEWAL`.** DEPARTURE from "only when DEMO_MODE is on": the Playwright stack runs with `DEMO_MODE=false` to cover TOTP, and the billing E2E needs the button, so `e2e/global-setup.ts` sets `BILLING_SIMULATE_RENEWAL=true`. The route answers 404 when the flag is off.
+- **Checkout page** `/billing/checkout/<id>` is outside the dashboard layout (a PSP-like page) but behind the dashboard session, and needs `billing.write`. A checkout is open for 30 minutes; an expired one is marked `expired` when next opened or paid. Another organisation's checkout is a 404 (RLS).
+
+## Billing UI restyle (decision fragment)
+
+Branch `feat/subscription`. Front-end only: no API route, request shape or behaviour changed.
+
+## Decisions
+
+- **Settings-page layout.** `/dashboard/billing` is four hairline-separated sections (Plan, Usage, Payment method, Invoices), each with a small heading on the left (above on a phone) and its content on the right. No cards inside cards. Reusable pieces, each used several times: `AppSettingsSection` (4 sections), `AppUsageMeter` (locations, terminals), `AppNotice` (payment result, simulated renewal, plan banner, plan refusal, checkout demo banner).
+- **Plan chooser is a dialog**, not a page section. `billing-change-plan` opens it (label "Choose a plan" as the primary action on a trial or after the plan ended, "Change plan" as a quiet outline button otherwise). Its content and rules are unchanged: monthly/annual toggle with the "2 months free" badge, one card per plan, and the same per-plan action (checkout for trial/canceled/past due, "Switch at next renewal" or "Undo change" on an active plan). Selecting a plan on a trial still creates the checkout session and goes to `/billing/checkout/<id>`; scheduling a change closes the dialog.
+- **Cancel is a confirm dialog** (`AlertDialog`) instead of the inline two-step button. The copy says access continues until the period end. A cancelling plan hides "Next renewal" (no renewal happens) and shows the end date sentence, with **Resume plan** as the primary action.
+- **Price in plain words** ("€40,83 per month, billed yearly (€490,00 excl. BTW)") and the next renewal with the amount incl. BTW. The pending change reads "Switches to Starter (monthly) on 17 Oct 2027." (was "Changes to ..."); the e2e assertion changed to match.
+- **Usage bars** against the plan limit: primary colour, amber from 80 %, red when over the limit, with one sentence of advice (`bill.usage.advice.near` / `.over`). Unlimited limits show "N · Unlimited" without a bar; no limits object (inactive plan) shows the count only. `role="progressbar"` with a value text.
+- **Past due and grace** are not duplicated on the page: the dashboard-wide banner (`AppBillingBanner`, top of every page, same `AppNotice` look) carries the message, and the Plan section shows "Next payment attempt", "Plan stops on" and the help sentence.
+- **Demo helper moved**: "Simulate renewal now" lives in a small dashed "Demo tools" footer row, shown under the same condition as before (`canSimulateRenewal`, owner, active or past due).
+- **Invoices** are a real `<table>` that becomes stacked rows below 768 px with CSS only (one DOM, so every `data-testid` stays unique). The PDF download stays (the API has `GET /api/dashboard/billing/invoices/:id/pdf`). Empty state is a sentence (`invoice-empty`).
+- **Checkout** is one centred column in one card: order summary on top (paying as, plan, billing, period, net, BTW, total), the payment form below, test inputs under the pay button. Field errors get `aria-invalid`, `aria-describedby`, `role="alert"` and an icon. Behaviour is untouched (validation before sending, 900 ms processing state, redirect to the Billing page with `?payment=success|failed`; a declined card shows the failure banner there).
+- **No dark mode** (the theme is "Light mode only"), so none was added.
+- **Loading** uses skeletons with the height of the real content (28 px first line in every section) so nothing jumps.
+
+## Not possible without new API (left read-only on purpose)
+
+- **Update card for an active plan**: no route exists (`startCheckout` refuses an active subscription: "schedule a change instead"). The payment-method row is read-only (label from `GET /api/dashboard/billing`, e.g. `Card •••• 4242`, plus the sentence that the method is chosen at checkout). The only existing way to pay with another method is the past-due flow, so the row shows **Pay now with another method** (`billing-pay-again`, the unchanged `payAgain` that creates a checkout for the current plan) only when the plan is past due. There is no card brand in the API (only a label), so the row shows a generic card icon, or a bank icon for an iDEAL label.
+
+## Test ids
+
+Kept: all ids the e2e specs used (`billing-status`, `billing-plan`, `billing-method`, `billing-next`, `billing-pending`, `billing-undo`, `billing-interval-*`, `billing-two-months-free`, `plan-card-*`, `plan-choose-*`, `billing-payment-success|failed`, `billing-simulate`, `billing-simulated`, `billing-banner*`, `invoice-row|number|status|pdf`, all `checkout-*`, `plan-refusal-*`).
+Added: `billing-current` (plan section; the card of the same name was removed), `billing-usage` (section), `billing-usage-locations|terminals|advice`, `billing-method-section`, `billing-invoices`, `billing-price`, `billing-change-plan`, `billing-cancel`, `billing-cancel-dialog|keep|confirm`, `plan-dialog`, `plan-current-*`, `invoice-empty`, `billing-demo-tools`.
+Removed: `billing-change` (renamed `billing-change-plan`), `billing-ends` (the end date is inside `billing-canceled-at-end`). Neither was used by a spec.
+
+## e2e spec changes (`e2e/billing.spec.ts`)
+
+- The plan chooser is now a dialog, so every step that clicked `billing-interval-*` or `plan-choose-*` first clicks `billing-change-plan` (helper `payWithCard`, the trial test, the plan-change step).
+- `billing-pending` now contains `Switches to Starter (monthly)` (was `Changes to Starter (monthly)`): the copy changed, the assertion is as strict as before.
+- Added assertions (price sentence, unlimited usage, empty invoices, trial end date, the dialog closing after scheduling a change) and one test: amber usage bar at the limit, the cancel dialog (keep, confirm, resume), then a second location (new `provisionLocation` helper in `e2e/support/world.ts`, straight in the database because the dashboard refuses it) makes the bar red with advice. It is one test on purpose: the dashboard login limiter (20 requests per IP per 5 minutes, see DECISIONS.md) trips the 12th spec of the suite when billing logs in five times instead of four.

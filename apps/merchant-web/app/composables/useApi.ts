@@ -49,3 +49,46 @@ export function euro(cents: number): string {
 export function amsterdam(iso: string | Date): string {
   return new Intl.DateTimeFormat(useLocale().intlLocale.value, { dateStyle: 'short', timeStyle: 'medium', timeZone: 'Europe/Amsterdam' }).format(new Date(iso));
 }
+
+/** A date (no time) on the Amsterdam calendar, in the chosen language. */
+export function amsterdamDay(iso: string | Date): string {
+  return new Intl.DateTimeFormat(useLocale().intlLocale.value, { dateStyle: 'medium', timeZone: 'Europe/Amsterdam' }).format(new Date(iso));
+}
+
+export type PlanRefusal = 'plan_limit' | 'plan_inactive';
+
+/** The dashboard refuses a new location or terminal with 402 and `data.code` = plan_limit / plan_inactive. */
+export function planRefusal(e: unknown): PlanRefusal | null {
+  if (typeof e !== 'object' || e === null || !('data' in e)) return null;
+  const body = e.data;
+  const data = typeof body === 'object' && body !== null && 'data' in body ? body.data : null;
+  const code = typeof data === 'object' && data !== null && 'code' in data ? data.code : null;
+  return code === 'plan_limit' || code === 'plan_inactive' ? code : null;
+}
+
+/** Like `attempt`, but a plan refusal lands in `refusal` (the page shows it with a link to Billing) instead of `error`. */
+export async function attemptPlan<T>(error: Ref<string>, refusal: Ref<PlanRefusal | null>, fn: () => Promise<T>): Promise<T | undefined> {
+  error.value = '';
+  refusal.value = null;
+  try {
+    return await fn();
+  } catch (e) {
+    const code = planRefusal(e);
+    if (code) refusal.value = code;
+    else error.value = errorMessage(e);
+    return undefined;
+  }
+}
+
+export type BillingNotice = { kind: 'inactive' } | { kind: 'past_due' } | { kind: 'trial_ending'; daysLeft: number } | null;
+
+export const billingNotice = () => useState<BillingNotice>('billing-notice', () => null);
+
+/** Reloads the plan banner (after sign-in, navigation, or a change on the Billing page). Failures keep the last state. */
+export async function refreshBillingNotice(): Promise<void> {
+  try {
+    billingNotice().value = (await $fetch<{ notice: BillingNotice }>('/api/dashboard/billing/notice')).notice;
+  } catch {
+    /* banner only: the page itself reports errors */
+  }
+}

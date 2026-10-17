@@ -30,4 +30,12 @@ describe('env validation', () => {
     await expect(load({ DASHBOARD_ENCRYPTION_KEY: Buffer.alloc(16).toString('base64') })).rejects.toThrow(/32 bytes/);
     await expect(load({ MERCHANT_API_URL: 'not a url', DASHBOARD_ENCRYPTION_KEY: '' })).rejects.toThrow(/MERCHANT_API_URL/);
   });
+
+  it('billing: only the demo provider; the renewal simulation follows DEMO_MODE unless set', async () => {
+    expect((await load({ NODE_ENV: 'development' })).BILLING_PROVIDER).toBe('demo');
+    await expect(load({ BILLING_PROVIDER: 'mollie' })).rejects.toThrow(/BILLING_PROVIDER/);
+    expect((await load({ DEMO_MODE: 'true' })).billingSimulation).toBe(true);
+    expect((await load({ DEMO_MODE: 'false' })).billingSimulation).toBe(false);
+    expect((await load({ DEMO_MODE: 'false', BILLING_SIMULATE_RENEWAL: 'true' })).billingSimulation).toBe(true);
+  });
 });

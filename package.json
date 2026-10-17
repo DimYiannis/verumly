@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",
+    "@lr/billing": "workspace:*",
     "@lr/buyer-api": "workspace:*",
     "@lr/config": "workspace:*",
     "@lr/crypto": "workspace:*",

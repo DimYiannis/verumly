@@ -1,10 +1,12 @@
-import { LocalKeyProvider, makeS3, type AuthDeps } from '@lr/dashboard-core';
+import { paymentProvider } from '@lr/billing';
+import { LocalKeyProvider, makeS3, type AuthDeps, type BillingDeps } from '@lr/dashboard-core';
 import { connect, makeBoss, type PgBoss } from '@lr/db';
 import { useEnv } from './env.ts';
 
 export interface Ctx {
   deps: AuthDeps;
   s3: { client: ReturnType<typeof makeS3>; bucket: string };
+  billing: BillingDeps;
 }
 
 interface Shared {
@@ -30,6 +32,7 @@ export function getCtx(): Ctx {
       client: makeS3({ endpoint: env.S3_ENDPOINT, region: env.S3_REGION, bucket: env.S3_BUCKET, accessKey: env.S3_ACCESS_KEY, secretKey: env.S3_SECRET_KEY }),
       bucket: env.S3_BUCKET,
     },
+    billing: { provider: paymentProvider(env.BILLING_PROVIDER), now: () => new Date() },
   };
   return shared.ctx;
 }

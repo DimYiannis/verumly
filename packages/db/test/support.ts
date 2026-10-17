@@ -67,6 +67,20 @@ export async function seedOrg(admin: pg.Pool, n: number): Promise<SeededOrg> {
   await admin.query("insert into merchant.receipt_lines (receipt_id, org_id, line_no, kind, description, qty, unit_price_minor, total_minor) values ($1, $2, 1, 'item', 'Koffie', '2', 340, 680)", [receiptId, orgId]);
   await admin.query("insert into merchant.daily_rollups (location_id, org_id, day) values ($1, $2, current_date)", [locationId, orgId]);
   await admin.query("insert into merchant.exports (org_id, kind, period_from, period_to) values ($1, 'csv', current_date, current_date)", [orgId]);
+  // billing: a mandate, the subscription on it, a checkout and a paid invoice
+  const mandateId = await one("insert into merchant.billing_mandates (org_id, method, label) values ($1, 'card', 'Card •••• 4242') returning id", [orgId]);
+  await admin.query(
+    "insert into merchant.subscriptions (org_id, plan, interval, status, current_period_start, current_period_end, mandate_id) values ($1, 'business', 'monthly', 'active', now(), now() + interval '1 month', $2)",
+    [orgId, mandateId],
+  );
+  await admin.query(
+    "insert into merchant.payment_sessions (org_id, plan, interval, net_minor, vat_minor, gross_minor, status, created_by, expires_at) values ($1, 'business', 'monthly', 4900, 1029, 5929, 'paid', $2, now() + interval '30 minutes')",
+    [orgId, userId],
+  );
+  await admin.query(
+    "insert into merchant.invoices (org_id, number, plan, interval, period_start, period_end, net_minor, vat_minor, gross_minor, status, method_label, paid_at) values ($1, $2, 'business', 'monthly', now(), now() + interval '1 month', 4900, 1029, 5929, 'paid', 'Card •••• 4242', now())",
+    [orgId, `LR-2026-${String(n).padStart(6, '0')}`],
+  );
   return { orgId, locationId, terminalId, userId, receiptId, kvk, email };
 }
 

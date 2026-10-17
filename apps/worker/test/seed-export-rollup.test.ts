@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import pg from 'pg';
+import { demoProvider } from '@lr/billing';
 import { adminDbUrl, loadEnv } from '@lr/config';
 import { connect, type DbHandle } from '@lr/db';
 import { createTestDb, type TestDb } from '@lr/db/testing';
@@ -26,7 +27,7 @@ beforeAll(async () => {
   seeded = await runSeed({ env, secretsPath: false, log: () => {} });
   worker = connect('worker', testDb.env);
   admin = new pg.Pool({ connectionString: adminDbUrl(testDb.env), max: 2 });
-  ctx = { db: worker.db, s3: createObjectStore(env), extractor: recordedExtractor(env.FIXTURES_DIR), vapid: null, leadThreshold: 20, log: () => {}, now: () => new Date() };
+  ctx = { db: worker.db, s3: createObjectStore(env), extractor: recordedExtractor(env.FIXTURES_DIR), vapid: null, leadThreshold: 20, payments: demoProvider, log: () => {}, now: () => new Date() };
 }, 180_000);
 
 afterAll(async () => {
@@ -119,11 +120,21 @@ describe('seed (v2 §15)', () => {
     expect(loadCorpus({ quiet: true }).kind).toMatch(/mock|real/);
   });
 
+  it('gives the café an active Business monthly subscription on card 4242 with 2 paid invoices', async () => {
+    const sub = await admin.query("select s.plan, s.interval, s.status, s.current_period_end > now() as current, m.label from merchant.subscriptions s join merchant.billing_mandates m on m.id = s.mandate_id where s.org_id = $1", [seeded.orgId]);
+    expect(sub.rows).toEqual([{ plan: 'business', interval: 'monthly', status: 'active', current: true, label: 'Card •••• 4242' }]);
+    const inv = await admin.query("select status, gross_minor, period_start < now() as past from merchant.invoices where org_id = $1 order by period_start", [seeded.orgId]);
+    expect(inv.rows).toEqual([
+      { status: 'paid', gross_minor: 5929, past: true },
+      { status: 'paid', gross_minor: 5929, past: true },
+    ]);
+  });
+
   it('is idempotent: a second run adds nothing', async () => {
-    const before = await admin.query('select (select count(*) from merchant.receipts) r, (select count(*) from buyer.claims) c, (select count(*) from buyer.uploads) u, (select count(*) from merchant.organizations) o, (select count(*) from merchant.terminals) t, (select count(*) from buyer.users) b');
+    const before = await admin.query('select (select count(*) from merchant.receipts) r, (select count(*) from buyer.claims) c, (select count(*) from buyer.uploads) u, (select count(*) from merchant.organizations) o, (select count(*) from merchant.terminals) t, (select count(*) from buyer.users) b, (select count(*) from merchant.invoices) i, (select count(*) from merchant.billing_mandates) m');
     const again = await runSeed({ env, secretsPath: false, log: () => {} });
     expect(again.created).toEqual({ receipts: 0, claims: 0, uploads: 0, terminals: 0 });
-    const after = await admin.query('select (select count(*) from merchant.receipts) r, (select count(*) from buyer.claims) c, (select count(*) from buyer.uploads) u, (select count(*) from merchant.organizations) o, (select count(*) from merchant.terminals) t, (select count(*) from buyer.users) b');
+    const after = await admin.query('select (select count(*) from merchant.receipts) r, (select count(*) from buyer.claims) c, (select count(*) from buyer.uploads) u, (select count(*) from merchant.organizations) o, (select count(*) from merchant.terminals) t, (select count(*) from buyer.users) b, (select count(*) from merchant.invoices) i, (select count(*) from merchant.billing_mandates) m');
     expect(after.rows).toEqual(before.rows);
     expect(SEED.receiptTarget).toBe(200);
   });

@@ -171,7 +171,12 @@ export function buildPdfDefinition(crf: Crf, template: ReceiptTemplate | null, o
   };
 }
 
+/** Any pdfmake document definition as PDF bytes, with the standard fonts above (Helvetica, Times, Courier). */
+export async function renderPdf(definition: object): Promise<Uint8Array> {
+  return pdfmake.createPdf(definition).getBuffer();
+}
+
 /** A PDF of one receipt version, in the merchant's design (the default design when none was saved). */
 export async function renderReceiptPdf(crf: Crf, template: ReceiptTemplate | null, opts: PdfOptions = {}): Promise<Uint8Array> {
-  return pdfmake.createPdf(buildPdfDefinition(crf, template, opts)).getBuffer();
+  return renderPdf(buildPdfDefinition(crf, template, opts));
 }
