@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { and, count, desc, eq, isNull, or } from 'drizzle-orm';
 import { z } from 'zod';
 import { MemoryStore, TerminalSdk, type DraftLine } from '@lr/terminal-sdk';
+import { paymentProvider } from '@lr/billing';
 import { createMerchantUser } from '@lr/dashboard-core';
 import { loadEnv } from '@lr/config';
 import { connect, connectAdmin, tables, type Db } from '@lr/db';
@@ -307,6 +308,7 @@ export async function runSeed(opts: SeedOptions): Promise<SeedResult> {
       extractor: createExtractor(opts.env),
       vapid: null,
       leadThreshold: opts.env.LEAD_THRESHOLD,
+      payments: paymentProvider(opts.env.BILLING_PROVIDER),
       log: () => {},
       now: () => now,
     };

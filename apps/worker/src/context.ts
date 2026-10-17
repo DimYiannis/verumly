@@ -1,3 +1,4 @@
+import type { PaymentProvider } from '@lr/billing';
 import type { Db } from '@lr/db';
 import type { ObjectStore } from '@lr/storage';
 import type { Extractor } from './extractor.ts';
@@ -18,6 +19,8 @@ export interface WorkerCtx {
   vapid: VapidConfig | null;
   /** distinct uploaders after which an unknown merchant becomes a lead (`status = 'new'`); v2 default 20 */
   leadThreshold: number;
+  /** merchant subscription renewals (`BILLING_PROVIDER`; only the demo provider exists) */
+  payments: PaymentProvider;
   log: (event: string, fields?: Record<string, string | number | boolean | null>) => void;
   now: () => Date;
 }

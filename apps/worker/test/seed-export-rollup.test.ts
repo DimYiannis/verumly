@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import pg from 'pg';
+import { demoProvider } from '@lr/billing';
 import { adminDbUrl, loadEnv } from '@lr/config';
 import { connect, type DbHandle } from '@lr/db';
 import { createTestDb, type TestDb } from '@lr/db/testing';
@@ -26,7 +27,7 @@ beforeAll(async () => {
   seeded = await runSeed({ env, secretsPath: false, log: () => {} });
   worker = connect('worker', testDb.env);
   admin = new pg.Pool({ connectionString: adminDbUrl(testDb.env), max: 2 });
-  ctx = { db: worker.db, s3: createObjectStore(env), extractor: recordedExtractor(env.FIXTURES_DIR), vapid: null, leadThreshold: 20, log: () => {}, now: () => new Date() };
+  ctx = { db: worker.db, s3: createObjectStore(env), extractor: recordedExtractor(env.FIXTURES_DIR), vapid: null, leadThreshold: 20, payments: demoProvider, log: () => {}, now: () => new Date() };
 }, 180_000);
 
 afterAll(async () => {

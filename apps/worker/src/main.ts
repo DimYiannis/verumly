@@ -1,3 +1,4 @@
+import { paymentProvider } from '@lr/billing';
 import { loadEnv, resolveVapid } from '@lr/config';
 import { connect, makeBoss } from '@lr/db';
 import { createObjectStore } from '@lr/storage';
@@ -18,6 +19,7 @@ const ctx: WorkerCtx = {
   extractor: createExtractor(env),
   vapid: vapid ? { subject: env.VAPID_SUBJECT, ...vapid } : null,
   leadThreshold: env.LEAD_THRESHOLD,
+  payments: paymentProvider(env.BILLING_PROVIDER),
   // ids and counts only: never emails, receipt content, endpoints or keys (v2 §2.9)
   log: (event, fields = {}) => console.log(JSON.stringify({ level: 'info', event, ...fields })),
   now: () => new Date(),
