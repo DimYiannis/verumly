@@ -130,7 +130,22 @@ describe('row-level security: org A cannot see or touch org B', () => {
     { role: 'merchant_api', tables: ['organizations', 'locations', 'terminals', 'receipts', 'receipt_versions', 'receipt_lines'] },
     {
       role: 'dashboard',
-      tables: ['organizations', 'locations', 'terminals', 'merchant_users', 'dashboard_sessions', 'receipts', 'receipt_versions', 'receipt_lines', 'daily_rollups', 'exports'],
+      tables: [
+        'organizations',
+        'locations',
+        'terminals',
+        'merchant_users',
+        'dashboard_sessions',
+        'receipts',
+        'receipt_versions',
+        'receipt_lines',
+        'daily_rollups',
+        'exports',
+        'subscriptions',
+        'billing_mandates',
+        'payment_sessions',
+        'invoices',
+      ],
     },
   ];
   const orgColumn = (t: string) => (t === 'organizations' ? 'id' : 'org_id');
@@ -287,6 +302,72 @@ describe('column and table grants: terminals, merchant_users and key material', 
       expect(await attempt(pool(role), 'create table merchant.sneaky (x int)'), role).toMatchObject(DENIED);
       expect(await attempt(pool(role), 'create schema sneaky'), role).toMatchObject({ ok: false, code: '42501' });
     }
+  });
+});
+
+describe('billing: only the dashboard and the worker reach subscriptions, mandates, checkouts and invoices', () => {
+  const BILLING = ['merchant.billing_mandates', 'merchant.invoices', 'merchant.payment_sessions', 'merchant.subscriptions'];
+
+  it('the merchant tables are the known ones (a new table must be classified here before it can escape the billing checks)', async () => {
+    expect(await tablesIn(['merchant'])).toEqual([
+      'merchant.billing_mandates',
+      'merchant.daily_rollups',
+      'merchant.dashboard_sessions',
+      'merchant.exports',
+      'merchant.invoices',
+      'merchant.locations',
+      'merchant.merchant_users',
+      'merchant.organizations',
+      'merchant.payment_sessions',
+      'merchant.receipt_lines',
+      'merchant.receipt_versions',
+      'merchant.receipts',
+      'merchant.report_views',
+      'merchant.subscriptions',
+      'merchant.terminals',
+    ]);
+  });
+
+  it.each(['merchant_api', 'buyer_api'] as const)('%s: SELECT, INSERT, UPDATE, DELETE and TRUNCATE on every billing table → permission denied; no invoice numbers', async (role) => {
+    for (const t of BILLING) {
+      for (const [kind, text] of [
+        ['select *', `select * from ${t}`],
+        ['select count', `select count(*) from ${t}`],
+        ['insert', `insert into ${t} default values`],
+        ['update', `update ${t} set org_id = org_id where false`],
+        ['delete', `delete from ${t} where false`],
+        ['truncate', `truncate ${t}`],
+      ] as const) {
+        expect(await attempt(pool(role), text, { orgId: a.orgId }), `${role}: ${kind} ${t}`).toMatchObject(DENIED);
+      }
+    }
+    expect(await attempt(pool(role), "select nextval('merchant.invoice_number_seq')")).toMatchObject(DENIED);
+  });
+
+  it('dashboard: reads, inserts and updates its own billing rows, never deletes or truncates them', async () => {
+    const asA = { orgId: a.orgId };
+    for (const t of BILLING) {
+      expect(await attempt(pool('dashboard'), `update ${t} set org_id = org_id`, asA), `update ${t}`).toMatchObject({ ok: true, rowCount: 1 });
+      expect(await attempt(pool('dashboard'), `delete from ${t}`, asA), `delete ${t}`).toMatchObject(DENIED);
+      expect(await attempt(pool('dashboard'), `truncate ${t}`, asA), `truncate ${t}`).toMatchObject(DENIED);
+    }
+    expect(await attempt(pool('dashboard'), "insert into merchant.billing_mandates (org_id, method, label) values ($1, 'ideal', 'iDEAL · ING')", { ...asA, params: [a.orgId] })).toMatchObject({ ok: true, rowCount: 1 });
+    expect(await attempt(pool('dashboard'), "insert into merchant.billing_mandates (org_id, method, label) values ($1, 'ideal', 'iDEAL · ING')", { ...asA, params: [b.orgId] })).toMatchObject(RLS);
+    expect(await attempt(pool('dashboard'), "update merchant.subscriptions set status = 'canceled' where org_id = $1", { ...asA, params: [b.orgId] })).toMatchObject({ ok: true, rowCount: 0 });
+    expect(await attempt(pool('dashboard'), "select nextval('merchant.invoice_number_seq') > 0 as ok")).toMatchObject({ ok: true, rows: [{ ok: true }] });
+  });
+
+  it('worker: subscriptions and invoices of every organisation (renewals), mandates read-only, no checkouts', async () => {
+    for (const t of ['merchant.subscriptions', 'merchant.invoices']) {
+      expect(await attempt(pool('worker'), `select org_id from ${t}`), t).toMatchObject({ ok: true, rowCount: 2 });
+      expect(await attempt(pool('worker'), `update ${t} set org_id = org_id`), t).toMatchObject({ ok: true, rowCount: 2 });
+      expect(await attempt(pool('worker'), `delete from ${t}`), t).toMatchObject(DENIED);
+    }
+    expect(await attempt(pool('worker'), 'select label, fails_renewals from merchant.billing_mandates')).toMatchObject({ ok: true, rowCount: 2 });
+    expect(await attempt(pool('worker'), "update merchant.billing_mandates set label = 'x'")).toMatchObject(DENIED);
+    expect(await attempt(pool('worker'), "insert into merchant.billing_mandates (org_id, method, label) values ($1, 'card', 'x')", { params: [a.orgId] })).toMatchObject(DENIED);
+    expect(await attempt(pool('worker'), 'select * from merchant.payment_sessions')).toMatchObject(DENIED);
+    expect(await attempt(pool('worker'), "select nextval('merchant.invoice_number_seq') > 0 as ok")).toMatchObject({ ok: true, rows: [{ ok: true }] });
   });
 });
 

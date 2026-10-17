@@ -184,6 +184,98 @@ export const exportsTable = merchant.table('exports', {
   createdAt: ts('created_at').notNull().defaultNow(),
 });
 
+// ---- billing: the organisation's own subscription (merchants pay, buyers stay free). See @lr/billing.
+
+/** Invoice numbers `LR-<year>-<nextval padded to 6>`: one sequence for every organisation, so numbers never repeat. */
+export const invoiceNumberSeq = merchant.sequence('invoice_number_seq');
+
+/** A recurring-payment authorisation. Only a label is kept (`Card •••• 4242`), never card numbers or CVC. */
+export const billingMandates = merchant.table('billing_mandates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  orgId: uuid('org_id').notNull().references(() => organizations.id),
+  method: text('method').notNull(),
+  label: text('label').notNull(),
+  /** demo flag (test card 4000 0000 0000 0341): renewals on this mandate fail */
+  failsRenewals: boolean('fails_renewals').notNull().default(false),
+  createdAt: ts('created_at').notNull().defaultNow(),
+  revokedAt: ts('revoked_at'),
+});
+
+/** One row per organisation, created lazily (a 14-day trial) on first access. */
+export const subscriptions = merchant.table('subscriptions', {
+  orgId: uuid('org_id')
+    .primaryKey()
+    .references(() => organizations.id),
+  plan: text('plan').notNull(),
+  interval: text('interval').notNull(),
+  status: text('status').notNull(),
+  trialEndsAt: ts('trial_ends_at'),
+  currentPeriodStart: ts('current_period_start'),
+  currentPeriodEnd: ts('current_period_end'),
+  cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
+  pendingPlan: text('pending_plan'),
+  pendingInterval: text('pending_interval'),
+  mandateId: uuid('mandate_id').references(() => billingMandates.id),
+  pastDueSince: ts('past_due_since'),
+  lastChargeAttemptAt: ts('last_charge_attempt_at'),
+  createdAt: ts('created_at').notNull().defaultNow(),
+  updatedAt: ts('updated_at').notNull().defaultNow(),
+});
+
+/** A checkout: one attempt to pay for a plan, open for 30 minutes. */
+export const paymentSessions = merchant.table(
+  'payment_sessions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: uuid('org_id')
+      .notNull()
+      .references(() => organizations.id),
+    plan: text('plan').notNull(),
+    interval: text('interval').notNull(),
+    netMinor: integer('net_minor').notNull(),
+    vatMinor: integer('vat_minor').notNull(),
+    grossMinor: integer('gross_minor').notNull(),
+    currency: text('currency').notNull().default('EUR'),
+    status: text('status').notNull().default('pending'),
+    failureReason: text('failure_reason'),
+    /** the merchant (dashboard) user who started it */
+    createdBy: uuid('created_by').notNull(),
+    createdAt: ts('created_at').notNull().defaultNow(),
+    expiresAt: ts('expires_at').notNull(),
+    completedAt: ts('completed_at'),
+  },
+  (t) => [index('payment_sessions_org_idx').on(t.orgId, t.createdAt)],
+);
+
+export const invoices = merchant.table(
+  'invoices',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: uuid('org_id')
+      .notNull()
+      .references(() => organizations.id),
+    /** `LR-<year>-<6-digit sequence>` */
+    number: text('number').notNull().unique(),
+    plan: text('plan').notNull(),
+    interval: text('interval').notNull(),
+    periodStart: ts('period_start').notNull(),
+    periodEnd: ts('period_end').notNull(),
+    netMinor: integer('net_minor').notNull(),
+    vatRate: smallint('vat_rate').notNull().default(21),
+    vatMinor: integer('vat_minor').notNull(),
+    grossMinor: integer('gross_minor').notNull(),
+    status: text('status').notNull(),
+    methodLabel: text('method_label'),
+    paidAt: ts('paid_at'),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('invoices_org_idx').on(t.orgId, t.createdAt),
+    // a period is never paid twice
+    uniqueIndex('invoices_paid_period_uq').on(t.orgId, t.periodStart).where(sql`status = 'paid'`),
+  ],
+);
+
 // ---------------------------------------------------------------- buyer
 
 export const users = buyer.table('users', {
