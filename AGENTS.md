@@ -81,6 +81,11 @@ Users from `pnpm db:seed`: dashboard `owner@example.test` / `owner-dev-password`
 - Backend: `apps/buyer-api/src/routes/social.ts` and `splits.ts`, math in `split-math.ts` (pure, unit tested), contract in `packages/schema/src/social.ts`, tables in the `buyer` schema (migration 0006). The merchant roles cannot reach any of it (`pnpm --filter @lr/db test` checks every buyer table).
 - Demo users from `pnpm db:seed`: Sam (`buyer@example.test`, handle `sam`) and Anna (`anna@example.test`, handle `anna`), already friends, with one split. The wallet login has a button for each.
 
+## Custom reports (business side)
+
+- `/dashboard/reports` is a report builder: period presets, group by (day, week, month, weekday, hour, location, terminal, payment method, VAT rate, category), selectable metrics, filters (location, terminal, payment), compare with the previous period, chart + table, CSV and print. Setups can be saved as named **views** shared in the organisation (`merchant.report_views`, RLS by org, migration 0007); "Daily sales" and "VAT return" are built in.
+- Engine: `packages/dashboard-core/src/report-builder.ts` (`runReport`, one SQL statement over the latest version of every `paid`/`void` receipt, Amsterdam days); contract in `packages/schema/src/reports.ts`. Grouping by payment, VAT rate or category counts parts of a receipt, so some metrics do not apply there (the API says which in `notes`).
+
 ## Frontend conventions (design system copied from Salespore)
 
 - Tailwind 4 + shadcn-vue (reka-ui), icons from `@lucide/vue`, font Outfit (JetBrains Mono for amounts and technical values).

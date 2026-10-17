@@ -164,3 +164,9 @@ Big issues found in the code review (2026-10-16) and still open. Tick an item wh
 - **P2: invites are single use and expire after 30 days.** A general friend-invite link works once. Guest slots of a split get a fresh link on demand (the earlier one stops working).
 - **P2: privacy review.** Sharing a receipt or splitting it shows the friend its items and total. There is no per-field redaction and no "unshare"; deleting a split removes the participants' access to it, and a share cannot be withdrawn yet. Handle search tells anyone whether a handle exists.
 - **P3: no comments, no groups, no feed**, only 1:1 shares with emoji reactions and splits with up to 10 people. Currency is the receipt currency (EUR); no cross-currency settle-up.
+
+## Custom reports
+
+- **P2: saved views store absolute dates**, so a view saved as "last 30 days" does not move forward; only the two built-in views are relative.
+- **P2: sorting is client-side**, so with more than 500 groups the server cuts the list before the sort.
+- **P3: no scheduled/e-mailed reports, no per-user private views, no custom formulas.** Category grouping depends on the line categories the till sends (often missing: "uncategorised").
