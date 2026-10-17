@@ -7,6 +7,8 @@ import { loggerOptions } from '@lr/config';
 import { buyerOpenApi } from '@lr/schema';
 import type { AppDeps } from './context.ts';
 import { authRoutes } from './routes/auth.ts';
+import { socialRoutes } from './routes/social.ts';
+import { splitRoutes } from './routes/splits.ts';
 import { meRoutes } from './routes/me.ts';
 import { resolveRoutes } from './routes/resolve.ts';
 import { insightRoutes } from './routes/insights.ts';
@@ -50,6 +52,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(resolveRoutes(deps));
   await app.register(authRoutes(deps));
   await app.register(meRoutes(deps));
+  await app.register(socialRoutes(deps));
+  await app.register(splitRoutes(deps));
   await app.register(uploadRoutes(deps));
   await app.register(insightRoutes(deps));
   await app.register(consentRoutes(deps));

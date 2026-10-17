@@ -106,7 +106,7 @@ export async function createWallet(opts: WalletOptions) {
     },
     /** Demo only: signs in as the seeded buyer without an email code (the server answers 404 when demo mode is off). */
     async demoLogin(email: string): Promise<void> {
-      const res = await api.demoLogin();
+      const res = await api.demoLogin(email);
       const next = { token: res.token, userId: res.userId, email };
       await sessionStore.save(next);
       session.value = next;

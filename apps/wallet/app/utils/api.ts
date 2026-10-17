@@ -2,6 +2,11 @@
 import type { z } from 'zod';
 import * as s from './api-schemas.ts';
 import type { ReceiptFilters, UploadContentType } from './api-schemas.ts';
+import type { profileBody as profileBodyT, splitCreateBody } from '@lr/schema';
+
+export type Reaction = (typeof s.REACTIONS)[number];
+/** What the client sends: defaults of the zod body are optional here. */
+export type SplitInput = z.input<typeof splitCreateBody>;
 
 /** `status` 0 means the request never got an answer (offline, DNS, CORS). */
 export class ApiError extends Error {
@@ -69,14 +74,14 @@ export function createApi(opts: ApiOptions) {
       await send('/v1/auth/email/start', { method: 'POST', auth: false, body: { email } });
     },
     emailVerify: (email: string, code: string) => json(s.sessionResult, '/v1/auth/email/verify', { method: 'POST', auth: false, body: { email, code } }),
-    demoInfo: async (): Promise<{ enabled: boolean; email?: string }> => {
+    demoInfo: async (): Promise<{ enabled: boolean; email?: string; users?: Array<{ email: string; label: string }> }> => {
       try {
-        return (await (await send('/v1/auth/demo', { auth: false })).json()) as { enabled: boolean; email?: string };
+        return (await (await send('/v1/auth/demo', { auth: false })).json()) as { enabled: boolean; email?: string; users?: Array<{ email: string; label: string }> };
       } catch {
         return { enabled: false };
       }
     },
-    demoLogin: () => json(s.sessionResult, '/v1/auth/demo', { method: 'POST', auth: false }),
+    demoLogin: (email?: string) => json(s.sessionResult, '/v1/auth/demo', { method: 'POST', auth: false, body: email ? { email } : undefined }),
     logout: async () => {
       await send('/v1/auth/logout', { method: 'POST' });
     },
@@ -108,6 +113,51 @@ export function createApi(opts: ApiOptions) {
     removePushSubscription: async (id: string) => {
       await send(`/v1/me/push-subscriptions/${id}`, { method: 'DELETE' });
     },
+    // social: profile, friends, invites
+    getProfile: () => json(s.profile, '/v1/me/profile'),
+    putProfile: (body: z.input<typeof profileBodyT>) => json(s.profile, '/v1/me/profile', { method: 'PUT', body }),
+    getFriends: () => json(s.friendsResponse, '/v1/me/friends'),
+    requestFriend: async (handle: string) => {
+      const res = await send('/v1/me/friends/requests', { method: 'POST', body: { handle } });
+      const body = (await res.json()) as { status?: string };
+      return body.status === 'accepted' ? ('accepted' as const) : ('requested' as const);
+    },
+    acceptFriendRequest: async (requestId: string) => {
+      await send(`/v1/me/friends/requests/${requestId}/accept`, { method: 'POST' });
+    },
+    declineFriendRequest: async (requestId: string) => {
+      await send(`/v1/me/friends/requests/${requestId}/decline`, { method: 'POST' });
+    },
+    removeFriend: async (userId: string) => {
+      await send(`/v1/me/friends/${userId}`, { method: 'DELETE' });
+    },
+    createInvite: () => json(s.inviteCreated, '/v1/me/invites', { method: 'POST' }),
+    /** a fresh invite link for a guest slot nobody has joined yet (the earlier link stops working) */
+    createGuestInvite: (splitId: string, shareId: string) => json(s.inviteCreated, `/v1/me/splits/${splitId}/shares/${shareId}/invite`, { method: 'POST' }),
+    acceptInvite: (code: string) => json(s.inviteAcceptResult, '/v1/me/invites/accept', { method: 'POST', body: { code } }),
+
+    // social: shares and reactions
+    createShare: async (receiptId: string, friendId: string) => {
+      const res = await send('/v1/me/shares', { method: 'POST', body: { receiptId, friendId } });
+      return ((await res.json()) as { id: string }).id;
+    },
+    listShares: () => json(s.shareList, '/v1/me/shares'),
+    getShare: (id: string) => json(s.shareDetail, `/v1/me/shares/${id}`),
+    setReaction: async (shareId: string, emoji: Reaction | null) => {
+      await send(`/v1/me/shares/${shareId}/reaction`, { method: 'PUT', body: { emoji } });
+    },
+
+    // social: splits and balances
+    createSplit: (body: SplitInput) => json(s.splitDetail, '/v1/me/splits', { method: 'POST', body }),
+    listSplits: () => json(s.splitList, '/v1/me/splits'),
+    getSplit: (id: string) => json(s.splitDetail, `/v1/me/splits/${id}`),
+    settleShare: (splitId: string, shareId: string, settled: boolean) =>
+      json(s.splitDetail, `/v1/me/splits/${splitId}/shares/${shareId}/settled`, { method: 'PUT', body: { settled } }),
+    deleteSplit: async (id: string) => {
+      await send(`/v1/me/splits/${id}`, { method: 'DELETE' });
+    },
+    getBalances: () => json(s.balances, '/v1/me/balances'),
+
     exportData: async () => (await send('/v1/me/export', {})).blob(),
     deleteAccount: async () => {
       await send('/v1/me', { method: 'DELETE' });

@@ -1,5 +1,8 @@
+import { socialNl } from './social.nl.ts';
+
 /** Dutch is the source dictionary: its key set defines `MessageKey`, and `en.ts` is typed against it. */
 export const nl = {
+  ...socialNl,
   // layout
   'layout.skip': 'Naar de inhoud',
   'layout.brand': 'bonnen',

@@ -91,3 +91,22 @@ export interface ReceiptFilters {
   category?: string;
   merchant?: string;
 }
+
+// social: friends, shares, splits (contract lives in @lr/schema)
+export {
+  profile,
+  friendsResponse,
+  inviteCreated,
+  inviteAcceptResult,
+  shareList,
+  shareDetail,
+  splitDetail,
+  splitList,
+  balances,
+  REACTIONS,
+  HANDLE_RE,
+  MAX_SPLIT_PARTICIPANTS,
+} from '@lr/schema';
+export type { Profile, PublicUser, FriendsResponse, ShareItem, ShareDetail, SplitDetail, Balances, ProfileBody } from '@lr/schema';
+import type { splitListItem } from '@lr/schema';
+export type SplitListItem = z.infer<typeof splitListItem>;

@@ -85,11 +85,17 @@ export function authRoutes(deps: AppDeps) {
       return { token, userId };
     });
 
-    // demo sign-in: only answers when the server was started with a demo user
-    r.get('/v1/auth/demo', async () => (deps.demoUserEmail ? { enabled: true, email: deps.demoUserEmail } : { enabled: false }));
-    r.post('/v1/auth/demo', async (_req, reply) => {
-      if (!deps.demoUserEmail) return reply.code(404).send({ error: 'not_found' });
-      const [user] = await deps.db.select().from(tables.users).where(and(eq(tables.users.email, deps.demoUserEmail), isNull(tables.users.deletedAt)));
+    // demo sign-in: only answers when the server was started with demo users
+    r.get('/v1/auth/demo', async () => {
+      const users = deps.demoUsers;
+      return users?.length ? { enabled: true, email: users[0]!.email, users } : { enabled: false };
+    });
+    r.post('/v1/auth/demo', async (req, reply) => {
+      const users = deps.demoUsers;
+      if (!users?.length) return reply.code(404).send({ error: 'not_found' });
+      const asked = typeof req.body === 'object' && req.body !== null && 'email' in req.body && typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : users[0]!.email;
+      if (!users.some((u) => u.email === asked)) return reply.code(404).send({ error: 'not_found' });
+      const [user] = await deps.db.select().from(tables.users).where(and(eq(tables.users.email, asked), isNull(tables.users.deletedAt)));
       if (!user) return reply.code(404).send({ error: 'demo_user_missing' });
       const { token, hash } = generateToken();
       await deps.db.insert(tables.sessions).values({ tokenHash: hash, userId: user.id, expiresAt: new Date(Date.now() + SESSION_TTL_MS) });

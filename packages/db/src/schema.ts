@@ -176,10 +176,104 @@ export const users = buyer.table('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
   displayName: text('display_name'),
+  /** public @handle used to find friends; null until the person picks one */
+  handle: text('handle').unique(),
+  /** one emoji chosen as avatar */
+  avatar: text('avatar'),
   locale: text('locale').notNull().default('nl'),
   createdAt: ts('created_at').notNull().defaultNow(),
   deletedAt: ts('deleted_at'),
 });
+
+// ---- friends, shares and splits (buyer-side only; nothing in the merchant schema may reference these)
+
+export const friendships = buyer.table(
+  'friendships',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    requesterId: uuid('requester_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    addresseeId: uuid('addressee_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    /** pending | accepted */
+    status: text('status').notNull().default('pending'),
+    createdAt: ts('created_at').notNull().defaultNow(),
+    respondedAt: ts('responded_at'),
+  },
+  (t) => [
+    // one row per pair, whoever asked first
+    uniqueIndex('friendships_pair_uq').on(sql`least(${t.requesterId}, ${t.addresseeId})`, sql`greatest(${t.requesterId}, ${t.addresseeId})`),
+    index('friendships_addressee_idx').on(t.addresseeId, t.status),
+  ],
+);
+
+export const splits = buyer.table(
+  'splits',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** the receipt that is split; not a foreign key (the merchant schema is out of reach), checked against buyer.claims */
+    receiptId: uuid('receipt_id').notNull(),
+    creatorId: uuid('creator_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    /** equal | items | custom */
+    mode: text('mode').notNull(),
+    totalMinor: integer('total_minor').notNull(),
+    currency: text('currency').notNull().default('EUR'),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [index('splits_creator_idx').on(t.creatorId, t.createdAt), index('splits_receipt_idx').on(t.receiptId)],
+);
+
+export const splitShares = buyer.table(
+  'split_shares',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    splitId: uuid('split_id').notNull().references(() => splits.id, { onDelete: 'cascade' }),
+    /** null for a guest who has not joined yet */
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    guestName: text('guest_name'),
+    amountMinor: integer('amount_minor').notNull(),
+    lineNos: jsonb('line_nos').notNull().default([]),
+    settledAt: ts('settled_at'),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [index('split_shares_split_idx').on(t.splitId), index('split_shares_user_idx').on(t.userId)],
+);
+
+export const invites = buyer.table(
+  'invites',
+  {
+    codeHash: text('code_hash').primaryKey(),
+    inviterId: uuid('inviter_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    /** set when the invite is for a guest slot of a split */
+    splitShareId: uuid('split_share_id').references(() => splitShares.id, { onDelete: 'cascade' }),
+    expiresAt: ts('expires_at').notNull(),
+    acceptedBy: uuid('accepted_by').references(() => users.id, { onDelete: 'set null' }),
+    acceptedAt: ts('accepted_at'),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [index('invites_inviter_idx').on(t.inviterId)],
+);
+
+export const receiptShares = buyer.table(
+  'receipt_shares',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    receiptId: uuid('receipt_id').notNull(),
+    fromUserId: uuid('from_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    toUserId: uuid('to_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('receipt_shares_uq').on(t.receiptId, t.fromUserId, t.toUserId), index('receipt_shares_to_idx').on(t.toUserId, t.createdAt)],
+);
+
+export const shareReactions = buyer.table(
+  'share_reactions',
+  {
+    shareId: uuid('share_id').notNull().references(() => receiptShares.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    emoji: text('emoji').notNull(),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.shareId, t.userId] })],
+);
 
 export const sessions = buyer.table('sessions', {
   tokenHash: text('token_hash').primaryKey(),

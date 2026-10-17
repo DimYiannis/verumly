@@ -19,8 +19,8 @@ export interface AppDeps {
   resolveRatePerMinute?: number;
   /** object storage for uploads; routes needing it answer 503 when absent */
   s3?: ObjectStore;
-  /** demo sign-in: the seeded buyer who may sign in without an email code (development / hackathon only) */
-  demoUserEmail?: string;
+  /** demo sign-in: the seeded buyers who may sign in without an email code (development / hackathon only); the first is the default */
+  demoUsers?: Array<{ email: string; label: string }>;
   /** VAPID public key served to the wallet; null/absent: push is not configured */
   vapidPublicKey?: string | null;
   /** version string stored with every consent row */

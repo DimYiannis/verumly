@@ -24,9 +24,13 @@ function messageFor(e: unknown): MessageKey {
 
 /** development stub: the seeded buyer, when the server runs with DEMO_MODE (no email code then) */
 const demoEmail = ref<string | null>(null);
+const demoUsers = ref<Array<{ email: string; label: string }>>([]);
 onMounted(async () => {
   const d = await wallet.api.demoInfo();
-  if (d.enabled && d.email) demoEmail.value = d.email;
+  if (d.enabled && d.email) {
+    demoEmail.value = d.email;
+    demoUsers.value = d.users ?? [{ email: d.email, label: '' }];
+  }
 });
 
 async function sendCode() {
@@ -34,7 +38,9 @@ async function sendCode() {
   error.value = null;
   try {
     if (demoEmail.value) {
-      await wallet.demoLogin(demoEmail.value);
+      // the demo user typed in (or filled by a button), else the default one
+      const typed = email.value.trim().toLowerCase();
+      await wallet.demoLogin(demoUsers.value.some((u) => u.email === typed) ? typed : demoEmail.value);
       emit('done');
       return;
     }
@@ -81,6 +87,7 @@ async function verify() {
       </div>
       <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-send">{{ demoEmail ? t('login.signIn') : t('login.sendCode') }}</Button>
       <Button v-if="demoEmail" type="button" size="lg" variant="secondary" class="w-full" :disabled="busy" data-testid="login-fill-demo" @click="email = demoEmail ?? ''">{{ t('login.fillDemo') }}</Button>
+      <Button v-for="u in demoUsers.slice(1)" :key="u.email" type="button" size="lg" variant="ghost" class="w-full" :disabled="busy" :data-testid="`login-fill-demo-${u.label.toLowerCase()}`" @click="email = u.email">{{ t('login.fillDemoFriend', { name: u.label }) }}</Button>
     </form>
     <form v-else class="space-y-4" @submit.prevent="verify">
       <p class="text-sm text-text-secondary" data-testid="login-info">{{ sentTo === null ? '' : t('login.codeSent', { email: sentTo }) }}</p>

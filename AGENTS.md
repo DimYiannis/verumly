@@ -73,6 +73,14 @@ Users from `pnpm db:seed`: dashboard `owner@example.test` / `owner-dev-password`
 - Receipt design (`/dashboard/template`): a Canva-like editor; the template (`organizations.receipt_template`, zod `receiptTemplate` in `@lr/schema`) is drawn by `packages/ui/src/ReceiptTemplate.vue` in both the designer and the wallet. Blocks that carry legally required content (`LOCKED_BLOCK_TYPES`) cannot be removed or hidden. Static text only, inline raster logo only.
 - **Known limit:** the receipt format (CRF), the terminal SDK and the receipt math are still Netherlands-only (EUR, 21/9/0 % VAT, KvK/BTW-id formats). An organisation that declares another country can save its setup but cannot issue receipts yet. Generalising CRF is the next step (see `docs/ISSUES.md`).
 
+## Friends, shares and splits (buyer side only)
+
+- Wallet tab **Friends** (`/friends`): profile (handle, display name, emoji avatar), add friends by handle or invite link, requests, balances, receipts friends shared with me, splits.
+- Split a saved receipt (`/receipts/<id>/split`): equal, by item or custom amounts; friends or guests (a guest gets an invite link and takes the slot when they open it). **No payments**: shares are settled by hand, balances come from unsettled shares. The creator's own share is settled from the start.
+- Share a receipt with a friend (read-only, with emoji reactions). Sharing/splitting shows the friend the items and total, so the UI asks first. Friends never see e-mail addresses.
+- Backend: `apps/buyer-api/src/routes/social.ts` and `splits.ts`, math in `split-math.ts` (pure, unit tested), contract in `packages/schema/src/social.ts`, tables in the `buyer` schema (migration 0006). The merchant roles cannot reach any of it (`pnpm --filter @lr/db test` checks every buyer table).
+- Demo users from `pnpm db:seed`: Sam (`buyer@example.test`, handle `sam`) and Anna (`anna@example.test`, handle `anna`), already friends, with one split. The wallet login has a button for each.
+
 ## Frontend conventions (design system copied from Salespore)
 
 - Tailwind 4 + shadcn-vue (reka-ui), icons from `@lucide/vue`, font Outfit (JetBrains Mono for amounts and technical values).

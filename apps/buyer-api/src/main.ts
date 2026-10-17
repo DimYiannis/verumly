@@ -35,6 +35,11 @@ const app = await buildApp({
   vapidPublicKey: env.VAPID_PUBLIC_KEY ?? resolveVapid(env)?.publicKey ?? null,
   allowLoopbackPush: env.PUSH_ALLOW_LOOPBACK,
   policyVersion: env.POLICY_VERSION,
-  demoUserEmail: env.DEMO_MODE ? 'buyer@example.test' : undefined,
+  demoUsers: env.DEMO_MODE
+    ? [
+        { email: 'buyer@example.test', label: 'Sam' },
+        { email: 'anna@example.test', label: 'Anna' },
+      ]
+    : undefined,
 });
 await app.listen({ port: env.PORT, host: env.HOST });

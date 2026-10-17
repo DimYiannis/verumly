@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { and, count, eq } from 'drizzle-orm';
+import { and, count, desc, eq, isNull, or } from 'drizzle-orm';
 import { z } from 'zod';
 import { MemoryStore, TerminalSdk, type DraftLine } from '@lr/terminal-sdk';
 import { createMerchantUser } from '@lr/dashboard-core';
@@ -11,6 +11,7 @@ import { createLocation, createOrg, createTerminal } from '@lr/db/provision';
 import { parseExtraction, truthPrintedAtUtc } from '@lr/receipt-nl';
 import { createObjectStore } from '@lr/storage';
 import { buildApp as buildMerchantApi } from '../apps/merchant-api/src/app.ts';
+import { allocateEqual } from '../apps/buyer-api/src/split-math.ts';
 import { workerEnvSchema, type WorkerEnv } from '../apps/worker/src/env.ts';
 import { createExtractor } from '../apps/worker/src/extractor-factory.ts';
 import type { WorkerCtx } from '../apps/worker/src/context.ts';
@@ -33,6 +34,7 @@ export const SEED = {
   ownerEmail: 'owner@example.test',
   ownerPassword: 'owner-dev-password',
   buyerEmail: 'buyer@example.test',
+  friendEmail: 'anna@example.test',
   terminalLabels: ['Till 1', 'Till 2'],
   receiptTarget: 200,
   days: 60,
@@ -268,6 +270,35 @@ export async function runSeed(opts: SeedOptions): Promise<SeedResult> {
       await db.insert(tables.claims).values({ receiptId: p.receiptId, userId: buyerId, source: 'qr', claimedAt: new Date(new Date(p.finalAt).getTime() + 60_000) }).onConflictDoNothing();
       toClaim--;
       created.claims++;
+    }
+
+    // a second person, so friends, shares and splits have something to show: Sam (the demo buyer) and Anna
+    await db.update(tables.users).set({ displayName: 'Sam', handle: 'sam', avatar: '🙂' }).where(and(eq(tables.users.id, buyerId), isNull(tables.users.handle)));
+    let [anna] = await db.select({ id: tables.users.id }).from(tables.users).where(eq(tables.users.email, SEED.friendEmail));
+    if (!anna) [anna] = await db.insert(tables.users).values({ email: SEED.friendEmail, displayName: 'Anna', handle: 'anna', avatar: '🦊' }).returning({ id: tables.users.id });
+    const annaId = anna!.id;
+    const [pair] = await db
+      .select({ id: tables.friendships.id })
+      .from(tables.friendships)
+      .where(or(and(eq(tables.friendships.requesterId, annaId), eq(tables.friendships.addresseeId, buyerId)), and(eq(tables.friendships.requesterId, buyerId), eq(tables.friendships.addresseeId, annaId))));
+    if (!pair) await db.insert(tables.friendships).values({ requesterId: annaId, addresseeId: buyerId, status: 'accepted', respondedAt: now });
+    const [hasSplit] = await db.select({ n: count() }).from(tables.splits).where(eq(tables.splits.creatorId, buyerId));
+    if ((hasSplit?.n ?? 0) === 0) {
+      const [latest] = await db
+        .select({ receiptId: tables.claims.receiptId, total: tables.receipts.totalMinor })
+        .from(tables.claims)
+        .innerJoin(tables.receipts, eq(tables.receipts.id, tables.claims.receiptId))
+        .where(eq(tables.claims.userId, buyerId))
+        .orderBy(desc(tables.claims.claimedAt))
+        .limit(1);
+      if (latest) {
+        const [split] = await db.insert(tables.splits).values({ receiptId: latest.receiptId, creatorId: buyerId, mode: 'equal', totalMinor: latest.total }).returning({ id: tables.splits.id });
+        const [mine, hers] = allocateEqual(latest.total, 2);
+        await db.insert(tables.splitShares).values([
+          { splitId: split!.id, userId: buyerId, amountMinor: mine!, settledAt: now },
+          { splitId: split!.id, userId: annaId, amountMinor: hers! },
+        ]);
+      }
     }
 
     const ctx: WorkerCtx = {
