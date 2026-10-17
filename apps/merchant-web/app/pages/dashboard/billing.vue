@@ -101,6 +101,7 @@ async function cancel() {
 }
 async function simulate() {
   busy.value = true;
+  payment.value = null;
   const r = await attempt(error, () => $fetch<{ result: NonNullable<typeof simulated.value> }>('/api/dashboard/billing/simulate-renewal', { method: 'POST' }));
   if (r) await load();
   simulated.value = r?.result ?? null;
