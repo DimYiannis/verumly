@@ -30,6 +30,11 @@ export const dbEnvSchema = z.object({
   // Full connection strings (Supabase). When set they are used verbatim, including SSL params such as
   // ?sslmode=verify-full&sslrootcert=/abs/path/ca.crt, and the PG_* / *_PASSWORD values above are ignored.
   PG_ADMIN_URL: z.string().optional(),
+  // Pool sizes. Unset: 10 / 4 / 4 locally; 3 / 2 / 2 when the connection-string variables are set, because Supabase's
+  // pooler allows 15 connections per user+database and each app also runs a pg-boss pool under the same user.
+  PG_POOL_MAX: z.coerce.number().int().min(1).max(100).optional(),
+  PG_BOSS_POOL_MAX: z.coerce.number().int().min(1).max(100).optional(),
+  PG_ADMIN_POOL_MAX: z.coerce.number().int().min(1).max(100).optional(),
   MERCHANT_API_DB_URL: z.string().optional(),
   BUYER_API_DB_URL: z.string().optional(),
   WORKER_DB_URL: z.string().optional(),
@@ -62,6 +67,21 @@ export function assertDbUrlConsistency(e: DbEnv): void {
       `Incomplete database configuration: some of the connection-string variables are set but these are missing: ${missing.join(', ')}. Set all five or none (no mixing Supabase and local per role).`,
     );
   }
+}
+
+/** Connections in an app's query pool (`PG_POOL_MAX`; small default on a hosted database). */
+export function poolMax(e: DbEnv): number {
+  return e.PG_POOL_MAX ?? (usesDbUrls(e) ? 3 : 10);
+}
+
+/** Connections in an app's pg-boss pool (`PG_BOSS_POOL_MAX`). */
+export function bossPoolMax(e: DbEnv): number {
+  return e.PG_BOSS_POOL_MAX ?? (usesDbUrls(e) ? 2 : 4);
+}
+
+/** Connections for admin work: seed, provisioning, migrations (`PG_ADMIN_POOL_MAX`). */
+export function adminPoolMax(e: DbEnv): number {
+  return e.PG_ADMIN_POOL_MAX ?? (usesDbUrls(e) ? 2 : 4);
 }
 
 export function adminDbUrl(e: DbEnv): string {

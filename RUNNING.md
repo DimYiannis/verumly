@@ -101,7 +101,37 @@ The dashboard login only works if the seed ran. If it doesn't recognise the owne
 ### Other things to try in the wallet
 - **Insights:** spend per month, per category and top merchants. It's most interesting with `buyer@example.test`.
 - **Settings:** consents (all off by default), push opt-in, data export, delete account, logout.
-- **Add receipt (photo):** upload a photo of a paper receipt. Extraction uses the recorded mock outputs (`EXTRACTOR=recorded`); a real Qianfan server is not wired in. **Browser upload to the local S3 mock has not been verified** and may fail; the API side is tested.
+- **Add receipt (photo):** see "Photo receipts" below.
+
+## Photo receipts
+
+In the wallet, **Add receipt** takes a photo of a paper receipt. The photo goes straight from the browser to storage, the worker reads it with Qianfan-OCR, the Dutch parser turns the text into lines, and the result is stored with a category per line and VAT per rate.
+
+**Accepted formats: JPEG, PNG and WEBP.** PDF and HEIC are refused before upload with a message. (On an iPhone the file picker hands over JPEG, not HEIC.)
+
+**What you see:** the upload page shows Uploading, Reading, then Done, Needs review or Failed (with the reason). The detail page shows the shop, date, lines with category and VAT rate, VAT per rate, total, payment method and the photo. You can change a line's category (it stays as you set it), correct a "needs review" receipt, or delete the upload (the photo is deleted too). Insights include photo receipts and show VAT per rate.
+
+### Recorded (default, no GPU)
+
+`EXTRACTOR=recorded` replays stored Qianfan output, so it only reads the six mock receipts in `fixtures/receipts-nl/mock/*.png`. Use one of those images to try it. Any other photo fails with a "no recording" reason.
+
+### Live Qianfan (any real photo)
+
+1. On Google Colab (T4 GPU runtime), open and run `tools/qianfan/colab_serve.ipynb`. It installs vLLM, serves `baidu/Qianfan-OCR`, and opens a Cloudflare tunnel. It prints the **base URL** and the model **revision**. Set an API key when asked: the tunnel is public.
+2. Put the values in `.env.qianfan` in the repo root (git-ignored; never commit them), then start the stack with the live model:
+   ```sh
+   # .env.qianfan
+   QIANFAN_URL=https://<name>.trycloudflare.com
+   QIANFAN_REVISION=<revision>
+   QIANFAN_API_KEY=<the key you typed into the notebook>
+   ```
+   ```sh
+   pnpm dev:live        # same as pnpm dev --env-mode=loose with EXTRACTOR=http and those values
+   ```
+   `QIANFAN_URL` is the base URL (the worker adds `/v1/chat/completions`). `QIANFAN_API_KEY` must equal the `--api-key` given to vLLM. Without `QIANFAN_REVISION` the stored revision is `unknown`. The tunnel address changes on every Colab run, so update `QIANFAN_URL` each time.
+3. Upload a photo in the wallet. A slow first request is normal while the model warms up.
+
+Details and manual `curl` examples: `tools/qianfan/serve.md`. The Colab tunnel changes every run, so update `QIANFAN_URL` each time.
 
 ### Billing (demo payments)
 
@@ -202,14 +232,26 @@ Only the database moves; S3 (`adobe/s3mock`), Mailpit and everything else stay l
    ```sh
    set -a; source .env.supabase; set +a
    ```
-4. Migrate, seed, check, run:
+4. **First time only:** set the four role passwords once (see "Passwords and connection hygiene" below):
    ```sh
-   pnpm db:migrate               # idempotent; does not create databases when PG_ADMIN_URL is set
-   pnpm db:seed
-   pnpm check:supabase           # roles unprivileged, anon/authenticated locked out, merchant roles cannot read buyer data
-   pnpm dev --env-mode=loose     # Turborepo must pass the shell variables to the apps
+   pnpm db:migrate
+   pnpm db:set-role-passwords
    ```
-5. Do the demo flow above.
+5. Then, **one step at a time, each finishing before the next starts** (never in parallel, and never while the apps are running):
+   ```sh
+   pnpm db:migrate               # idempotent; leaves the role passwords alone on a hosted database
+   pnpm db:seed                  # on its own: refuses to run while the apps are up (--force skips the check)
+   pnpm check:supabase           # roles unprivileged, anon/authenticated locked out, merchant roles cannot read buyer data
+   pnpm dev --env-mode=loose     # only now start the apps (or pnpm dev:live for the live Qianfan model)
+   ```
+6. Do the demo flow above.
+
+### Passwords and connection hygiene
+
+- `pnpm db:migrate` does **not** change the role passwords on a hosted database. Changing a role's password makes the pooler drop its cached credentials; a connection attempt in that window can fail and, after repeated failures, open the pooler's circuit breaker ("new connections are temporarily blocked"). Set them with `pnpm db:set-role-passwords` (or `pnpm db:migrate --set-role-passwords`) only for a new project or when you rotate them. After a migrate on a new database the command warns if a role cannot log in yet.
+- On the local Docker database `pnpm db:migrate` still sets them, because fresh clones and the tests need login roles.
+- Pool sizes: Supabase's pooler allows 15 connections per role and database, and each app also runs a pg-boss pool as the same role. With the Supabase variables set, an app uses a query pool of 3 and a pg-boss pool of 2 (admin work: 2). Change them with `PG_POOL_MAX`, `PG_BOSS_POOL_MAX` and `PG_ADMIN_POOL_MAX`; locally the defaults stay 10, 4 and 4.
+- Do not retry a failing connection in a loop: wait a few minutes, then make one attempt.
 
 To go back to local, open a new shell (or `unset` the variables) and run `docker compose up -d` as before. If only some of the five URL variables are set, every app refuses to start and names the missing ones.
 

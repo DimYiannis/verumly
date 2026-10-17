@@ -342,6 +342,116 @@ Hop 6 reads the archive and VAT report through `@lr/dashboard-core` (`searchArch
 - The worker and the admin are warned at startup (no URL, no secrets in the message) if they point at port 6543 (transaction pooler).
 - Role passwords are still set by `migrate` from the `*_DB_PASSWORD` variables, which must equal the passwords inside the URLs.
 
+## Qianfan path (ISSUES #11, #12)
+
+- `QIANFAN_URL` is the server base URL; `chatCompletionsUrl()` appends `/v1/chat/completions` once, tolerating trailing slashes and a full URL. Default `http://127.0.0.1:8000`.
+- 408 and 429 are transient (extractor throws a plain Error, so the existing job retry/backoff applies); other 4xx stay permanent.
+- `modelRevision` = `QIANFAN_REVISION` else `"unknown"`; the served model name / response `model` is never used.
+- `QIANFAN_API_KEY` optional, sent as `Authorization: Bearer`, never logged. Pair with `vllm serve --api-key`.
+- `tools/qianfan/colab_serve.ipynb`: vLLM (float16, T4) + cloudflared quick tunnel; if the revision field is empty it pins the model repo's current HEAD sha and prints it.
+- Corpus: `loadCorpus({ only: 'mock' })` forces the mock corpus. Worker test helpers use it and a recorded extractor on `fixtures/receipts-nl/mock`. receipt-nl corpus/eval tests deliberately keep real-if-present (they measure the corpus).
+- Seed: `loadSeedCorpus` uses the real corpus only with >= 3 receipts that have truth + image (hash-checked) + recording (`MIN_REAL_FOR_SEED`), else mock; it prints which. Seed reads the corpus dir from `env.FIXTURES_DIR`.
+
+## Decisions: photo receipts end to end (steps 3 to 5; branch `feat/qianfan-photo`)
+
+## Step 3: upload from the browser
+
+- **Probe first.** A presigned `PUT` from a real Chromium page (origin `http://localhost:3001`, a plain Node server, not a route-fulfilled page) to adobe/s3mock on `http://127.0.0.1:9090` **succeeds** (status 200, object stored with the right size). s3mock answers the CORS preflight itself, so no bucket CORS rule and no proxy are needed locally. The e2e spec `e2e/photo-upload.spec.ts` keeps this under test: it waits for the browser's own `PUT` response from :9090 and then reads the object back with `@lr/storage`. (A first probe against a `page.route`-fulfilled page failed with Chromium's "loopback address space" permission error: that was an artefact of the fake page, not of S3.)
+- **Kept: the presigned PUT.** The browser sends the bytes straight to S3; buyer-api stays out of the data path (spec v2 §13). The signature covers the length. Rejected: proxying the body through buyer-api (extra copy of up to 10 MB per upload, a second raw-body route to harden) because it was not needed.
+- **Fixed a hosted-only bug found on the way: `@lr/storage` presigned URLs carried `x-amz-checksum-crc32=AAAAAA==` (CRC32 of an empty body).** The AWS SDK v3 adds that checksum by default; s3mock ignores it, real S3 and S3-compatible services compare it with the uploaded bytes and answer `BadDigest`. The client now uses `requestChecksumCalculation: 'WHEN_REQUIRED'` (+ `responseChecksumValidation`). Unit test: `packages/storage/test/presign.test.ts`.
+- **Hosted, not verified here:** (a) the presigned host must be reachable from the browser (`S3_ENDPOINT` is also the host in the URL), so for the phone/tunnel demo S3 has to be exposed over HTTPS as well (an http S3 behind an https wallet is blocked as mixed content); (b) the bucket must answer CORS for the wallet origin (`PUT`, header `content-type`). Supabase Storage's S3 endpoint and a boxd-hosted s3mock were **not** tested. If (b) cannot be configured, the fallback is `PUT /v1/me/uploads/:id/content` on buyer-api that streams the body to S3 (same session auth, size and type checks); it is not built.
+- **Formats.** `UPLOAD_CONTENT_TYPES` is now `image/jpeg`, `image/png`, `image/webp`. PDF and HEIC are refused by `POST /v1/me/uploads` (400, no row, no object) and by the wallet **before** upload (`validateUploadFile`; the message says "PDF and HEIC files cannot be read"; the pickers use `accept="image/jpeg,image/png,image/webp"`, which also makes iOS hand over JPEG instead of HEIC). The existing buyer-api test that expected a `application/pdf` request to be 201 and the wallet test that expected PDF to validate were changed to expect the refusal: that is the requested behaviour change, not a weakened test.
+- **Status UX.** `/uploads/:id` shows three steps (Uploading, Reading, Result) with the result step turning into Done / Needs review / Failed; a failed upload lists the reason (`uploadFailure.<code>` texts, raw code if unknown).
+
+## Step 4: categories and VAT per line
+
+- **Storage: inside `buyer.uploads.extracted` JSON, no new table, no migration.** Each parsed line gets `category`, `sensitive` and `userCategory` (all optional in `parsedLine`). `category`/`sensitive` are the effective stored values (worker at extraction, `categoriseLines` again after every correction); `userCategory` is the buyer's choice, and while set it *is* `category`, `sensitive` is `false`. Grants: unchanged (`buyer_api` and `worker` already have `SELECT/INSERT/UPDATE/DELETE` on `buyer.uploads`, migration 0001).
+- **The server never trusts `category`/`sensitive` from a client**; only `userCategory` (an enum, `LINE_CATEGORIES` in `@lr/schema`) is read. Shared logic is `categoriseLines` in `@lr/receipt-nl`, used by the worker and buyer-api.
+- **Merchant fallback** (`packages/receipt-nl/src/merchant-rules.ts`): whole-word, case/accent/punctuation-insensitive match on the shop name (`normaliseName`), applied only when no line keyword matched. Order in `categoriseLine`: apotheek shop (every line health, existing rule) > line keywords > shop rule > `overig`. Kruidvat/Etos/Trekpleister/Apotheek rows are `gezondheid` + sensitive, so a Kruidvat line without a keyword is health data, while Kruidvat "Shampoo" stays `huishouden` (keyword wins; the existing worker test pins this). No new category keys were needed (`huishouden` and `vervoer` already existed). The same rule now also feeds the `categorise` cron job for `merchant.receipt_lines` (it already passed the merchant name), so official receipts get shop fallbacks too.
+- **Buyer edits use their own endpoint `PUT /v1/me/uploads/:id/categories`** (`done` and `needs_review`) and *not* PATCH on `done` uploads: opening PATCH on `done` would let anyone re-run matching with typed totals/times on every upload (ISSUES #1). `PATCH` still only works on `needs_review`; its lines carry `userCategory` and re-categorisation skips those lines. Matching is unchanged.
+- **Insights read stored categories only.** Legacy upload rows with no stored `category` count as `overig` (no on-the-fly guess). Health stays hidden: a line counts as `overig` when it is `sensitive` **or** its category is `gezondheid` (a buyer-chosen health category is not flagged, but is still never shown as health).
+- **VAT per rate:** `vatPerRate: [{rate, vat}]` (21, 9, 0, only rates that occur, highest first) = sum of `vatSummary[].vat` over claimed `paid`/`fiscalised` receipts (current version) + `vatBreakdown[].vat` of `done` uploads. The wallet page always shows the three rates (0 when absent). Per-line `vatRate` and the per-rate `vatBreakdown` (base, VAT) are shown on the upload detail page.
+
+## Step 5: managing photo receipts
+
+- **Photo through buyer-api**: `GET /v1/me/uploads/:id/photo` (bearer, owner only, `private, no-store`); the wallet fetches the blob with its token and shows it with an object URL. Chosen over a presigned GET so it works wherever buyer-api is reachable, with no S3 exposure and no `<img>` cross-origin question.
+- **Delete**: `DELETE /v1/me/uploads/:id` removes the S3 object first, then the row (if S3 fails the row stays and the buyer can retry, so no photo outlives its row). 404 for anyone but the owner; 503 without storage. In the wallet an inline confirm (not `window.confirm`, which is not testable and ugly on phones).
+- **List**: uploads are not part of the receipt list; they have their own section. `GET /v1/me/uploads?category=` filters by the stored category of any line, and the wallet's category filter now also filters that section (and reloads it on every filter change).
+
+## `data-testid`s added (stable for Playwright)
+
+Wallet `/add`: `upload-formats`, `upload-step` (existing), `upload-error` (existing), `file-input-library` / `file-input` (existing).
+Wallet `/uploads/:id`: `upload-status` (the step list; `data-status` = upload status), `upload-step-pending_upload` / `upload-step-processing` / `upload-step-result` (`data-state` = done|active|todo), `upload-done`, `upload-detail`, `upload-merchant`, `upload-date`, `upload-total`, `upload-payment`, `upload-draft-lines`, `upload-line` (`data-category`, `data-vat-rate`, `data-user-category`), `line-vat-{i}`, `line-edited-{i}`, `line-category-{i}` (select), `line-category-reset-{i}`, `upload-vat`, `upload-vat-row` (`data-rate`), `upload-vat-amount`, `upload-photo-section`, `upload-photo`, `upload-photo-failed`, `upload-failed`, `upload-failed-reason`, `upload-delete-section`, `delete-upload`, `delete-confirm`, `confirm-delete`, `cancel-delete`, correction form: `corr-line-category-{i}`, `corr-line-vat-{i}` (existing `corr-*` unchanged).
+Wallet `/` : `upload-item` now has `data-upload-id` and `data-status`. Wallet `/insights`: `chart-vat` (existing: `chart-months`, `chart-categories`, `chart-merchants`).
+
+## Other
+
+- New e2e dependency: `@lr/storage` in `e2e/package.json` (reads the S3 object back to prove upload and delete).
+- API docs (`docs/API.md`) list the new endpoints; no DB migration in this step.
+
+## Photo preparation on the phone (ISSUES #25)
+
+A photo where the receipt is a thin strip in a big frame (1512 x 1512 PLUS photo, receipt about 380 px wide) made the model run past the worker's 120 s timeout; the same receipt cropped to 430 x 1512 was read in 46 s. The wallet now prepares the photo before any request.
+
+### What happens in `/add`
+
+1. The existing checks run first on the file as chosen (JPEG, PNG or WebP only; PDF and HEIC refused; empty; over 10 MB).
+2. `preparePhoto` (`apps/wallet/app/utils/prepare-photo.ts`) decodes with `createImageBitmap(file, { imageOrientation: 'from-image' })`, draws a copy with the long side at most 1600 px and runs `analysePhoto` (`photo-analysis.ts`, pure, no DOM, unit tested). The analysis shrinks again to a copy of at most 600 px for the search.
+3. A photo with a problem is declined on the phone: `prep-error` with `data-problem` = `no_receipt` | `too_small` | `too_blurry` | `too_dark` | `cut_off` | `unreadable` (the browser could not decode it). No request goes to buyer-api and nothing goes to S3, so no upload row is created. The buyer stays on `/add` and picks another photo.
+4. An accepted photo is cropped to the receipt box at full resolution, shrunk so the long side is at most 2000 px (never upscaled) and exported as JPEG, quality 0.85. `prep-preview` shows the result with its size (`430 x 1512 px, 80 KB`), then the existing upload flow runs with that file.
+
+Stable test ids: `prep-status` (while preparing), `prep-error` (`data-problem`), `prep-preview` (`data-width`, `data-height`, `data-bytes`, `data-cropped`), `prep-info` (the size text). All strings are in `en.ts` and `nl.ts` (`add.prep.*`).
+
+### Detection
+
+Paper is the large, bright, almost colourless region: per cell of 4 px of the 600 px copy, at least 60 % of the pixels have saturation (max - min) / max up to 0.18 (or are too dark for hue to matter), and the cell's brightest pixel is at least 90. Wood (saturation about 0.5), skin (0.2 to 0.4) and coloured backgrounds fail the saturation test. Dark ink is colourless, and a cell is judged by its brightest pixel, so printed text does not make holes in the paper. A silver laptop (colourless, brightness about 150) is told from white paper (about 230) by an Otsu split of the brightness of the candidate cells, applied only when the two classes differ by at least 40 grey levels. The largest 8-connected blob wins; its bounding box ignores edge rows and columns with under 5 % of the busiest one, and gets a margin of one cell plus 2 %.
+
+Statistics (brightness, contrast, ink, sharpness) are measured only on interior paper cells (all four neighbours are paper), so the table around the paper and the blurry paper edge never count as ink or edge.
+
+### Thresholds, and why
+
+All are named constants in `photo-analysis.ts`. MOCK = the six images in `fixtures/receipts-nl/mock/`, rendered, flat white background, treated as already cropped. REAL = the one real PLUS photo (`receipt.jpeg`, local only, never committed; one photo is not a corpus).
+
+| Constant | Value | Reason |
+| --- | --- | --- |
+| `MIN_RECEIPT_WIDTH` | 300 px (original pixels) | REAL: the receipt is 419 px wide with margin (about 380 px of paper) and the model read it. Scaled to 40 % of the frame (about 170 px wide) it is declined. 300 keeps a margin below the one case known to work. |
+| `MIN_CROP_AREA` | 100 000 px² | A 300 px sliver is not a receipt. REAL 633 000, MOCK 650 000 to 860 000. |
+| `MIN_SHARPNESS` | 0.30 | Edge steepness: 99th percentile of the gradient over the contrast. REAL 0.60, blurred by 1 px 0.25, by 2 px 0.10. MOCK 1.03 to 1.12, 0.72 at 1 px blur, 0.43 at 2 px, 0.20 at 4 px. Every sharp image is at least 2x above the limit; a 1 px blur of the REAL photo (soft, already hard to read) is declined. Dividing by contrast keeps a dim photo from being called blurry; the 99th percentile makes it independent of how much text there is. The crop is shrunk to at most 480 px wide before measuring so the photo's resolution barely changes the value (MOCK shrunk to 400 px: 1.01 to 1.16). |
+| `MIN_PAPER_BRIGHTNESS` | 110 of 255 | Paper brightness is the 90th percentile of the paper interior. REAL 206, MOCK 252. REAL at 50 % brightness (103) is declined, MOCK at 50 % (126) passes. |
+| `PAPER_FLOOR` / `DIM_FRAME` | 90 / 120 | A cell is not paper under brightness 90. When no paper is found and the frame's 95th percentile brightness is under 120, the problem is reported as `too_dark`, not `no_receipt`: REAL at 40 % brightness finds no paper, and "use more light" is the right advice. |
+| `MIN_FILL_RATIO` | 0.4 | Blob area over box area. REAL 0.83 (the strip is slightly tilted), MOCK 1.0, synthetic tilted strip about 0.6. A keyboard or pattern has black holes and falls below. |
+| `MIN_INK_SHARE` + `BLANK_CONTRAST` | 0.003 and 25 | Blank paper or a wall has no ink and almost no contrast. REAL ink 0.009, MOCK 0.04. Blur beyond reading has no ink pixels either but keeps a contrast around 50, so it is reported as `too_blurry`, not `no_receipt`. |
+| `FULL_WIDTH_SHARE` | 0.9 | `cut_off` only when the paper touches the left or right edge and spans under 90 % of the width. A MOCK image (paper is the whole frame) touches both edges and spans 100 %, so it passes. Touching the top or bottom is fine (long receipts). |
+| Tight crop | 95 % | If the box covers 95 % of both sides the whole photo is kept (nothing cropped). All six MOCK images get the box `0,0,w,h`. |
+
+Contrast is not part of `too_dark`: a bright but washed out photo is a blur or exposure problem, and low contrast shows up in `too_blurry`. A dim photo is brightness.
+
+### Choices
+
+- **Tight PNG and WebP are uploaded untouched** (no crop, long side at most 2000 px): the recorded extractor is keyed by the SHA-256 of the bytes, and re-encoding a MOCK image would break every recorded e2e. A **JPEG is always re-encoded**: that bakes the EXIF orientation into the pixels (the model must see the receipt upright) and drops the EXIF block, GPS position included. PNG and WebP keep their metadata.
+- **No deskew.** A tilted receipt is cropped to its axis-aligned box, which includes background wedges. Fine for the model; not pretty.
+- **One receipt per photo.** The largest paper blob wins; two receipts side by side are cropped as one box or the bigger one wins.
+- **Limits, not tuned:** a white receipt on a white table has no paper/background difference, so the box is the whole frame and the photo passes as already tight. A bright, nearly colourless background (a grey laptop brighter than the paper) can be taken for the receipt. Thresholds come from one real photo and six MOCK images and need a real corpus.
+- `createImageBitmap` with options and `HTMLCanvasElement.toBlob` are standard in current Chromium, Firefox and Safari 17; Safari and a real phone camera were not tested (Chromium only, see ISSUES).
+- Dev dependency `pngjs` (wallet, e2e) decodes the MOCK PNGs in vitest and builds a modified MOCK PNG in the e2e.
+
+### Worker
+
+- `max_tokens` 4096 to 2048 in the HTTP extractor (matches `tools/qianfan/serve.md`): a degenerate run is bounded.
+- `ExtractionTimeoutError`: our own request timeout (120 s, also while reading the body) or a gateway answering 408, 504 or 524 (Cloudflare's 524 was seen in the live check). It is retried like any transient error. When the last attempt also times out the upload becomes `failed` with `extraction_timeout` (was `extractor_unavailable`). The wallet shows "The reading took too long. Try a closer, clearer photo." through the existing `uploadFailure.*` mechanism. Other errors on the last attempt still give `extractor_unavailable`.
+- The job could not stay `processing` forever on the paths checked: every handler path ends in a retry (pg-boss `retryLimit: 3`) or `fail()` on `finalAttempt`. Worst case for a model that always times out: 4 attempts x 2 requests x 120 s, about 16 minutes plus backoff, before the buyer sees `failed`. That is long; with the photo preparation a typical photo should no longer get there.
+
+### Existing tests that changed
+
+- `e2e/photo-upload.spec.ts`, "a photo that cannot be read ends as failed": the 1 x 1 PNG is now (correctly) declined on the phone as too small before upload. The test now uploads a MOCK PNG with one pixel changed (tight, accepted, uploaded as it is, no recording, ends `failed` with the reason).
+- `apps/wallet/scripts/smoke.ts` (manual script) sent the bytes `not-a-real-png`; the wallet now decodes first, so it sends a MOCK PNG. Not run in this change.
+
+## Hosted database: passwords, pool sizes, seed (connection hygiene)
+
+- **Role passwords are not rotated by `pnpm db:migrate` on a hosted database.** After the live Supabase run the pooler returned `ECIRCUITBREAKER` ("failed to retrieve database credentials after multiple attempts"), and every migrate had re-run `ALTER ROLE … PASSWORD`, which makes the pooler drop its cached credentials. `migrate(env, { setRolePasswords })` defaults to `true` only when no connection-string variable is set (local Docker: fresh clones and tests need login roles). `pnpm db:set-role-passwords` and `pnpm db:migrate --set-role-passwords` set them explicitly. After a hosted migrate the CLI warns if a role still cannot log in. Verified against the local database in hosted mode: password hashes unchanged by `db:migrate`, changed by the flag and by the command.
+- **Pool sizes are configurable:** `PG_POOL_MAX`, `PG_BOSS_POOL_MAX`, `PG_ADMIN_POOL_MAX`. Defaults 10 / 4 / 4 locally (unchanged) and 3 / 2 / 2 when the connection-string variables are set, so one app uses 5 of the pooler's 15 connections per role. Migrations now use one connection for the migrator.
+- **The seed runs alone:** it uses three roles at once, so `pnpm db:seed` refuses to run against a hosted database while any app answers on its default port (`--force` overrides). RUNNING.md says to run migrate, seed and the check one at a time and to start the apps last.
+
 ## Deferred (v2 §17)
 
 Not built in this run, by design:

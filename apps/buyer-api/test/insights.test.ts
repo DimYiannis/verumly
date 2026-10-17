@@ -35,14 +35,14 @@ describe('GET /v1/me/insights', () => {
     await receipt(me, { merchant: 'Apotheek Het Plein', state: 'paid', createdAt: '2026-09-20T10:00:00Z', lines: [{ description: 'Paracetamol', unitPrice: 450, vatRate: 9 }], categories: { Paracetamol: { category: 'gezondheid', sensitive: true } } });
     await receipt(me, { merchant: 'Café Het Plein', state: 'presented', createdAt: '2026-09-21T10:00:00Z', lines: [{ description: 'Koffie', unitPrice: 1000, vatRate: 9 }], categories: { Koffie: dining } });
     await receipt(other, { merchant: 'Andere Zaak', state: 'paid', createdAt: '2026-09-05T10:00:00Z', lines: [{ description: 'Duur ding', unitPrice: 9999, vatRate: 21 }] });
-    // a finished upload of a paper receipt (the categoriser's rules apply to its lines at read time)
+    // a finished upload of a paper receipt; the worker stored the category on its line, and insights read that
     const parsed = {
       status: 'done',
       failures: [],
       merchant: { name: 'Supermarkt X', kvkNumber: null, vatNumber: null, postcode: null },
       merchantKey: 'name:supermarkt x|',
       printedAtUtc: '2026-09-10T12:00:00.000Z',
-      lines: [{ description: 'Halfvolle melk', qty: '1', unitPrice: 1500, total: 1500, vatRate: 9, kind: 'item' }],
+      lines: [{ description: 'Halfvolle melk', qty: '1', unitPrice: 1500, total: 1500, vatRate: 9, kind: 'item', category: 'boodschappen', sensitive: false }],
       gross: 1500,
       rounding: 0,
       vatBreakdown: [{ rate: 9, base: 1376, vat: 124 }],
@@ -66,6 +66,12 @@ describe('GET /v1/me/insights', () => {
         { category: 'boodschappen', total: 1500 },
         { category: 'overig', total: 450 },
       ],
+      // hand-computed VAT (gross × rate / (100 + rate), net rounded): 9% = 56 + 39 + 37 (receipts) + 124 (upload); 21% = 68.
+      // The pre-bill, the stranger and the needs_review / replaced uploads are not counted.
+      vatPerRate: [
+        { rate: 21, vat: 68 },
+        { rate: 9, vat: 256 },
+      ],
       topMerchants: [
         { merchantName: 'Café Het Plein', total: 1544, count: 2 },
         { merchantName: 'Supermarkt X', total: 1500, count: 1 },
@@ -73,13 +79,37 @@ describe('GET /v1/me/insights', () => {
       ],
     });
     // nothing else is exposed
-    expect(Object.keys(res.body as object).sort()).toEqual(['perCategory', 'perMonth', 'topMerchants']);
+    expect(Object.keys(res.body as object).sort()).toEqual(['perCategory', 'perMonth', 'topMerchants', 'vatPerRate']);
+    expect(res.text).not.toContain('gezondheid');
+  });
+
+  it('upload lines count under their STORED category (a buyer’s choice included), never recomputed; health shows as overig; legacy lines without one are overig', async () => {
+    const me = await loginUser(w);
+    const lines = [
+      // the keywords say boodschappen, the buyer said vervoer
+      { description: 'Halfvolle melk', qty: '1', unitPrice: 100, total: 100, vatRate: 9, kind: 'item', category: 'vervoer', sensitive: false, userCategory: 'vervoer' },
+      // the buyer picked health himself: not flagged sensitive, still never shown as health
+      { description: 'Pleisters', qty: '1', unitPrice: 200, total: 200, vatRate: 9, kind: 'item', category: 'gezondheid', sensitive: false, userCategory: 'gezondheid' },
+      { description: 'Paracetamol', qty: '1', unitPrice: 400, total: 400, vatRate: 9, kind: 'item', category: 'gezondheid', sensitive: true },
+      // stored before categories existed: not guessed at read time
+      { description: 'Koffie', qty: '1', unitPrice: 800, total: 800, vatRate: 21, kind: 'item' },
+    ];
+    const parsed = {
+      status: 'done', failures: [], merchant: { name: 'Winkel Y', kvkNumber: null, vatNumber: null, postcode: null }, merchantKey: 'name:winkel y|',
+      printedAtUtc: '2026-10-02T12:00:00.000Z', lines, gross: 1500, rounding: 0, vatBreakdown: [{ rate: 21, base: 661, vat: 139 }, { rate: 9, base: 642, vat: 58 }, { rate: 0, base: 0, vat: 0 }], paymentMethod: 'card',
+    };
+    await sql(w, "insert into buyer.uploads (user_id, s3_key, content_type, status, extracted) values ($1, 'uploads/i9', 'image/png', 'done', $2)", [me.userId, JSON.stringify({ parsed, failures: [], modelRevision: 'mock', corrected: false })]);
+    const res = await buyerCall(w, 'GET', '/v1/me/insights', { token: me.token });
+    expect(res.body).toMatchObject({
+      perCategory: [{ category: 'overig', total: 1400 }, { category: 'vervoer', total: 100 }],
+      vatPerRate: [{ rate: 21, vat: 139 }, { rate: 9, vat: 58 }, { rate: 0, vat: 0 }],
+    });
     expect(res.text).not.toContain('gezondheid');
   });
 
   it('a user with no data gets empty lists; a session is required', async () => {
     const empty = await loginUser(w);
-    expect((await buyerCall(w, 'GET', '/v1/me/insights', { token: empty.token })).body).toEqual({ perMonth: [], perCategory: [], topMerchants: [] });
+    expect((await buyerCall(w, 'GET', '/v1/me/insights', { token: empty.token })).body).toEqual({ perMonth: [], perCategory: [], vatPerRate: [], topMerchants: [] });
     expect((await buyerCall(w, 'GET', '/v1/me/insights')).status).toBe(401);
   });
 

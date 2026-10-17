@@ -433,6 +433,133 @@ Screenshots (overwritten each run): `docs/e2e-screenshots/{qr-on-simulator,recei
 - Reuse mode takes whatever database the running stack uses; setting `PG_DATABASE` for the suite only affects a stack that global setup starts itself (see decisions).
 - The wallet's `dev` script now builds and serves the production build (see decisions: the service worker needed for the offline scenario exists only in a build); HMR is `pnpm --filter @lr/wallet dev:hmr`.
 
+## Qianfan path: verification log
+
+Run on the mock corpus (MOCK numbers).
+
+- `pnpm --filter @lr/worker test`: PASS, 8 files, 60 tests (new: URL handling, 408/429 transient, 400 permanent, revision source, auth header).
+- `pnpm --filter @lr/receipt-nl test`: PASS, 7 files, 177 tests (new `corpus-selection.test.ts`: temp real-style dir, 1 real receipt id `real-0001` derived from mock-weegschaal; real preferred by `loadCorpus`, `only:'mock'` ignores it, seed falls back to mock with <3 real, uses real at 3, eval runs on real).
+- `pnpm eval:extraction`: PASS, "GATE OK: zero false done (6 receipts evaluated)", MOCK corpus.
+- `pnpm db:seed`: PASS (DB already seeded, 0 created, so the corpus line is not printed; fallback covered by the corpus-selection test).
+- `pnpm lint`, `pnpm typecheck`, `pnpm test:privacy` (0 hits in 35 searches): PASS.
+- Notebook `tools/qianfan/colab_serve.ipynb` parses as JSON (python json.load). Not executed (no GPU/Colab here).
+
+## Manual check with a real file present
+Temporarily copied mock-weegschaal's png/truth (id `real-tmp-1`, `mock` flag dropped) and its `<sha>.qianfan.json` into fixtures/receipts-nl/:
+- `pnpm test`: PASS across all packages (worker 60/60 unchanged; receipt-nl 172 tests as corpus tests then run on the 1 real receipt).
+- `pnpm eval:extraction`: "Corpus: REAL (1 receipts ...)", GATE OK, 1 receipt evaluated.
+- `pnpm db:seed`: ran, already seeded so no upload step. Files then removed; `git status fixtures` clean.
+To repeat: drop 1 real truth+image+recording, run the three commands; remove them. Seed fallback on a fresh DB prints `Seed corpus: MOCK (... ; real corpus has 1 usable receipts, need 3)`.
+
+## Findings: photo receipts end to end (steps 3 to 6, PhotoFeature part)
+
+All numbers below were observed on this machine (Docker: Postgres 5433, s3mock 9090, Mailpit 8025). Everything uses the **MOCK** corpus (`fixtures/receipts-nl/mock/`) and `EXTRACTOR=recorded`.
+
+## Verification log
+
+| Command | Result |
+| --- | --- |
+| Chromium probe: presigned PUT of a mock PNG from `http://localhost:3001` (plain Node server) to s3mock `http://127.0.0.1:9090` | **PASS**: status 200, `HEAD` size 84194 = file size. (First attempt from a `page.route`-fulfilled page: blocked with "loopback address space" permission: probe artefact, see decisions.) Probe script was throwaway and removed; the e2e spec keeps the check. |
+| `pnpm lint && pnpm typecheck && pnpm test && pnpm build` | **PASS** (exit 0). typecheck 25/25 tasks, build 13/13. Tests: config 7, storage 1, compliance 8, crypto 17, schema 2, receipt-nl 209, wallet 85, terminal-sdk 119, merchant-api 116, worker 68 (9 files), buyer-api 83 (9 files), db 72, dashboard-core 37, merchant-web 13. |
+| `pnpm test:journey` | **PASS**: 6 hops |
+| `pnpm test:privacy` | **PASS**: 0 hits in 35 needle×haystack searches; 6 controls ok |
+| `pnpm eval:extraction` | **PASS** (gate): MOCK corpus, 6 receipts, 4 done, 2 needs_review, 0 false done (unchanged by this work) |
+| `pnpm test:e2e` (nothing listening on 3000/3001/4001/4002; the suite started its own stack) | **PASS** twice on the final code: 9 passed (1.1 min each). Of those 4 are `e2e/photo-upload.spec.ts` (full flow, PDF/HEIC refusal, unreadable photo with reason, needs-review correction with category). An earlier run with 8 tests (before the 4th was added) also passed twice. |
+
+New tests (counts are of the tests added, all passing): `packages/receipt-nl/test/merchant-rules.test.ts` 32 (merchant rules, normalisation, "Albert Heijn" vs "AH", precedence, `categoriseLines`, user-edit precedence); `apps/worker/test/photo-categories.test.ts` 8 (extraction stores categories, PATCH re-categorises, user category kept after PATCH and never sensitive, insights follow edits + VAT per rate, list category filter, DELETE row + S3 object, DELETE of someone else's upload is 404, PDF/HEIC refused); `apps/buyer-api/test/uploads-api.test.ts` +7 (PDF/HEIC refused with no row, DELETE guards and 503, photo endpoint, category endpoint, category filter); `apps/buyer-api/test/insights.test.ts` +1 and the existing expectations extended with `vatPerRate`; `apps/wallet/test/api.test.ts` +2 (PDF/HEIC never presigned, new API calls); `packages/storage/test/presign.test.ts` 1.
+
+## Changed existing tests (spec change, not weakened)
+
+- `apps/buyer-api/test/uploads-api.test.ts`: a `application/pdf` upload request used to be 201; now PDF and HEIC are 400 (plus webp/jpeg are 201).
+- `apps/wallet/test/api.test.ts`: `validateUploadFile` used to accept PDF; now refuses it.
+- `apps/buyer-api/test/insights.test.ts`: the upload fixture line now carries the stored `category`/`sensitive` (what the worker writes now); insights no longer categorise at read time.
+
+## Open / not verified
+
+- **Hosted storage**: browser PUT against Supabase Storage's S3 API or a boxd-hosted s3mock was not tested (CORS for the wallet origin; the presigned host must be browser-reachable over HTTPS). The SDK checksum fix matters there. Fallback (upload through buyer-api) is described in `docs/decisions/photo-feature.md`, not built.
+- **Phone / Safari / HEIC**: no real phone camera test. HEIC is refused in the wallet; iOS usually converts to JPEG when `accept` lists only JPEG/PNG/WebP, not verified.
+- `pnpm --filter @lr/wallet smoke` (not part of the checks) fails at its first step (`presented-banner` never appears: the demo no longer has pre-bills). It stops before reaching the upload part. Not looked into; I did not run it on `main`.
+- Legacy upload rows without stored categories count as `overig` in insights (no migration backfills them). Only affects uploads created before this change.
+- The worker package is shared with the QianfanPath work; the numbers above were taken before its changes landed in `apps/worker/src/extractor*.ts`/`env.ts` (not present in the working tree at the time). Re-run `pnpm --filter @lr/worker test` after merging.
+- The wallet `docs/e2e-screenshots/` set was not refreshed: only `photo-upload-detail.png` and `photo-insights.png` are new (the run also rewrote the old screenshots; those were reverted).
+
+## Live Qianfan check (Colab T4, vLLM 0.31.0, revision `623bf5d2`)
+
+Run on 2026-10-17 through a Cloudflare quick tunnel with an API key. Commands and observations only; nothing here is a measured accuracy figure.
+
+| Check | Result |
+| --- | --- |
+| Endpoint without key / with key | 401 / `/v1/models` lists `baidu/Qianfan-OCR` (`max_model_len` 8192) |
+| Worker `httpExtractor` + `parseExtraction` on 2 **MOCK** images | both `done`; gross, per-rate VAT and shop identity equal the truth files (supermarkt 1973 = 1973, VAT 9% 68 / 21% 190; horeca 4380 = 4380, VAT 9% 150 / 21% 444); 51 s and 57 s per image (two requests each) |
+| Full stack (`EXTRACTOR=http`): wallet `/add` upload of a MOCK image | `done` after 51 s; 8 lines with category and VAT rate |
+| **Real photo**: a PLUS supermarket receipt, 1512 x 1512 JPEG, receipt a thin strip in the middle of the frame (`receipt.jpeg`, not committed) | **Uncropped: no result.** The model request ran longer than the worker's 120 s timeout and than Cloudflare's roughly 100 s limit (a direct request returned an HTML error page after 126 s), so the upload stayed `processing` through all retries (4 min 39 s when checked). **Cropped to the receipt (430 x 1512): read in 46 s** (715 output tokens) |
+| Same cropped photo through the wallet | `needs_review` after 87 s, which is the right outcome (see below) |
+
+What the cropped real receipt gave:
+- The markdown read the shop (PLUS, 1034 CR Amsterdam), date and time (10/10/2026 16:52), the VAT table (0%: 0,00 on 0,25; 9%: 4,69 on 56,76; 21%: 1,30 on 7,49; total 5,99 on 64,50), card payment and "14 Artikelen" correctly.
+- It also misread the printed total as `664,50` (the euro sign became a 6), garbled most product names (for example "HORLOGEEN WOEL HEIK" for the milk) and dropped the discount line ("-3,00").
+- The KIE answer gave the total `64,50`, shop PLUS SLOOTEN, 14 lines without VAT rates and no VAT rows. The parser stored gross 6450, 14 lines and no VAT rows, and flagged `gross_sum`, `rounding_format`, `vat_row_unreadable`, `vat_missing_rate`. The zero-false-`done` gate held: nothing wrong reached `done`.
+- Both outputs came from one photo, so this is one data point, not an accuracy measurement.
+
+Open from this check:
+- A photo where the receipt fills little of the frame can take longer than the worker's 120 s request timeout and keep the upload in `processing` for minutes before failing, without telling the buyer to retake the photo. Cropping to the receipt fixed it. Not fixed here.
+- The parser did not use the markdown VAT table of the real receipt: its rows read `BTW lang 9% 4,69 56,76` and `BTW 0 0,00 0,25` (no percent sign), unlike the mock layout. Making the table parser tolerant of the PLUS layout is not done.
+- The real photo contains a masked card number (`516882xxxxxx9944`), so it was left untracked in the repo root. Whether to add it to `fixtures/receipts-nl/` with a hand-written truth file is the user's call.
+- The Colab tunnel and 100 s edge limit make this setup suitable for demos only.
+
+## Photo preparation (ISSUES #25): what was measured
+
+### Real sample, `receipt.jpeg` (REAL, one photo, local only, not committed)
+
+Run in headless Chromium (Playwright, the real `preparePhoto` bundled into a blank page; scripts removed afterwards, one output kept under `.local/`):
+
+| Input | Result |
+| --- | --- |
+| 1512 x 1512 original (242 KB) | accepted. Box `x=476, y=0, 419 x 1512`; uploaded file 419 x 1512 px JPEG, 80 KB (-67 % bytes, -72 % pixels). About 150 ms. Metrics: fill 0.83, sharpness 0.60, paper brightness 206, contrast 82, ink 0.009. The crop, read by eye, holds the full width of the paper with about 20 px margin each side; barcode and header are inside. |
+| blurred 1 px | declined `too_blurry` (sharpness 0.25) |
+| blurred 3 px | declined `too_blurry` |
+| downscaled to 40 % (605 px frame, receipt about 170 px wide) | declined `too_small` |
+| downscaled to 25 % | declined `too_small` |
+| brightness 40 % | declined `too_dark` |
+
+The 1 px blur is already declined: this photo is soft to begin with (sharpness 0.60 against 1.1 for the rendered MOCK images), so there is little headroom between "readable" and "blurry" on real thermal print. Whether 0.30 is the right line for other phones and other receipts is not known.
+
+### MOCK corpus (`fixtures/receipts-nl/mock/*.png`, MOCK)
+
+All six pass as `ok` with the box equal to the whole image (not shrunk): sharpness 1.03 to 1.12, paper brightness 252, ink 0.04, fill 1.0. Uploaded byte for byte (PNG, long side under 2000 px).
+
+### Expected effect on model time: ESTIMATE, NOT MEASURED
+
+The Colab server was offline, so **no model time was measured for prepared photos**. Only the input size can be compared: 1512 x 1512 (2.29 MP) becomes 419 x 1512 (0.63 MP), 28 % of the pixels. If Qianfan-OCR tiles the image in 448 px tiles at 256 tokens each (the InternVL style; **assumed, not checked against the model's code**), the square needs a 3 x 3 grid plus a thumbnail, about 2 560 image tokens, and the strip a 1 x 4 grid plus a thumbnail, about 1 280: roughly half the image tokens. The decode (output) side does not shrink with the crop and `max_tokens` is now 2048, so the 46 s measured for the tight crop in the live check (430 x 1512) is the better guide for the prepared photo than any scaling of the 120 s+ run. Re-run the live check with a photo like the PLUS one to confirm.
+
+### Tests (this branch)
+
+- `pnpm --filter @lr/wallet test`: 8 files, 107 tests passed (new: `photo-analysis.test.ts` 17 = 10 synthetic scenes + the 6 MOCK PNGs + a count check, and `prepare-photo.test.ts` 5).
+- `pnpm --filter @lr/worker test`: 9 files, 70 tests passed (new: timeout classification, max_tokens 2048, an extractor that always times out ends `failed` with `extraction_timeout`).
+- `pnpm lint`, `pnpm typecheck` (25 tasks), `pnpm build` (13 tasks), `pnpm test:privacy` (0 hits in 35 searches, 6 controls ok): pass.
+- `pnpm test:e2e` on a fresh stack: 11 passed, including the two new specs in `e2e/photo-prep.spec.ts`: a phone-style photo (MOCK receipt, 560 px wide, on a 1800 x 2400 wood-coloured JPEG made in the page canvas) becomes 614 x 797 px, 67 KB before the S3 PUT, the upload row is created and ends `failed` with "not in the demo set" (no recording for the cropped bytes; extraction is not faked); blurred, tiny, empty-table, dark and undecodable photos are declined with the right `data-problem`, with zero requests to `/v1/me/uploads` and none to S3, and a good photo chosen afterwards on the same page goes through to `done`.
+
+### Open
+
+- Model time with prepared photos is not measured (Colab offline). Re-run `docs/QIANFAN-LIVE-CHECK.md` step "How to repeat the check" with an uncropped photo.
+- Thresholds rest on one real photo and six rendered MOCK images. A real corpus of phone photos (different phones, lighting, tables, crumpled receipts, receipts on white surfaces) is needed before they mean anything beyond "the PLUS sample passes and obvious bad photos are declined".
+- Not tested: Safari/iOS, a real phone camera (EXIF-rotated JPEGs), very large photos (12 MP and up) for memory and time, receipts photographed on a white or light grey surface (no paper/background contrast, passes as "already tight"), two receipts in one frame.
+- A model that always times out still leaves the buyer on "Reading" for up to about 16 minutes (4 attempts x 2 requests x 120 s) before `failed`. Fewer retries for timeouts would shorten it; not changed.
+- The PLUS VAT-table parsing (ISSUES #26) is unchanged.
+
+## Live timing after photo preparation (Colab T4, 2026-10-17)
+
+Measured through the wallet with `EXTRACTOR=http` on an otherwise idle queue (the first attempt was invalid: a leftover retrying job from an earlier uncropped upload held the single worker slot for about 2.5 minutes). Times are wall clock from choosing the file to a final status.
+
+| Input | Change | Result |
+| --- | --- | --- |
+| Real PLUS photo, uncropped 1512 x 1512 | none (before) | no result: the model request ran past 120 s (and past Cloudflare's roughly 100 s limit) |
+| Same photo, prepared by the wallet (419 x 1512 JPEG, 80 KB, 0.3 s to prepare) | requests sent one after the other | `needs_review` after **100 s** |
+| Same photo, prepared | the markdown and KIE requests sent together | `needs_review` after **62 s** |
+| MOCK supermarkt image (already tight) | requests one after the other / together | 51 s / **39 s** |
+
+So cropping turned a failure into a result, and sending the two prompts together cut about 40% of the wait (38 s on the real photo, 12 s on the mock image). One photo and one mock image on a shared T4: these are single measurements, not a benchmark. The real photo still ends as `needs_review` (OCR errors, ISSUES #26).
+
 # Handoff to reviewer
 
 ## What works end to end, and the test that proves it

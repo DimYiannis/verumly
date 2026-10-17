@@ -1,7 +1,9 @@
 /**
  * Dutch keyword categoriser (v2 §11 `categorise`). Deterministic rule table: first category whose keyword list
- * matches the normalised description wins. Health lines are flagged `sensitive` (special-category data).
+ * matches the normalised description wins; lines no keyword matches fall back to the shop's category
+ * (`merchant-rules.ts`), then to `overig`. Health lines are flagged `sensitive` (special-category data).
  */
+import { categoriseMerchant } from './merchant-rules.ts';
 
 export interface Categorised {
   category: string;
@@ -30,8 +32,9 @@ function normalise(text: string): string {
 const PHARMACY_MERCHANT = /\bapotheek\b|\bapotheker\b/;
 
 /**
- * Categorise one line. `merchantName` matters only for health: every line sold by an `apotheek` is
- * health-related, while a `drogist` sells many things, so only health keywords flag its lines.
+ * Categorise one line. Every line sold by an `apotheek` is health-related. Otherwise the line's keywords decide; only
+ * when none match does the shop name decide (a `drogist` sells many things, so its lines are health only by keyword
+ * or, failing any keyword, by the shop rule).
  */
 export function categoriseLine(line: { description: string; merchantName?: string | null }): Categorised {
   const text = normalise(line.description);
@@ -40,5 +43,23 @@ export function categoriseLine(line: { description: string; merchantName?: strin
   for (const rule of CATEGORY_RULES) {
     if (rule.keywords.some((k) => text.includes(k))) return { category: rule.category, sensitive: rule.category === HEALTH_CATEGORY };
   }
-  return { category: FALLBACK_CATEGORY, sensitive: false };
+  return categoriseMerchant(line.merchantName) ?? { category: FALLBACK_CATEGORY, sensitive: false };
+}
+
+/** The category fields a parsed receipt line carries: what the rules decided, and the buyer's own choice if any. */
+export interface CategorisedLine {
+  description: string;
+  category?: string;
+  sensitive?: boolean;
+  /** set when the buyer chose the category: it is kept as is and never marked sensitive */
+  userCategory?: string | null;
+}
+
+/** Categorise every line of one receipt. A line with a buyer-set category keeps it, whatever the rules say. */
+export function categoriseLines<T extends CategorisedLine>(lines: readonly T[], merchantName: string | null): Array<T & { category: string; sensitive: boolean }> {
+  return lines.map((line) => {
+    if (line.userCategory) return { ...line, category: line.userCategory, sensitive: false };
+    const verdict = categoriseLine({ description: line.description, merchantName });
+    return { ...line, category: verdict.category, sensitive: verdict.sensitive };
+  });
 }

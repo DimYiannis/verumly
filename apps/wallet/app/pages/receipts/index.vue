@@ -75,11 +75,13 @@ async function load(append: boolean) {
     loading.value = false;
     loaded.value = true;
   }
+  if (!append && !offlineList.value && !failed.value) await loadUploads();
 }
 
 async function loadUploads() {
   try {
-    uploads.value = (await wallet.api.listUploads()).items;
+    // the category filter applies to photo receipts too (stored category of their lines)
+    uploads.value = (await wallet.api.listUploads(filters.category.trim() ? { category: filters.category.trim() } : {})).items;
   } catch {
     uploads.value = [];
   }
@@ -130,10 +132,7 @@ onMounted(async () => {
   if (!wallet.session.value) return;
   onboarded.value = (await wallet.kv.get('onboarded', z.boolean())) ?? false;
   await load(false);
-  if (!offlineList.value) {
-    await loadUploads();
-    void loadSplitHints();
-  }
+  if (!offlineList.value) void loadSplitHints();
 });
 onBeforeUnmount(() => clearTimeout(debounce));
 </script>
@@ -281,9 +280,18 @@ onBeforeUnmount(() => clearTimeout(debounce));
         <h2 id="uploads-h" class="mb-2 text-label text-text-secondary">{{ t('wallet.uploads') }}</h2>
         <ul class="space-y-2">
           <li v-for="u in uploads" :key="u.uploadId">
-            <NuxtLink :to="`/uploads/${u.uploadId}`" class="block rounded-lg border border-border bg-card p-4 text-foreground no-underline transition-shadow duration-150 hover:text-foreground hover:shadow-sm" data-testid="upload-item">
-              <span class="font-medium">{{ u.draft?.merchantName ?? t('common.unknownMerchant') }}</span>
-              <span class="block text-sm text-text-secondary">{{ tOr('upload', u.status) }}</span>
+            <NuxtLink
+              :to="`/uploads/${u.uploadId}`"
+              class="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 text-foreground no-underline transition-shadow duration-150 hover:text-foreground hover:shadow-sm"
+              data-testid="upload-item"
+              :data-upload-id="u.uploadId"
+              :data-status="u.status"
+            >
+              <span class="min-w-0">
+                <span class="block truncate font-medium">{{ u.draft?.merchantName ?? t('common.unknownMerchant') }}</span>
+                <span class="block text-sm text-text-secondary">{{ tOr('upload', u.status) }}</span>
+              </span>
+              <span v-if="u.draft?.gross != null" class="shrink-0 font-mono font-medium tabular-nums">{{ formatEuro(u.draft.gross, locale) }}</span>
             </NuxtLink>
           </li>
         </ul>

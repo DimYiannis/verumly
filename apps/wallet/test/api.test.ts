@@ -68,10 +68,36 @@ describe('createApi', () => {
   });
 });
 
+describe('upload management calls', () => {
+  const view = { uploadId: 'u1', status: 'done', failures: [], draft: null, matchedReceiptId: null, match: null, createdAt: '2026-10-16T10:00:00Z' };
+
+  it('filters the list by category, sets categories with PUT, fetches the photo with the bearer and deletes', async () => {
+    const f = fakeFetch((s) => {
+      if (s.method === 'DELETE') return new Response(null, { status: 204 });
+      if (s.url.endsWith('/photo')) return new Response('png-bytes', { status: 200, headers: { 'content-type': 'image/png' } });
+      return json(s.url.includes('/uploads?') ? { items: [view] } : view);
+    });
+    const api = createApi({ baseUrl: 'http://api.test', getToken: () => 'tok-abcdefghijklmnopqrstuvwxyz', fetch: f.impl });
+    await api.listUploads({ category: 'boodschappen' });
+    expect(f.calls[0]?.url).toBe('http://api.test/v1/me/uploads?category=boodschappen');
+    await api.setUploadCategories('u1', [{ index: 0, category: 'vervoer' }, { index: 1, category: null }]);
+    expect(f.calls[1]).toMatchObject({ method: 'PUT', url: 'http://api.test/v1/me/uploads/u1/categories' });
+    expect(JSON.parse(f.calls[1]?.body ?? '')).toEqual({ lines: [{ index: 0, category: 'vervoer' }, { index: 1, category: null }] });
+    expect(await (await api.uploadPhoto('u1')).text()).toBe('png-bytes');
+    expect(f.calls[2]?.headers.authorization).toBe('Bearer tok-abcdefghijklmnopqrstuvwxyz');
+    await api.deleteUpload('u1');
+    expect(f.calls[3]).toMatchObject({ method: 'DELETE', url: 'http://api.test/v1/me/uploads/u1' });
+  });
+});
+
 describe('uploads', () => {
   it('validates type and size', () => {
     expect(validateUploadFile({ type: 'image/jpeg', size: 1000 })).toBeNull();
-    expect(validateUploadFile({ type: 'application/pdf', size: 1000 })).toBeNull();
+    expect(validateUploadFile({ type: 'image/webp', size: 1000 })).toBeNull();
+    // PDF and HEIC are not read by the extractor: refused before anything is uploaded
+    expect(validateUploadFile({ type: 'application/pdf', size: 1000 })).toBe('unsupported_type');
+    expect(validateUploadFile({ type: 'image/heic', size: 1000 })).toBe('unsupported_type');
+    expect(validateUploadFile({ type: '', size: 1000 })).toBe('unsupported_type');
     expect(validateUploadFile({ type: 'text/plain', size: 1000 })).toBe('unsupported_type');
     expect(validateUploadFile({ type: 'image/png', size: 10_000_001 })).toBe('too_large');
     expect(validateUploadFile({ type: 'image/png', size: 0 })).toBe('empty');
@@ -97,6 +123,20 @@ describe('uploads', () => {
     expect(id).toBe('u1');
     expect(order).toEqual(['presign image/png 3', 'PUT http://s3.test/receipts/u1?sig=x', 'complete u1']);
     expect(storage.calls[0]?.headers).toEqual({ 'content-type': 'image/png' });
+  });
+
+  it('never presigns a PDF or HEIC file', async () => {
+    let presigned = false;
+    const api = {
+      async createUpload() {
+        presigned = true;
+        return { uploadId: 'u1', uploadUrl: 'http://s3.test/x', headers: {} };
+      },
+      completeUpload: async (id: string) => ({ uploadId: id, status: 'processing' }),
+    };
+    await expect(uploadFile(api, new Blob(['%PDF'], { type: 'application/pdf' }))).rejects.toMatchObject({ status: 400, code: 'unsupported_type' });
+    await expect(uploadFile(api, new Blob(['x'], { type: 'image/heic' }))).rejects.toMatchObject({ code: 'unsupported_type' });
+    expect(presigned).toBe(false);
   });
 
   it('does not call complete when the storage PUT fails', async () => {

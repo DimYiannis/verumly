@@ -40,10 +40,13 @@ Authenticated (`Authorization: Bearer <session token>`; email code via Mailpit l
 | GET | `/v1/me/receipts` | Cursor pagination; filters `q`, `state`, `from`, `to`, `category`, `merchant`. |
 | GET | `/v1/me/receipts/:id` | Latest CRF and versions; only if claimed by the caller. |
 | GET | `/v1/me/receipts/:id/pdf` | Server-rendered PDF (pdfmake). |
-| POST | `/v1/me/uploads` | Presigned S3 PUT. Then `POST /v1/me/uploads/:id/complete`. |
-| GET / PATCH | `/v1/me/uploads`, `/v1/me/uploads/:id` | Status; corrections for `needs_review`. |
+| POST | `/v1/me/uploads` | `{contentType, size}`; JPEG, PNG or WEBP only (PDF and HEIC are 400), at most 10 MB. Returns a presigned S3 PUT the browser uses directly. Then `POST /v1/me/uploads/:id/complete`. |
+| GET / PATCH | `/v1/me/uploads`, `/v1/me/uploads/:id` | Status; corrections for `needs_review` (lines are re-categorised; `userCategory` per line is kept). The list takes `?category=` (stored category of any line). |
+| PUT | `/v1/me/uploads/:id/categories` | `{lines: [{index, category \| null}]}`: the buyer's own category per line (`null` clears it). `done` and `needs_review` only; changes nothing else. |
+| GET | `/v1/me/uploads/:id/photo` | The photo bytes (bearer auth, owner only, `cache-control: private, no-store`). |
+| DELETE | `/v1/me/uploads/:id` | Removes the S3 object, then the row. 204; 404 unless it is yours. |
 | POST | `/v1/me/uploads/:id/accept-match` | Replace the photo with the matched official receipt (claim source `photo_match`). |
-| GET | `/v1/me/insights` | Spend per month, per category, top merchants. |
+| GET | `/v1/me/insights` | Spend per month, per category (stored line categories, health as `overig`), top merchants, and `vatPerRate` (VAT per rate over claimed final receipts and done uploads). |
 | GET / PUT | `/v1/me/consents` | Append-only; all off by default. |
 | POST / DELETE | `/v1/me/push-subscriptions`, `/v1/me/push-subscriptions/:id` | Web Push. |
 | GET | `/v1/me/export` | JSON export of everything about the user. |

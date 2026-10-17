@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { MemoryStore, TerminalSdk, type DraftLine } from '@lr/terminal-sdk';
 import { addInterval, amsterdamYear, paymentProvider, priceFor, VAT_RATE } from '@lr/billing';
 import { createMerchantUser } from '@lr/dashboard-core';
-import { loadEnv } from '@lr/config';
+import { loadEnv, usesDbUrls } from '@lr/config';
 import { connect, connectAdmin, sql, tables, type Db } from '@lr/db';
 import { createLocation, createOrg, createTerminal } from '@lr/db/provision';
 import { parseExtraction, truthPrintedAtUtc } from '@lr/receipt-nl';
@@ -19,7 +19,8 @@ import type { WorkerCtx } from '../apps/worker/src/context.ts';
 import { categorise } from '../apps/worker/src/jobs/categorise.ts';
 import { extractUpload } from '../apps/worker/src/jobs/extract-upload.ts';
 import { rollupDaily } from '../apps/worker/src/jobs/rollup-daily.ts';
-import { loadCorpus, readRecorded, type CorpusEntry } from './lib/corpus.ts';
+import { loadSeedCorpus, readRecorded, type CorpusEntry } from './lib/corpus.ts';
+import { runningApps } from './lib/running-apps.ts';
 
 /**
  * Local-dev seed (v2 §15). Idempotent: every step checks what exists and only adds what is missing.
@@ -317,7 +318,7 @@ export async function runSeed(opts: SeedOptions): Promise<SeedResult> {
     // uploads from corpus images with the recorded extractor; one matches an official receipt
     const [existingUploads] = await db.select({ n: count() }).from(tables.uploads).where(eq(tables.uploads.userId, buyerId));
     if ((existingUploads?.n ?? 0) < SEED.uploadTarget) {
-      const corpus = loadCorpus({ quiet: false });
+      const corpus = loadSeedCorpus({ fixturesDir: opts.env.FIXTURES_DIR });
       const statusOf = (e: CorpusEntry) => {
         const rec = readRecorded(e);
         return rec ? parseExtraction({ markdown: rec.markdown, kie: rec.kie }) : null;
@@ -430,6 +431,15 @@ async function seedOfficialReceipt(adminDb: Db, merchantDb: Db, e: CorpusEntry, 
 
 if (import.meta.main) {
   const env = loadEnv(workerEnvSchema);
+  if (usesDbUrls(env) && !process.argv.includes('--force')) {
+    // A hosted pooler allows few connections per user. The seed uses three roles at once, so it must not share them with
+    // running apps: stop them first (RUNNING.md, "Run against Supabase"). `--force` skips this check.
+    const apps = await runningApps();
+    if (apps.length > 0) {
+      console.error(`Refusing to seed a hosted database while the apps are running (${apps.join(', ')}). Stop them and run the seed on its own, or pass --force.`);
+      process.exit(1);
+    }
+  }
   const result = await runSeed({ env });
   console.log(
     `seed done: ${result.created.receipts} receipts, ${result.created.claims} claims, ${result.created.uploads} uploads, ${result.created.terminals} terminals created (0 everywhere = already seeded)`,

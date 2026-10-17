@@ -11,12 +11,15 @@
     "@lr/crypto": "workspace:*",
     "@lr/dashboard-core": "workspace:*",
     "@lr/db": "workspace:*",
+    "@lr/storage": "workspace:*",
     "@lr/terminal-sdk": "workspace:*",
     "@playwright/test": "1.63.0",
     "otpauth": "^9.0.0",
     "pg": "^8.13.0"
   },
   "devDependencies": {
-    "@types/pg": "^8.11.0"
+    "@types/pg": "^8.11.0",
+    "@types/pngjs": "^6.0.5",
+    "pngjs": "^7.0.0"
   }
 }

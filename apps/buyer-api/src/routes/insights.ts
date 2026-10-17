@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { tables } from '@lr/db';
-import { categoriseLine, FALLBACK_CATEGORY } from '@lr/receipt-nl';
+import { FALLBACK_CATEGORY, HEALTH_CATEGORY } from '@lr/receipt-nl';
 import type { AppDeps } from '../context.ts';
 import { readExtracted } from '../uploads.ts';
 import { requireSession } from './auth.ts';
@@ -16,9 +16,10 @@ const monthOf = (d: Date) => {
 };
 
 /**
- * Spend per month, per category and top merchants: nothing else (v2 §10). Counts the user's claimed receipts that are
- * final (`paid`/`fiscalised`; pre-bills and voids are not spending) and finished uploads. Health lines (`sensitive`)
- * are reported under `overig`, so the insights never reveal a health category.
+ * Spend per month, per category, top merchants and VAT per rate: nothing else (v2 §10). Counts the user's claimed
+ * receipts that are final (`paid`/`fiscalised`; pre-bills and voids are not spending) and finished uploads. Upload
+ * lines count under the category stored on the line (worker or buyer), never recomputed here. Health lines
+ * (`sensitive`, or the health category) are reported under `overig`, so the insights never reveal a health category.
  */
 export function insightRoutes(deps: AppDeps) {
   return async (app: FastifyInstance) => {
@@ -28,6 +29,7 @@ export function insightRoutes(deps: AppDeps) {
       const month = new Map<string, number>();
       const category = new Map<string, number>();
       const merchant = new Map<string, { total: number; count: number }>();
+      const vat = new Map<number, number>();
       const add = (map: Map<string, number>, key: string, v: number) => {
         map.set(key, (map.get(key) ?? 0) + v);
       };
@@ -48,6 +50,16 @@ export function insightRoutes(deps: AppDeps) {
         group by 1`);
       for (const r of perCategory.rows) add(category, r.cat, Number(r.total));
 
+      const perVat = await deps.db.execute<{ rate: number; vat: string }>(sql`
+        select (e->>'rate')::int as rate, sum((e->>'vat')::bigint)::bigint as vat
+        from buyer.claims c
+        join merchant.receipts r on r.id = c.receipt_id
+        join merchant.receipt_versions v on v.receipt_id = r.id and v.version = r.current_version
+        cross join lateral jsonb_array_elements(v.payload->'vatSummary') e
+        where c.user_id = ${userId}::uuid and r.state in ('paid', 'fiscalised')
+        group by 1`);
+      for (const r of perVat.rows) vat.set(Number(r.rate), (vat.get(Number(r.rate)) ?? 0) + Number(r.vat));
+
       const perMerchant = await deps.db.execute<{ name: string; total: string; n: string }>(sql`
         select v.payload->'merchant'->>'name' as name, sum(r.total_minor)::bigint as total, count(*) as n
         from buyer.claims c
@@ -66,9 +78,10 @@ export function insightRoutes(deps: AppDeps) {
         if (!parsed || parsed.gross === null) continue;
         add(month, monthOf(parsed.printedAtUtc ? new Date(parsed.printedAtUtc) : u.createdAt), parsed.gross);
         for (const l of parsed.lines) {
-          const verdict = categoriseLine({ description: l.description, merchantName: parsed.merchant.name });
-          add(category, verdict.sensitive ? FALLBACK_CATEGORY : verdict.category, l.total);
+          const stored = l.category ?? FALLBACK_CATEGORY;
+          add(category, l.sensitive || stored === HEALTH_CATEGORY ? FALLBACK_CATEGORY : stored, l.total);
         }
+        for (const b of parsed.vatBreakdown) vat.set(b.rate, (vat.get(b.rate) ?? 0) + b.vat);
         const name = parsed.merchant.name ?? 'Onbekend';
         const m = merchant.get(name) ?? { total: 0, count: 0 };
         merchant.set(name, { total: m.total + parsed.gross, count: m.count + 1 });
@@ -77,6 +90,7 @@ export function insightRoutes(deps: AppDeps) {
       return {
         perMonth: [...month.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([m, total]) => ({ month: m, total })),
         perCategory: [...category.entries()].sort(([, a], [, b]) => b - a).map(([c, total]) => ({ category: c, total })),
+        vatPerRate: [...vat.entries()].sort(([a], [b]) => b - a).map(([rate, total]) => ({ rate, vat: total })),
         topMerchants: [...merchant.entries()]
           .sort(([, a], [, b]) => b.total - a.total)
           .slice(0, TOP_MERCHANTS)

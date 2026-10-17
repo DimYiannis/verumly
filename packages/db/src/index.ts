@@ -2,7 +2,7 @@ import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
 import pg from 'pg';
 import { PgBoss } from 'pg-boss';
-import { adminDbUrl, roleDbUrl, sessionModeWarning, type DbEnv, type DbRole } from '@lr/config';
+import { adminDbUrl, adminPoolMax, bossPoolMax, poolMax, roleDbUrl, sessionModeWarning, type DbEnv, type DbRole } from '@lr/config';
 import * as schema from './schema.ts';
 import { BOSS_SCHEMA } from './queues.ts';
 
@@ -33,7 +33,7 @@ function warnWorkerPooler(role: DbRole, env: DbEnv): void {
 
 export function connect(role: DbRole, env: DbEnv, opts: { max?: number } = {}): DbHandle {
   warnWorkerPooler(role, env);
-  const pool = new pg.Pool({ connectionString: roleDbUrl(role, env), max: opts.max ?? 10 });
+  const pool = new pg.Pool({ connectionString: roleDbUrl(role, env), max: opts.max ?? poolMax(env) });
   // a dead idle client must not crash the process
   pool.on('error', () => {});
   return { db: drizzle(pool, { schema }), pool, close: () => pool.end() };
@@ -44,7 +44,7 @@ export function connect(role: DbRole, env: DbEnv, opts: { max?: number } = {}): 
  * and onboarding scripts. Services always connect as their own role.
  */
 export function connectAdmin(env: DbEnv, opts: { max?: number } = {}): DbHandle {
-  const pool = new pg.Pool({ connectionString: adminDbUrl(env), max: opts.max ?? 4 });
+  const pool = new pg.Pool({ connectionString: adminDbUrl(env), max: opts.max ?? adminPoolMax(env) });
   pool.on('error', () => {});
   return { db: drizzle(pool, { schema }), pool, close: () => pool.end() };
 }
@@ -67,7 +67,7 @@ export function makeBoss(role: DbRole, env: DbEnv, opts: { supervise?: boolean; 
     createSchema: false,
     supervise: opts.supervise ?? false,
     schedule: opts.schedule ?? false,
-    max: 4,
+    max: bossPoolMax(env),
   });
   boss.on('error', () => {});
   return boss;

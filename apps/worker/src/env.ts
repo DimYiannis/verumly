@@ -12,9 +12,12 @@ export const workerEnvSchema = dbEnvSchema
     /** `recorded` (tests, seed): replay fixtures. `http`: a vLLM-served Qianfan-OCR endpoint. No fake extractor. */
     EXTRACTOR: z.enum(['recorded', 'http']).default('recorded'),
     FIXTURES_DIR: z.string().default(defaultFixtures),
-    QIANFAN_URL: z.string().default('http://127.0.0.1:8000/v1/chat/completions'),
+    /** server base URL; the worker appends /v1/chat/completions (a full URL is accepted too) */
+    QIANFAN_URL: z.string().default('http://127.0.0.1:8000'),
     QIANFAN_MODEL: z.string().default('baidu/Qianfan-OCR'),
     QIANFAN_REVISION: z.string().optional(),
+    /** vLLM `--api-key`; sent as a bearer token */
+    QIANFAN_API_KEY: z.string().optional(),
     LEAD_THRESHOLD: z.coerce.number().int().min(1).default(20),
     VAPID_PUBLIC_KEY: z.string().optional(),
     VAPID_PRIVATE_KEY: z.string().optional(),
