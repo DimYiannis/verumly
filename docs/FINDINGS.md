@@ -483,6 +483,30 @@ New tests (counts are of the tests added, all passing): `packages/receipt-nl/tes
 - The worker package is shared with the QianfanPath work; the numbers above were taken before its changes landed in `apps/worker/src/extractor*.ts`/`env.ts` (not present in the working tree at the time). Re-run `pnpm --filter @lr/worker test` after merging.
 - The wallet `docs/e2e-screenshots/` set was not refreshed: only `photo-upload-detail.png` and `photo-insights.png` are new (the run also rewrote the old screenshots; those were reverted).
 
+## Live Qianfan check (Colab T4, vLLM 0.31.0, revision `623bf5d2`)
+
+Run on 2026-10-17 through a Cloudflare quick tunnel with an API key. Commands and observations only; nothing here is a measured accuracy figure.
+
+| Check | Result |
+| --- | --- |
+| Endpoint without key / with key | 401 / `/v1/models` lists `baidu/Qianfan-OCR` (`max_model_len` 8192) |
+| Worker `httpExtractor` + `parseExtraction` on 2 **MOCK** images | both `done`; gross, per-rate VAT and shop identity equal the truth files (supermarkt 1973 = 1973, VAT 9% 68 / 21% 190; horeca 4380 = 4380, VAT 9% 150 / 21% 444); 51 s and 57 s per image (two requests each) |
+| Full stack (`EXTRACTOR=http`): wallet `/add` upload of a MOCK image | `done` after 51 s; 8 lines with category and VAT rate |
+| **Real photo**: a PLUS supermarket receipt, 1512 x 1512 JPEG, receipt a thin strip in the middle of the frame (`receipt.jpeg`, not committed) | **Uncropped: no result.** The model request ran longer than the worker's 120 s timeout and than Cloudflare's roughly 100 s limit (a direct request returned an HTML error page after 126 s), so the upload stayed `processing` through all retries (4 min 39 s when checked). **Cropped to the receipt (430 x 1512): read in 46 s** (715 output tokens) |
+| Same cropped photo through the wallet | `needs_review` after 87 s, which is the right outcome (see below) |
+
+What the cropped real receipt gave:
+- The markdown read the shop (PLUS, 1034 CR Amsterdam), date and time (10/10/2026 16:52), the VAT table (0%: 0,00 on 0,25; 9%: 4,69 on 56,76; 21%: 1,30 on 7,49; total 5,99 on 64,50), card payment and "14 Artikelen" correctly.
+- It also misread the printed total as `664,50` (the euro sign became a 6), garbled most product names (for example "HORLOGEEN WOEL HEIK" for the milk) and dropped the discount line ("-3,00").
+- The KIE answer gave the total `64,50`, shop PLUS SLOOTEN, 14 lines without VAT rates and no VAT rows. The parser stored gross 6450, 14 lines and no VAT rows, and flagged `gross_sum`, `rounding_format`, `vat_row_unreadable`, `vat_missing_rate`. The zero-false-`done` gate held: nothing wrong reached `done`.
+- Both outputs came from one photo, so this is one data point, not an accuracy measurement.
+
+Open from this check:
+- A photo where the receipt fills little of the frame can take longer than the worker's 120 s request timeout and keep the upload in `processing` for minutes before failing, without telling the buyer to retake the photo. Cropping to the receipt fixed it. Not fixed here.
+- The parser did not use the markdown VAT table of the real receipt: its rows read `BTW lang 9% 4,69 56,76` and `BTW 0 0,00 0,25` (no percent sign), unlike the mock layout. Making the table parser tolerant of the PLUS layout is not done.
+- The real photo contains a masked card number (`516882xxxxxx9944`), so it was left untracked in the repo root. Whether to add it to `fixtures/receipts-nl/` with a hand-written truth file is the user's call.
+- The Colab tunnel and 100 s edge limit make this setup suitable for demos only.
+
 # Handoff to reviewer
 
 ## What works end to end, and the test that proves it
