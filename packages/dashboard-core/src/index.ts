@@ -14,3 +14,4 @@ export * from './terminals.ts';
 export * from './totp.ts';
 export * from './users.ts';
 export * from './export-helpers.ts';
+export * from './report-builder.ts';
