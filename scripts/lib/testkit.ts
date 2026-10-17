@@ -85,6 +85,8 @@ let orgCounter = 0;
 export async function createWorld(opts: WorldOptions = {}): Promise<World> {
   const testDb = await createTestDb('it');
   const admin = new pg.Pool({ connectionString: adminDbUrl(testDb.env), max: 6 });
+  // `drop database … with (force)` may kill an idle client just before it has said goodbye; that must not crash the run
+  admin.on('error', () => {});
   const adminDb = drizzle(admin, { schema: tables });
   const handles: DbHandle[] = [];
   const logs = new LogCapture();

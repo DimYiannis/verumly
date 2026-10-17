@@ -77,6 +77,8 @@ async function signIn(email: string): Promise<Browser> {
 
 beforeAll(async () => {
   adminPool = new pg.Pool({ connectionString: adminDbUrl(testDb.env), max: 3 });
+  // `drop database … with (force)` may kill an idle client just before it has said goodbye; that must not crash the run
+  adminPool.on('error', () => {});
   admin = drizzle(adminPool) as unknown as Db;
   const org = await createOrg(admin, { legalName: 'Café Het Plein B.V.', kvkNumber: '12345678', vatNumber: 'NL123456789B01' });
   orgId = org.id;

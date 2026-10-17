@@ -27,6 +27,8 @@ export interface Fixture {
 export async function fixture(prefix: string): Promise<Fixture> {
   const testDb = await createTestDb(prefix);
   const adminPool = new pg.Pool({ connectionString: adminDbUrl(testDb.env), max: 3 });
+  // `drop database … with (force)` may kill an idle client just before it has said goodbye; that must not crash the run
+  adminPool.on('error', () => {});
   const admin = drizzle(adminPool) as unknown as Db;
   const orgs = [];
   for (const [i, kvk] of ['12345678', '87654321'].entries()) {
