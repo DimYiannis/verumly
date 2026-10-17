@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import pg from 'pg';
+import { PNG } from 'pngjs';
 import { adminDbUrl, loadEnv, s3EnvSchema } from '@lr/config';
 import { createObjectStore } from '@lr/storage';
 import { shot, walletLogin } from './support/browser.ts';
@@ -163,8 +164,10 @@ test('PDF and HEIC are refused in the wallet before anything is uploaded', async
 test('a photo that cannot be read ends as failed, with the reason', async ({ page }) => {
   await login(page);
   await page.goto(`${URLS.wallet}/add`);
-  // a valid 1×1 PNG that is not in the recorded set: the recorded extractor has nothing to replay
-  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/VscvDQAAAABJRU5ErkJggg==', 'base64');
+  // a MOCK receipt with one pixel changed: a real, tight receipt image (the wallet accepts it and uploads it as it is) that is not in the recorded set
+  const image = PNG.sync.read(readFileSync(`${MOCK_DIR}mock-weegschaal.png`));
+  image.data[0] = 250;
+  const png = PNG.sync.write(image);
   await page.getByTestId('file-input-library').setInputFiles({ name: 'unknown.png', mimeType: 'image/png', buffer: png });
   await page.waitForURL(/\/uploads\/[0-9a-f-]{36}$/);
   await expect(page.getByTestId('upload-status')).toHaveAttribute('data-status', 'failed');

@@ -5,7 +5,7 @@ import type { ExtractUploadJob } from '@lr/db';
 import { categoriseLines, parseExtraction } from '@lr/receipt-nl';
 import type { UploadExtracted } from '@lr/schema';
 import type { WorkerCtx } from '../context.ts';
-import { PermanentExtractionError } from '../extractor.ts';
+import { ExtractionTimeoutError, PermanentExtractionError } from '../extractor.ts';
 
 export interface ExtractOutcome {
   status: 'done' | 'needs_review' | 'failed' | 'skipped';
@@ -65,7 +65,7 @@ export async function extractUpload(ctx: WorkerCtx, job: ExtractUploadJob, opts:
     extraction = await ctx.extractor.extract(bytes);
   } catch (e) {
     if (e instanceof PermanentExtractionError) return fail(ctx, upload.id, e.code);
-    if (opts.finalAttempt) return fail(ctx, upload.id, 'extractor_unavailable');
+    if (opts.finalAttempt) return fail(ctx, upload.id, e instanceof ExtractionTimeoutError ? 'extraction_timeout' : 'extractor_unavailable');
     throw e;
   }
 

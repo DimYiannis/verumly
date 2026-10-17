@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { QIANFAN_PROMPTS } from '@lr/receipt-nl';
 import { loginUser, sql } from '../../../scripts/lib/testkit.ts';
-import { httpExtractor, PermanentExtractionError, recordedExtractor, sniffMime, type Extractor } from '../src/extractor.ts';
+import { ExtractionTimeoutError, httpExtractor, PermanentExtractionError, recordedExtractor, sniffMime, type Extractor } from '../src/extractor.ts';
 import { extractUpload } from '../src/jobs/extract-upload.ts';
 import { corpusEntry, createWorkerWorld, imageBytes, uploadBytes, type WorkerWorld } from './helpers.ts';
 
@@ -43,7 +43,7 @@ describe('http extractor (OpenAI-compatible Qianfan endpoint)', () => {
     expect(seen).toHaveLength(2);
     for (const s of seen) {
       expect(s.url).toBe('/v1/chat/completions');
-      expect(s.body).toMatchObject({ model: 'baidu/Qianfan-OCR', temperature: 0 });
+      expect(s.body).toMatchObject({ model: 'baidu/Qianfan-OCR', temperature: 0, max_tokens: 2048 });
     }
     const texts = seen.map((s) => JSON.stringify(s.body));
     expect(texts[0]).toContain(QIANFAN_PROMPTS.markdown);
@@ -106,6 +106,27 @@ describe('http extractor (OpenAI-compatible Qianfan endpoint)', () => {
     expect(sniffMime(new Uint8Array([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50]))).toBe('image/webp');
     expect(sniffMime(new Uint8Array([0, 1, 2, 3]))).toBeNull();
   });
+
+  it('a request that runs past the timeout, or a gateway that answers 408, 504 or 524, is an ExtractionTimeoutError (retryable, not permanent)', async () => {
+    const hung = createServer(() => {});
+    await new Promise<void>((r) => hung.listen(0, '127.0.0.1', r));
+    const addr = hung.address();
+    if (typeof addr !== 'object' || addr === null) throw new Error('no address');
+    try {
+      const slow = httpExtractor({ url: `http://127.0.0.1:${addr.port}`, model: 'm', timeoutMs: 100 });
+      const err = await slow.extract(PNG).catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(ExtractionTimeoutError);
+      expect(err).not.toBeInstanceOf(PermanentExtractionError);
+    } finally {
+      hung.closeAllConnections();
+      await new Promise<void>((r) => hung.close(() => r()));
+    }
+    const ex = httpExtractor({ url: baseUrl, model: 'm' });
+    for (const code of [408, 504, 524]) {
+      queue.push(code);
+      await expect(ex.extract(PNG)).rejects.toBeInstanceOf(ExtractionTimeoutError);
+    }
+  });
 });
 
 describe('recorded extractor', () => {
@@ -149,5 +170,29 @@ describe('extract-upload failure handling', () => {
     expect(row).toMatchObject({ status: 'failed', extracted: { failures: ['extractor_unavailable'] } });
     // a finished (failed) upload is never processed again
     expect((await extractUpload(ww.ctx, { uploadId: up.uploadId })).status).toBe('skipped');
+  });
+
+  it('an extractor that always times out is retried, then the upload ends failed with extraction_timeout instead of staying processing', async () => {
+    // a model server that accepts the request and never answers, behind a real (short) request timeout
+    const hung = createServer(() => {});
+    await new Promise<void>((r) => hung.listen(0, '127.0.0.1', r));
+    const addr = hung.address();
+    if (typeof addr !== 'object' || addr === null) throw new Error('no address');
+    try {
+      ww.ctx.extractor = httpExtractor({ url: `http://127.0.0.1:${addr.port}`, model: 'm', timeoutMs: 150 });
+      const who = await loginUser(ww.w);
+      const up = await uploadBytes(ww, who, PNG);
+      const status = async () => (await sql<{ status: string; extracted: { failures: string[] } | null }>(ww.w, 'select status, extracted from buyer.uploads where id = $1', [up.uploadId]))[0];
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await expect(extractUpload(ww.ctx, { uploadId: up.uploadId }, { finalAttempt: false })).rejects.toBeInstanceOf(ExtractionTimeoutError);
+        expect((await status())?.status).toBe('processing');
+      }
+      const out = await extractUpload(ww.ctx, { uploadId: up.uploadId }, { finalAttempt: true });
+      expect(out.status).toBe('failed');
+      expect(await status()).toMatchObject({ status: 'failed', extracted: { failures: ['extraction_timeout'] } });
+    } finally {
+      hung.closeAllConnections();
+      await new Promise<void>((r) => hung.close(() => r()));
+    }
   });
 });

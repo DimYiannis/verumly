@@ -507,6 +507,46 @@ Open from this check:
 - The real photo contains a masked card number (`516882xxxxxx9944`), so it was left untracked in the repo root. Whether to add it to `fixtures/receipts-nl/` with a hand-written truth file is the user's call.
 - The Colab tunnel and 100 s edge limit make this setup suitable for demos only.
 
+## Photo preparation (ISSUES #25): what was measured
+
+### Real sample, `receipt.jpeg` (REAL, one photo, local only, not committed)
+
+Run in headless Chromium (Playwright, the real `preparePhoto` bundled into a blank page; scripts removed afterwards, one output kept under `.local/`):
+
+| Input | Result |
+| --- | --- |
+| 1512 x 1512 original (242 KB) | accepted. Box `x=476, y=0, 419 x 1512`; uploaded file 419 x 1512 px JPEG, 80 KB (-67 % bytes, -72 % pixels). About 150 ms. Metrics: fill 0.83, sharpness 0.60, paper brightness 206, contrast 82, ink 0.009. The crop, read by eye, holds the full width of the paper with about 20 px margin each side; barcode and header are inside. |
+| blurred 1 px | declined `too_blurry` (sharpness 0.25) |
+| blurred 3 px | declined `too_blurry` |
+| downscaled to 40 % (605 px frame, receipt about 170 px wide) | declined `too_small` |
+| downscaled to 25 % | declined `too_small` |
+| brightness 40 % | declined `too_dark` |
+
+The 1 px blur is already declined: this photo is soft to begin with (sharpness 0.60 against 1.1 for the rendered MOCK images), so there is little headroom between "readable" and "blurry" on real thermal print. Whether 0.30 is the right line for other phones and other receipts is not known.
+
+### MOCK corpus (`fixtures/receipts-nl/mock/*.png`, MOCK)
+
+All six pass as `ok` with the box equal to the whole image (not shrunk): sharpness 1.03 to 1.12, paper brightness 252, ink 0.04, fill 1.0. Uploaded byte for byte (PNG, long side under 2000 px).
+
+### Expected effect on model time: ESTIMATE, NOT MEASURED
+
+The Colab server was offline, so **no model time was measured for prepared photos**. Only the input size can be compared: 1512 x 1512 (2.29 MP) becomes 419 x 1512 (0.63 MP), 28 % of the pixels. If Qianfan-OCR tiles the image in 448 px tiles at 256 tokens each (the InternVL style; **assumed, not checked against the model's code**), the square needs a 3 x 3 grid plus a thumbnail, about 2 560 image tokens, and the strip a 1 x 4 grid plus a thumbnail, about 1 280: roughly half the image tokens. The decode (output) side does not shrink with the crop and `max_tokens` is now 2048, so the 46 s measured for the tight crop in the live check (430 x 1512) is the better guide for the prepared photo than any scaling of the 120 s+ run. Re-run the live check with a photo like the PLUS one to confirm.
+
+### Tests (this branch)
+
+- `pnpm --filter @lr/wallet test`: 8 files, 107 tests passed (new: `photo-analysis.test.ts` 17 = 10 synthetic scenes + the 6 MOCK PNGs + a count check, and `prepare-photo.test.ts` 5).
+- `pnpm --filter @lr/worker test`: 9 files, 70 tests passed (new: timeout classification, max_tokens 2048, an extractor that always times out ends `failed` with `extraction_timeout`).
+- `pnpm lint`, `pnpm typecheck` (25 tasks), `pnpm build` (13 tasks), `pnpm test:privacy` (0 hits in 35 searches, 6 controls ok): pass.
+- `pnpm test:e2e` on a fresh stack: 11 passed, including the two new specs in `e2e/photo-prep.spec.ts`: a phone-style photo (MOCK receipt, 560 px wide, on a 1800 x 2400 wood-coloured JPEG made in the page canvas) becomes 614 x 797 px, 67 KB before the S3 PUT, the upload row is created and ends `failed` with "not in the demo set" (no recording for the cropped bytes; extraction is not faked); blurred, tiny, empty-table, dark and undecodable photos are declined with the right `data-problem`, with zero requests to `/v1/me/uploads` and none to S3, and a good photo chosen afterwards on the same page goes through to `done`.
+
+### Open
+
+- Model time with prepared photos is not measured (Colab offline). Re-run `docs/QIANFAN-LIVE-CHECK.md` step "How to repeat the check" with an uncropped photo.
+- Thresholds rest on one real photo and six rendered MOCK images. A real corpus of phone photos (different phones, lighting, tables, crumpled receipts, receipts on white surfaces) is needed before they mean anything beyond "the PLUS sample passes and obvious bad photos are declined".
+- Not tested: Safari/iOS, a real phone camera (EXIF-rotated JPEGs), very large photos (12 MP and up) for memory and time, receipts photographed on a white or light grey surface (no paper/background contrast, passes as "already tight"), two receipts in one frame.
+- A model that always times out still leaves the buyer on "Reading" for up to about 16 minutes (4 attempts x 2 requests x 120 s) before `failed`. Fewer retries for timeouts would shorten it; not changed.
+- The PLUS VAT-table parsing (ISSUES #26) is unchanged.
+
 # Handoff to reviewer
 
 ## What works end to end, and the test that proves it

@@ -25,6 +25,13 @@ export class PermanentExtractionError extends Error {
   }
 }
 
+/**
+ * The model server did not answer in time (our request timeout, or a gateway answering 408/504/524). Retried like any
+ * transient error; when the last attempt also times out, the upload fails with `extraction_timeout`, so the buyer is told
+ * to take a closer, clearer photo instead of waiting.
+ */
+export class ExtractionTimeoutError extends Error {}
+
 const recordedFile = z.object({ modelRevision: z.string().min(1), markdown: z.string(), kie: z.string() });
 
 /**
@@ -90,22 +97,31 @@ export function httpExtractor(opts: HttpExtractorOptions): Extractor {
   const endpoint = chatCompletionsUrl(opts.url);
   const headers: Record<string, string> = { 'content-type': 'application/json' };
   if (opts.apiKey) headers.authorization = `Bearer ${opts.apiKey}`;
+  const timeoutMs = opts.timeoutMs ?? 120_000;
   const ask = async (dataUrl: string, prompt: string) => {
-    const res = await f(endpoint, {
-      method: 'POST',
-      headers,
-      signal: AbortSignal.timeout(opts.timeoutMs ?? 120_000),
-      body: JSON.stringify({
-        model: opts.model,
-        temperature: 0,
-        max_tokens: 4096,
-        messages: [{ role: 'user', content: [{ type: 'image_url', image_url: { url: dataUrl } }, { type: 'text', text: prompt }] }],
-      }),
-    });
-    // 4xx = the model server rejected this input, except 408/429 (timeout, rate limit): those, 5xx and network errors throw and are retried
-    if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) throw new PermanentExtractionError('extractor_rejected', `extractor returned ${res.status}`);
-    if (!res.ok) throw new Error(`extractor returned ${res.status}`);
-    return chatResponse.parse(await res.json());
+    try {
+      const res = await f(endpoint, {
+        method: 'POST',
+        headers,
+        signal: AbortSignal.timeout(timeoutMs),
+        body: JSON.stringify({
+          model: opts.model,
+          temperature: 0,
+          // bounded output: a degenerate run (a model that loops) stops here instead of running into the timeout; tools/qianfan/serve.md uses the same
+          max_tokens: 2048,
+          messages: [{ role: 'user', content: [{ type: 'image_url', image_url: { url: dataUrl } }, { type: 'text', text: prompt }] }],
+        }),
+      });
+      // 4xx = the model server rejected this input, except 408/429 (timeout, rate limit): those, 5xx and network errors throw and are retried
+      if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) throw new PermanentExtractionError('extractor_rejected', `extractor returned ${res.status}`);
+      if (res.status === 408 || res.status === 504 || res.status === 524) throw new ExtractionTimeoutError(`extractor returned ${res.status}`);
+      if (!res.ok) throw new Error(`extractor returned ${res.status}`);
+      return chatResponse.parse(await res.json());
+    } catch (e) {
+      // our own deadline (it also covers reading the body)
+      if (e instanceof DOMException && (e.name === 'TimeoutError' || e.name === 'AbortError')) throw new ExtractionTimeoutError(`extractor did not answer within ${timeoutMs} ms`);
+      throw e;
+    }
   };
   return {
     async extract(bytes) {
