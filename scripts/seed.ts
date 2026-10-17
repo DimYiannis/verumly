@@ -17,7 +17,7 @@ import type { WorkerCtx } from '../apps/worker/src/context.ts';
 import { categorise } from '../apps/worker/src/jobs/categorise.ts';
 import { extractUpload } from '../apps/worker/src/jobs/extract-upload.ts';
 import { rollupDaily } from '../apps/worker/src/jobs/rollup-daily.ts';
-import { loadCorpus, readRecorded, type CorpusEntry } from './lib/corpus.ts';
+import { loadSeedCorpus, readRecorded, type CorpusEntry } from './lib/corpus.ts';
 
 /**
  * Local-dev seed (v2 §15). Idempotent: every step checks what exists and only adds what is missing.
@@ -283,7 +283,7 @@ export async function runSeed(opts: SeedOptions): Promise<SeedResult> {
     // uploads from corpus images with the recorded extractor; one matches an official receipt
     const [existingUploads] = await db.select({ n: count() }).from(tables.uploads).where(eq(tables.uploads.userId, buyerId));
     if ((existingUploads?.n ?? 0) < SEED.uploadTarget) {
-      const corpus = loadCorpus({ quiet: false });
+      const corpus = loadSeedCorpus({ fixturesDir: opts.env.FIXTURES_DIR });
       const statusOf = (e: CorpusEntry) => {
         const rec = readRecorded(e);
         return rec ? parseExtraction({ markdown: rec.markdown, kie: rec.kie }) : null;

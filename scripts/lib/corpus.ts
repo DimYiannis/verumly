@@ -40,16 +40,33 @@ function entriesIn(dir: string): CorpusEntry[] {
 
 /**
  * The real corpus (`fixtures/receipts-nl/*.truth.json`) when any file exists, otherwise `fixtures/receipts-nl/mock/`.
+ * `only: 'mock'` always loads the mock corpus (tests that name mock receipts must not depend on what is dropped into the root).
  * Prints which one was used (v2: tests §16.C/D and the seed share this rule).
  */
-export function loadCorpus(opts: { quiet?: boolean; fixturesDir?: string } = {}): Corpus {
+export function loadCorpus(opts: { quiet?: boolean; fixturesDir?: string; only?: 'mock' } = {}): Corpus {
   const root = opts.fixturesDir ?? FIXTURES_DIR;
-  const real = readdirSync(root).some((f) => f.endsWith('.truth.json'));
+  const real = opts.only !== 'mock' && readdirSync(root).some((f) => f.endsWith('.truth.json'));
   const mockDir = join(root, 'mock');
   const corpus: Corpus = real
     ? { kind: 'real', dir: root, entries: entriesIn(root) }
     : { kind: 'mock', dir: mockDir, entries: entriesIn(mockDir) };
   if (!opts.quiet) console.log(`Corpus: ${corpus.kind.toUpperCase()} (${corpus.entries.length} receipts, ${corpus.dir})`);
+  return corpus;
+}
+
+/** Real receipts needed (each with truth, image and a recorded extraction) before the seed uses them instead of the mock ones. */
+export const MIN_REAL_FOR_SEED = 3;
+
+/** The corpus the seed uploads from: the real one only when it has at least `MIN_REAL_FOR_SEED` receipts with a recording, else the mock one. */
+export function loadSeedCorpus(opts: { quiet?: boolean; fixturesDir?: string } = {}): Corpus {
+  const root = opts.fixturesDir ?? FIXTURES_DIR;
+  const real = loadCorpus({ quiet: true, fixturesDir: root });
+  const usable = real.kind === 'real' ? real.entries.filter((e) => e.recordedPath !== null).length : 0;
+  const corpus = usable >= MIN_REAL_FOR_SEED ? real : loadCorpus({ quiet: true, fixturesDir: root, only: 'mock' });
+  if (!opts.quiet) {
+    const why = real.kind === 'real' && corpus.kind === 'mock' ? `; real corpus has ${usable} usable receipts, need ${MIN_REAL_FOR_SEED}` : '';
+    console.log(`Seed corpus: ${corpus.kind.toUpperCase()} (${corpus.entries.length} receipts, ${corpus.dir}${why})`);
+  }
   return corpus;
 }
 
