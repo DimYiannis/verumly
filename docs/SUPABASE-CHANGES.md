@@ -6,15 +6,22 @@ The database moves to Supabase Postgres in Frankfurt (eu-central-1); the apps ar
 
 | # | State | What changed |
 | --- | --- | --- |
-| 1 | done in code, **not yet run against the real project** | `PG_ADMIN_URL`, `MERCHANT_API_DB_URL`, `BUYER_API_DB_URL`, `WORKER_DB_URL`, `DASHBOARD_DB_URL` (`packages/config`): used verbatim, SSL via URL params. Partial sets are refused. Unit-tested; `sslmode=verify-full&sslrootcert=…` verified against a throwaway TLS Postgres (correct CA connects with `ssl = true`; wrong CA is rejected with "unable to verify the first certificate"). |
+| 1 | done, run against the project | Five connection-string variables (`packages/config`), used verbatim, SSL via URL params. Partial sets are refused. Unit-tested. `sslmode=verify-full&sslrootcert=…` also verified against a throwaway TLS Postgres (right CA connects, wrong CA rejected). Against Supabase: migrate, seed and all four app roles connected over TLS with the Supabase root CA (`prod-ca-2021.crt`). |
 | 2 | done (docs) | Pooler usernames go in the URLs; documented in `RUNNING.md`. |
 | 3 | done in code (guard + audit) | A warning is logged if the worker URL or the admin URL uses port 6543. Audit of the apps on 6543: no named prepared statements, no LISTEN (pg-boss `useListenNotify` defaults to false), no plain SET; every `set_config` is transaction-local (`withOrg`) and pg-boss only takes `pg_advisory_xact_lock`. The only session-level lock is the migration advisory lock, which runs on the admin URL. |
-| 4 | partly done | `db:migrate` skips `ensureDatabase` when `PG_ADMIN_URL` is set and uses it for the advisory lock; `createTestDb`, `ensureDatabase` and `dropDatabase` refuse ("tests run only against the local Docker Postgres"). **Open: running `0001_roles_rls.sql` as the Supabase `postgres` user (CREATEROLE, `REVOKE ALL ON SCHEMA public FROM PUBLIC`) is not verified.** |
-| 5 | done in code, **not yet run against the real project** | `pnpm check:supabase` (`scripts/check-supabase.ts`). Checked locally with a positive control and a negative control (a deliberate grant to `anon` turns three checks to FAIL). |
+| 4 | done, run against the project | `db:migrate` skips `ensureDatabase` when `PG_ADMIN_URL` is set and uses it for the advisory lock; `createTestDb`, `ensureDatabase` and `dropDatabase` refuse. On Supabase the `postgres` user ran `0001_roles_rls.sql` (CREATE ROLE and `REVOKE ALL ON SCHEMA public FROM PUBLIC`) with no error, and a second `db:migrate` also succeeded. |
+| 5 | done, run against the project | `pnpm check:supabase`: 13 of 13 PASS on Supabase (four roles `rolsuper=false`/`rolbypassrls=false`; `anon` and `authenticated` have 0 grants, no privileges and no USAGE on our schemas; `merchant_api` and `dashboard` get 42501 on `buyer.claims`; `buyer_api` can read it). Negative control run locally: a deliberate grant to `anon` turned three checks to FAIL. |
 | 6 | done | `.env.supabase` in `.gitignore`; `RUNNING.md` section lists the variables. The project runs PostgreSQL 17.11, so `docker-compose.yml` and CI use `postgres:17`; the full local suite passed on 17.11. |
 | 7 | open | Production settings are untouched. |
 
-## 1. SSL
+### What was observed against the real project (Frankfurt, PostgreSQL 17.11)
+
+- **Hosts:** the project uses the session/transaction pooler host `aws-1-eu-central-1.pooler.supabase.com` (ports 5432 and 6543). The `aws-0-eu-central-1` host resolves but answers "tenant/user … not found" for this project, so the host must be taken from Supabase's Connect dialog, not guessed.
+- **Direct host:** `db.<ref>.supabase.co` has only an AAAA record (IPv6) and no A record, so it is not reachable from IPv4-only networks. The session pooler works over IPv4 and is what the admin and worker URLs use.
+- **Demo flow against Supabase** (`pnpm dev --env-mode=loose`, one scripted Playwright run, 19 s): dashboard login with TOTP enrolment, simulator demo terminal, Present, receipt link opens with the pre-bill banner and no fragment, wallet login and Save, Pay card, wallet detail shows version 2 final, dashboard archive lists receipts. Every step passed. Request times were 100–1200 ms per call (one extra network round trip per query, from a laptop in another country).
+- **Not covered:** `pnpm test`, `test:privacy` and `test:e2e` stay local-only by design.
+- The owner's TOTP secret in Supabase was reset after the scripted run, so the next dashboard login enrols a fresh authenticator.
+
 
 The connection URLs have no SSL settings (`packages/config/src/index.ts:33-45`), and Supabase requires SSL.
 
