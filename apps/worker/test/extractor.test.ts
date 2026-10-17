@@ -10,17 +10,19 @@ const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 9, 9
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
 
 describe('http extractor (OpenAI-compatible Qianfan endpoint)', () => {
-  const seen: Array<{ url: string; body: Record<string, unknown> }> = [];
+  const seen: Array<{ url: string; body: Record<string, unknown>; auth: string | undefined }> = [];
   let status = 200;
+  /** statuses answered first, one per request, before falling back to `status` */
+  const queue: number[] = [];
   let baseUrl = '';
   const server = createServer((req, res) => {
     const chunks: Buffer[] = [];
     req.on('data', (c: Buffer) => chunks.push(c));
     req.on('end', () => {
       const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as Record<string, unknown>;
-      seen.push({ url: req.url ?? '', body });
+      seen.push({ url: req.url ?? '', body, auth: req.headers.authorization });
       const content = JSON.stringify(body).includes(QIANFAN_PROMPTS.markdown) ? '# MARKDOWN' : '{"kie":true}';
-      res.statusCode = status;
+      res.statusCode = queue.shift() ?? status;
       res.setHeader('content-type', 'application/json');
       res.end(JSON.stringify({ model: 'baidu/Qianfan-OCR@abc123', choices: [{ message: { content } }] }));
     });
@@ -29,7 +31,7 @@ describe('http extractor (OpenAI-compatible Qianfan endpoint)', () => {
     await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
     const addr = server.address();
     if (typeof addr !== 'object' || addr === null) throw new Error('no address');
-    baseUrl = `http://127.0.0.1:${addr.port}/v1/chat/completions`;
+    baseUrl = `http://127.0.0.1:${addr.port}`;
   });
   afterAll(() => new Promise<void>((r) => server.close(() => r())));
 
@@ -37,7 +39,7 @@ describe('http extractor (OpenAI-compatible Qianfan endpoint)', () => {
     seen.length = 0;
     const ex = httpExtractor({ url: baseUrl, model: 'baidu/Qianfan-OCR' });
     const out = await ex.extract(PNG);
-    expect(out).toEqual({ markdown: '# MARKDOWN', kie: '{"kie":true}', modelRevision: 'baidu/Qianfan-OCR@abc123' });
+    expect(out).toEqual({ markdown: '# MARKDOWN', kie: '{"kie":true}', modelRevision: 'unknown' });
     expect(seen).toHaveLength(2);
     for (const s of seen) {
       expect(s.url).toBe('/v1/chat/completions');
@@ -47,7 +49,42 @@ describe('http extractor (OpenAI-compatible Qianfan endpoint)', () => {
     expect(texts[0]).toContain(QIANFAN_PROMPTS.markdown);
     expect(texts[1]).toContain(QIANFAN_PROMPTS.kie);
     expect(texts[0]).toContain(`data:image/png;base64,${Buffer.from(PNG).toString('base64')}`);
+  });
+
+  it('modelRevision is the configured revision, else "unknown", never the served model name', async () => {
     expect((await httpExtractor({ url: baseUrl, model: 'm', revision: 'rev-1' }).extract(JPEG)).modelRevision).toBe('rev-1');
+    expect((await httpExtractor({ url: baseUrl, model: 'm' }).extract(JPEG)).modelRevision).toBe('unknown');
+  });
+
+  it('QIANFAN_URL may be a base URL, with trailing slashes, or the full chat-completions URL: always one /v1/chat/completions', async () => {
+    for (const url of [baseUrl, `${baseUrl}/`, `${baseUrl}//`, `${baseUrl}/v1/chat/completions`, `${baseUrl}/v1/chat/completions/`]) {
+      seen.length = 0;
+      await httpExtractor({ url, model: 'm' }).extract(PNG);
+      expect(seen.map((s) => s.url)).toEqual(['/v1/chat/completions', '/v1/chat/completions']);
+    }
+  });
+
+  it('sends a bearer token only when an API key is configured', async () => {
+    seen.length = 0;
+    await httpExtractor({ url: baseUrl, model: 'm' }).extract(PNG);
+    await httpExtractor({ url: baseUrl, model: 'm', apiKey: 'sekret' }).extract(PNG);
+    expect(seen.map((s) => s.auth)).toEqual([undefined, undefined, 'Bearer sekret', 'Bearer sekret']);
+  });
+
+  it('408 and 429 are transient (retryable, then succeed); 400 is permanent and not retried', async () => {
+    const ex = httpExtractor({ url: baseUrl, model: 'm' });
+    for (const code of [408, 429]) {
+      queue.push(code);
+      const err = await ex.extract(PNG).catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(Error);
+      expect(err).not.toBeInstanceOf(PermanentExtractionError);
+      expect(err).toMatchObject({ message: expect.stringContaining(String(code)) });
+      expect((await ex.extract(PNG)).markdown).toBe('# MARKDOWN');
+    }
+    seen.length = 0;
+    queue.push(400);
+    await expect(ex.extract(PNG)).rejects.toMatchObject({ code: 'extractor_rejected' });
+    expect(seen).toHaveLength(1);
   });
 
   it('a 4xx from the model server is permanent, a 5xx is retryable; PDFs and unknown files are refused with a code', async () => {

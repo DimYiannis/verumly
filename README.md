@@ -68,7 +68,7 @@ On iOS, Web Push works only after the wallet is installed to the Home Screen (iO
 Photos and PDFs are extracted by `baidu/Qianfan-OCR`, served outside this repo.
 
 - `EXTRACTOR=recorded` (tests, seed): reads `fixtures/receipts-nl/<sha256(bytes)>.qianfan.json`, falling back to `mock/`.
-- `EXTRACTOR=http`: POSTs to `QIANFAN_URL`, an OpenAI-compatible `/v1/chat/completions` from `vllm serve baidu/Qianfan-OCR`. See `tools/qianfan/serve.md`. Batch recording of real receipts: `tools/qianfan/colab_extract.ipynb`.
+- `EXTRACTOR=http`: POSTs to `<QIANFAN_URL>/v1/chat/completions` (`QIANFAN_URL` is the server base URL; optional `QIANFAN_API_KEY` bearer token, `QIANFAN_REVISION` recorded as `modelRevision`) of a `vllm serve baidu/Qianfan-OCR`. See `tools/qianfan/serve.md`. Batch recording of real receipts: `tools/qianfan/colab_extract.ipynb`.
 
 Adding a real corpus (Appendix A of the spec): drop `<id>.jpg`, `<id>.truth.json` and `<sha256>.qianfan.json` into `fixtures/receipts-nl/`. No code change is needed; the corpus picker prefers real files.
 

@@ -60,17 +60,26 @@ export function sniffMime(bytes: Uint8Array): string | null {
   return null;
 }
 
+const CHAT_PATH = '/v1/chat/completions';
+
+/** Base URL (trailing slashes tolerated) or full chat-completions URL -> full chat-completions URL. */
+export function chatCompletionsUrl(url: string): string {
+  const base = url.trim().replace(/\/+$/, '');
+  return base.endsWith(CHAT_PATH) ? base : `${base}${CHAT_PATH}`;
+}
+
 const chatResponse = z.object({
-  model: z.string().optional(),
   choices: z.array(z.object({ message: z.object({ content: z.string() }) })).min(1),
 });
 
 export interface HttpExtractorOptions {
-  /** OpenAI-compatible chat completions endpoint, e.g. http://gpu-box:8000/v1/chat/completions */
+  /** Server base URL, e.g. http://gpu-box:8000; `/v1/chat/completions` is appended. A URL already ending in it is accepted. */
   url: string;
   model: string;
-  /** recorded in `modelRevision` when the server does not report one */
+  /** recorded as `modelRevision` (the pinned HF commit); "unknown" when unset. The served model name is never used. */
   revision?: string;
+  /** sent as `Authorization: Bearer <key>` (vLLM `--api-key`); never logged */
+  apiKey?: string;
   timeoutMs?: number;
   fetch?: typeof fetch;
 }
@@ -78,10 +87,13 @@ export interface HttpExtractorOptions {
 /** POSTs the image to a vLLM-served `baidu/Qianfan-OCR` twice (markdown prompt, KIE prompt), greedy decoding. */
 export function httpExtractor(opts: HttpExtractorOptions): Extractor {
   const f = opts.fetch ?? fetch;
+  const endpoint = chatCompletionsUrl(opts.url);
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  if (opts.apiKey) headers.authorization = `Bearer ${opts.apiKey}`;
   const ask = async (dataUrl: string, prompt: string) => {
-    const res = await f(opts.url, {
+    const res = await f(endpoint, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers,
       signal: AbortSignal.timeout(opts.timeoutMs ?? 120_000),
       body: JSON.stringify({
         model: opts.model,
@@ -90,8 +102,8 @@ export function httpExtractor(opts: HttpExtractorOptions): Extractor {
         messages: [{ role: 'user', content: [{ type: 'image_url', image_url: { url: dataUrl } }, { type: 'text', text: prompt }] }],
       }),
     });
-    // 4xx = the model server rejected this input; 5xx / network errors throw and are retried
-    if (res.status >= 400 && res.status < 500) throw new PermanentExtractionError('extractor_rejected', `extractor returned ${res.status}`);
+    // 4xx = the model server rejected this input, except 408/429 (timeout, rate limit): those, 5xx and network errors throw and are retried
+    if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) throw new PermanentExtractionError('extractor_rejected', `extractor returned ${res.status}`);
     if (!res.ok) throw new Error(`extractor returned ${res.status}`);
     return chatResponse.parse(await res.json());
   };
@@ -109,7 +121,7 @@ export function httpExtractor(opts: HttpExtractorOptions): Extractor {
       return {
         markdown: markdown.choices[0]!.message.content,
         kie: kie.choices[0]!.message.content,
-        modelRevision: opts.revision ?? markdown.model ?? opts.model,
+        modelRevision: opts.revision ?? 'unknown',
       };
     },
   };
