@@ -101,7 +101,11 @@ function describeBox(a: PhotoAnalysis): string {
   return `${a.box.x},${a.box.y} ${a.box.width}x${a.box.height}`;
 }
 
-describe('analysePhoto on synthetic photos', () => {
+// These tests render 1512 x 1512 pixel scenes and analyse them: CPU-bound, about 20 times slower on a shared CI runner than
+// on a laptop (a test that takes 0.3 s here took 5 to 16 s there, over vitest's default 5 s). The assertions are unchanged.
+const CPU_BOUND = { timeout: 120_000 };
+
+describe('analysePhoto on synthetic photos', CPU_BOUND, () => {
   const STRIP = { x: 520, y: 0, width: 380, height: 1512 };
 
   it('finds a thin receipt strip on a noisy wood table with a laptop and a finger, and crops it with a small margin', () => {
@@ -191,7 +195,7 @@ describe('analysePhoto on synthetic photos', () => {
   });
 });
 
-describe('analysePhoto on the MOCK receipt images', () => {
+describe('analysePhoto on the MOCK receipt images', CPU_BOUND, () => {
   const dir = fileURLToPath(new URL('../../../fixtures/receipts-nl/mock/', import.meta.url));
   const files = readdirSync(dir).filter((f) => f.endsWith('.png'));
 
