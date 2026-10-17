@@ -79,7 +79,7 @@ A buyer can photograph a paper receipt in the wallet (**Add receipt**). The text
 
 - `EXTRACTOR=recorded` (default for tests, seed and local dev): replays `fixtures/receipts-nl/<sha256(bytes)>.qianfan.json`, falling back to `mock/`. No GPU. It can only read the six mock receipt images.
 - `EXTRACTOR=http`: POSTs to `<QIANFAN_URL>/v1/chat/completions` of a `vllm serve baidu/Qianfan-OCR`. `QIANFAN_URL` is the server base URL; optional `QIANFAN_API_KEY` (bearer token, matches `vllm serve --api-key`) and `QIANFAN_REVISION` (recorded as `modelRevision`).
-- A GPU server for a demo: run `tools/qianfan/colab_serve.ipynb` on a Colab T4 (setup and troubleshooting in `tools/qianfan/serve.md`; step by step in `RUNNING.md`, "Photo receipts"). Batch recording of real receipts: `tools/qianfan/colab_extract.ipynb`.
+- Live model for a demo: run `tools/qianfan/colab_serve.ipynb` on a Colab T4, put its values in the git-ignored `.env.qianfan`, then `pnpm dev:live` (setup and troubleshooting in `tools/qianfan/serve.md`; step by step in `RUNNING.md`, "Photo receipts"). Batch recording of real receipts: `tools/qianfan/colab_extract.ipynb`.
 - Adding a real corpus (Appendix A of the spec): drop `<id>.jpg`, `<id>.truth.json` and `<sha256>.qianfan.json` into `fixtures/receipts-nl/`. No code change is needed; the corpus picker prefers real files.
 
 ### Results of the live check (2026-10-17)

@@ -118,11 +118,17 @@ In the wallet, **Add receipt** takes a photo of a paper receipt. The photo goes 
 ### Live Qianfan (any real photo)
 
 1. On Google Colab (T4 GPU runtime), open and run `tools/qianfan/colab_serve.ipynb`. It installs vLLM, serves `baidu/Qianfan-OCR`, and opens a Cloudflare tunnel. It prints the **base URL** and the model **revision**. Set an API key when asked: the tunnel is public.
-2. Start the stack with those values (use a new shell; never commit them):
+2. Put the values in `.env.qianfan` in the repo root (git-ignored; never commit them), then start the stack with the live model:
    ```sh
-   EXTRACTOR=http QIANFAN_URL=https://<name>.trycloudflare.com QIANFAN_API_KEY=<key> QIANFAN_REVISION=<revision> pnpm dev --env-mode=loose
+   # .env.qianfan
+   QIANFAN_URL=https://<name>.trycloudflare.com
+   QIANFAN_REVISION=<revision>
+   QIANFAN_API_KEY=<the key you typed into the notebook>
    ```
-   `QIANFAN_URL` is the base URL (the worker adds `/v1/chat/completions`). `QIANFAN_API_KEY` must equal the `--api-key` given to vLLM. Without `QIANFAN_REVISION` the stored revision is `unknown`.
+   ```sh
+   pnpm dev:live        # same as pnpm dev --env-mode=loose with EXTRACTOR=http and those values
+   ```
+   `QIANFAN_URL` is the base URL (the worker adds `/v1/chat/completions`). `QIANFAN_API_KEY` must equal the `--api-key` given to vLLM. Without `QIANFAN_REVISION` the stored revision is `unknown`. The tunnel address changes on every Colab run, so update `QIANFAN_URL` each time.
 3. Upload a photo in the wallet. A slow first request is normal while the model warms up.
 
 Details and manual `curl` examples: `tools/qianfan/serve.md`. The Colab tunnel changes every run, so update `QIANFAN_URL` each time.
