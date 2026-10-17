@@ -80,6 +80,15 @@ export async function seedBuyerSide(admin: pg.Pool, receiptId: string): Promise<
   await admin.query("insert into buyer.claims (receipt_id, user_id, source) values ($1, $2, 'qr')", [receiptId, userId]);
   await admin.query("insert into buyer.uploads (user_id, s3_key, content_type) values ($1, 'k', 'image/png')", [userId]);
   await admin.query("insert into buyer.consents (user_id, purpose, granted, policy_version) values ($1, 'insights', true, '1')", [userId]);
+  // friends, shares and splits
+  const f = await admin.query<{ id: string }>("insert into buyer.users (email, handle) values ('friend@example.test', 'friend_one') returning id");
+  const friendId = f.rows[0]!.id;
+  await admin.query("insert into buyer.friendships (requester_id, addressee_id, status) values ($1, $2, 'accepted')", [userId, friendId]);
+  const s = await admin.query<{ id: string }>("insert into buyer.splits (receipt_id, creator_id, mode, total_minor) values ($1, $2, 'equal', 680) returning id", [receiptId, userId]);
+  const sh = await admin.query<{ id: string }>("insert into buyer.split_shares (split_id, user_id, amount_minor) values ($1, $2, 340) returning id", [s.rows[0]!.id, friendId]);
+  await admin.query("insert into buyer.invites (code_hash, inviter_id, split_share_id, expires_at) values ('invitehash', $1, $2, now() + interval '1 day')", [userId, sh.rows[0]!.id]);
+  const rs = await admin.query<{ id: string }>("insert into buyer.receipt_shares (receipt_id, from_user_id, to_user_id) values ($1, $2, $3) returning id", [receiptId, userId, friendId]);
+  await admin.query("insert into buyer.share_reactions (share_id, user_id, emoji) values ($1, $2, '👍')", [rs.rows[0]!.id, friendId]);
   await admin.query("insert into leads.unknown_merchants (merchant_key) values ('kvk:99999999')");
   await admin.query("insert into leads.unknown_merchant_uploaders (merchant_key, user_id) values ('kvk:99999999', $1)", [userId]);
   return { userId };

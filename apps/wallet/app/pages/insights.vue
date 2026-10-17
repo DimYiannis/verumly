@@ -33,7 +33,7 @@ onMounted(async () => {
 
 <template>
   <div class="space-y-4">
-    <h1 class="text-h2 font-semibold">{{ t('insights.title') }}</h1>
+    <div class="flex items-center justify-between"><h1 class="text-h2 font-semibold">{{ t('insights.title') }}</h1></div>
     <p v-if="error" role="alert" class="rounded-xl border border-danger-border bg-danger-soft p-4 text-sm text-danger">{{ t(error) }}</p>
     <div v-else-if="!data" class="space-y-4">
       <p role="status" class="flex items-center gap-2 text-sm text-text-secondary">
@@ -45,8 +45,8 @@ onMounted(async () => {
     <template v-else>
       <p v-if="data.perMonth.length === 0" class="rounded-xl border border-border bg-card p-4 text-text-secondary" data-testid="no-insights">{{ t('insights.empty') }}</p>
       <template v-else>
+        <DonutChart testid="chart-categories" :title="t('insights.perCategory')" :items="data.perCategory.map((c) => ({ label: tOr('category', c.category), value: c.total }))" />
         <BarChart testid="chart-months" :title="t('insights.perMonth')" :items="data.perMonth.map((m) => ({ label: monthLabel(m.month), value: m.total }))" />
-        <HBarChart testid="chart-categories" :title="t('insights.perCategory')" :items="data.perCategory.map((c) => ({ label: tOr('category', c.category), value: c.total }))" />
         <HBarChart testid="chart-vat" :title="t('insights.vatPerRate')" :items="vatItems" />
         <p class="-mt-2 text-xs text-text-secondary">{{ t('insights.vatNote') }}</p>
         <HBarChart testid="chart-merchants" :title="t('insights.topMerchants')" :items="data.topMerchants.map((m) => ({ label: m.merchantName, value: m.total }))" />

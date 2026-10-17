@@ -43,6 +43,20 @@
       "when": 1792175400000,
       "tag": "0005_org_compliance_template",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792231015491,
+      "tag": "0006_friends_splits",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792235545075,
+      "tag": "0007_report_views",
+      "breakpoints": true
     }
   ]
 }

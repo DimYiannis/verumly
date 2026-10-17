@@ -9,6 +9,8 @@ const { t } = useLocale();
 useHead({ title: () => t('settings.title') });
 
 const wallet = useWallet();
+const { profile, name, load: loadProfile } = useProfile();
+onMounted(() => void loadProfile());
 const consents = ref<Consents>({ analytics: false, marketing: false, push: false });
 const error = ref<MessageKey | null>(null);
 const busy = ref(false);
@@ -66,7 +68,17 @@ async function deleteAccount() {
 <template>
   <div class="space-y-4">
     <h1 class="text-h2 font-semibold">{{ t('settings.title') }}</h1>
-    <p v-if="wallet.session.value" class="text-text-secondary">{{ t('settings.loggedInAs') }}<strong class="font-medium text-foreground" data-testid="settings-email">{{ wallet.session.value.email }}</strong></p>
+    <section v-if="wallet.session.value" class="flex items-center gap-4 rounded-xl border border-border bg-card p-4" data-testid="settings-profile">
+      <HomeAvatar :name="name || '?'" :emoji="profile?.avatar ?? null" size="lg" />
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-h3 font-semibold">{{ profile?.displayName ?? name }}</p>
+        <p v-if="profile?.handle" class="font-mono text-small text-muted-foreground">@{{ profile.handle }}</p>
+        <p class="truncate text-xs text-muted-foreground"><span class="sr-only">{{ t('settings.loggedInAs') }}</span><span data-testid="settings-email">{{ wallet.session.value.email }}</span></p>
+      </div>
+      <Button as-child variant="secondary" size="sm"><NuxtLink to="/friends" class="no-underline">{{ t('home.settings.edit') }}</NuxtLink></Button>
+    </section>
+
+    <h2 class="pt-2 text-label text-text-secondary uppercase">{{ t('home.settings.app') }}</h2>
 
     <section class="flex items-center justify-between gap-4 rounded-xl border border-border bg-card p-4" aria-labelledby="locale-h" data-testid="locale-row">
       <div class="min-w-0">
@@ -79,9 +91,11 @@ async function deleteAccount() {
       <LocaleSwitch class="shrink-0" />
     </section>
 
-    <ConsentToggles v-model="consents" />
     <PushOptIn />
     <InstallHint />
+
+    <h2 class="pt-2 text-label text-text-secondary uppercase">{{ t('home.settings.privacy') }}</h2>
+    <ConsentToggles v-model="consents" />
 
     <section class="space-y-3 rounded-xl border border-border bg-card p-4" aria-labelledby="export-h">
       <h2 id="export-h" class="text-h3 font-semibold">{{ t('settings.dataTitle') }}</h2>
@@ -94,6 +108,7 @@ async function deleteAccount() {
 
     <p v-if="error" role="alert" data-testid="settings-error" class="rounded-lg border border-danger-border bg-danger-soft p-3 text-sm text-danger">{{ t(error) }}</p>
 
+    <h2 class="pt-2 text-label text-text-secondary uppercase">{{ t('home.settings.account') }}</h2>
     <Button type="button" variant="secondary" size="lg" class="w-full" data-testid="logout-button" :disabled="busy" @click="logout">
       <LogOut aria-hidden="true" />
       {{ t('settings.logout') }}

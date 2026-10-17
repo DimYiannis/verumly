@@ -60,7 +60,7 @@ test('buyer journey on a phone: issued receipt, save, void, exactly one encrypte
   // the claim has completed once the saved receipt renders; navigating away earlier can cancel the list refresh
   await expect(m.getByTestId('receipt-view')).toBeVisible();
   expect(m.url()).not.toContain('#');
-  await m.goto(`${URLS.wallet}/`);
+  await m.goto(`${URLS.wallet}/receipts`);
   const item = m.locator(`[data-testid="receipt-item"][data-receipt-id="${qr.receiptId}"]`);
   await expect(item).toBeVisible();
   await expect(item).toHaveAttribute('data-state', 'paid');

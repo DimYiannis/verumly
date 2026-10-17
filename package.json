@@ -21,7 +21,8 @@
     "test:e2e": "playwright test",
     "e2e:report": "rm -rf docs/e2e-report && cp -R playwright-report docs/e2e-report",
     "check:supabase": "node scripts/check-supabase.ts",
-    "dev:live": "node scripts/dev-live.ts"
+    "dev:live": "node scripts/dev-live.ts",
+    "db:set-role-passwords": "pnpm --filter @lr/db set-role-passwords"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",

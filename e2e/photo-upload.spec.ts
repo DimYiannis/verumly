@@ -115,8 +115,8 @@ test('photo receipt: upload from the wallet to S3, read, categories and VAT per 
   await shot(page, 'photo-insights');
   await page.setViewportSize({ width: 1280, height: 900 });
 
-  // --- the wallet list: the category filter also finds photo receipts ---
-  await page.goto(`${URLS.wallet}/`);
+  // --- the receipts list: the category filter also finds photo receipts ---
+  await page.goto(`${URLS.wallet}/receipts`);
   await expect(page.getByTestId('upload-item')).toHaveCount(1);
   await page.getByTestId('toggle-filters').click();
   await page.getByTestId('filter-category').fill('huishouden');
@@ -134,7 +134,7 @@ test('photo receipt: upload from the wallet to S3, read, categories and VAT per 
   expect(await uploadRow(uploadId), 'cancel keeps it').toBeDefined();
   await page.getByTestId('delete-upload').click();
   await page.getByTestId('confirm-delete').click();
-  await page.waitForURL(`${URLS.wallet}/`);
+  await page.waitForURL(`${URLS.wallet}/receipts`);
   await expect(page.getByTestId('upload-item')).toHaveCount(0);
   expect(await uploadRow(uploadId), 'row deleted').toBeUndefined();
   expect(await s3.head(key), 'object deleted from S3').toBeNull();

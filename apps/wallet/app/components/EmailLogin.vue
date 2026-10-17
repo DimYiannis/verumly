@@ -24,9 +24,13 @@ function messageFor(e: unknown): MessageKey {
 
 /** development stub: the seeded buyer, when the server runs with DEMO_MODE (no email code then) */
 const demoEmail = ref<string | null>(null);
+const demoUsers = ref<Array<{ email: string; label: string }>>([]);
 onMounted(async () => {
   const d = await wallet.api.demoInfo();
-  if (d.enabled && d.email) demoEmail.value = d.email;
+  if (d.enabled && d.email) {
+    demoEmail.value = d.email;
+    demoUsers.value = d.users ?? [{ email: d.email, label: '' }];
+  }
 });
 
 async function sendCode() {
@@ -34,7 +38,9 @@ async function sendCode() {
   error.value = null;
   try {
     if (demoEmail.value) {
-      await wallet.demoLogin(demoEmail.value);
+      // the demo user typed in (or filled by a button), else the default one
+      const typed = email.value.trim().toLowerCase();
+      await wallet.demoLogin(demoUsers.value.some((u) => u.email === typed) ? typed : demoEmail.value);
       emit('done');
       return;
     }
@@ -66,7 +72,7 @@ async function verify() {
   <div data-testid="email-login">
     <form v-if="step === 'email'" class="space-y-4" @submit.prevent="sendCode">
       <div class="space-y-2">
-        <Label for="login-email" class="text-sm font-medium text-foreground">{{ t('login.email') }}</Label>
+        <Label for="login-email" class="text-label text-text-secondary uppercase">{{ t('login.email') }}</Label>
         <Input
           id="login-email"
           v-model="email"
@@ -79,8 +85,12 @@ async function verify() {
           data-testid="login-email"
         />
       </div>
+      <p v-if="demoEmail" class="rounded-md border border-warning-border bg-warning-soft p-3 text-sm text-warning" data-testid="login-demo-note">{{ t('login.demoNote') }}</p>
       <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-send">{{ demoEmail ? t('login.signIn') : t('login.sendCode') }}</Button>
-      <Button v-if="demoEmail" type="button" size="lg" variant="secondary" class="w-full" :disabled="busy" data-testid="login-fill-demo" @click="email = demoEmail ?? ''">{{ t('login.fillDemo') }}</Button>
+      <div v-if="demoEmail" class="flex flex-wrap justify-center gap-2">
+        <Button type="button" size="sm" variant="secondary" class="rounded-full" :disabled="busy" data-testid="login-fill-demo" @click="email = demoEmail ?? ''">{{ t('login.fillDemo') }}{{ demoUsers[0]?.label ? ` (${demoUsers[0].label})` : '' }}</Button>
+        <Button v-for="u in demoUsers.slice(1)" :key="u.email" type="button" size="sm" variant="secondary" class="rounded-full" :disabled="busy" :data-testid="`login-fill-demo-${u.label.toLowerCase()}`" @click="email = u.email">{{ t('login.fillDemoFriend', { name: u.label }) }}</Button>
+      </div>
     </form>
     <form v-else class="space-y-4" @submit.prevent="verify">
       <p class="text-sm text-text-secondary" data-testid="login-info">{{ sentTo === null ? '' : t('login.codeSent', { email: sentTo }) }}</p>

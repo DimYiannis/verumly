@@ -73,6 +73,30 @@ Users from `pnpm db:seed`: dashboard `owner@example.test` / `owner-dev-password`
 - Receipt design (`/dashboard/template`): a Canva-like editor; the template (`organizations.receipt_template`, zod `receiptTemplate` in `@lr/schema`) is drawn by `packages/ui/src/ReceiptTemplate.vue` in both the designer and the wallet. Blocks that carry legally required content (`LOCKED_BLOCK_TYPES`) cannot be removed or hidden. Static text only, inline raster logo only.
 - **Known limit:** the receipt format (CRF), the terminal SDK and the receipt math are still Netherlands-only (EUR, 21/9/0 % VAT, KvK/BTW-id formats). An organisation that declares another country can save its setup but cannot issue receipts yet. Generalising CRF is the next step (see `docs/ISSUES.md`).
 
+## Friends, shares and splits (buyer side only)
+
+- Wallet tab **Friends** (`/friends`): profile (handle, display name, emoji avatar), add friends by handle or invite link, requests, balances, receipts friends shared with me, splits.
+- Split a saved receipt (`/receipts/<id>/split`): equal, by item or custom amounts; friends or guests (a guest gets an invite link and takes the slot when they open it). **No payments**: shares are settled by hand, balances come from unsettled shares. The creator's own share is settled from the start.
+- Share a receipt with a friend (read-only, with emoji reactions). Sharing/splitting shows the friend the items and total, so the UI asks first. Friends never see e-mail addresses.
+- Backend: `apps/buyer-api/src/routes/social.ts` and `splits.ts`, math in `split-math.ts` (pure, unit tested), contract in `packages/schema/src/social.ts`, tables in the `buyer` schema (migration 0006). The merchant roles cannot reach any of it (`pnpm --filter @lr/db test` checks every buyer table).
+- Demo users from `pnpm db:seed`: Sam (`buyer@example.test`, handle `sam`) and Anna (`anna@example.test`, handle `anna`), already friends, with one split. The wallet login has a button for each.
+
+## Custom reports (business side)
+
+- `/dashboard/reports` is a report builder: period presets, group by (day, week, month, weekday, hour, location, terminal, payment method, VAT rate, category), selectable metrics, filters (location, terminal, payment), compare with the previous period, chart + table, CSV and print. Setups can be saved as named **views** shared in the organisation (`merchant.report_views`, RLS by org, migration 0007); "Daily sales" and "VAT return" are built in.
+- Engine: `packages/dashboard-core/src/report-builder.ts` (`runReport`, one SQL statement over the latest version of every `paid`/`void` receipt, Amsterdam days); contract in `packages/schema/src/reports.ts`. Grouping by payment, VAT rate or category counts parts of a receipt, so some metrics do not apply there (the API says which in `notes`).
+
+## UI book (implemented)
+
+The approved designs live in the Claude Design canvas "Less Receipts UI book" (https://claude.ai/artifact/MapqD7ATs6xcnxDrbnMhLy, private to the owner). Chosen directions: wallet **Home A**, **Receipt B** (people first), **Friends B** (activity feed); the business dashboard follows the book, with the **live operations overview (Home B)** as its landing page (today's sales by hour against the usual weekday, terminals, what needs a look, top items, last receipts).
+
+- Wallet routes: `/` is the Home (month so far, balances, recent), `/receipts` the list, `/receipts/<id>` the people-first detail, `/friends` the activity feed. Tabs: Home, Receipts, + (add), Friends, Insights; settings via the avatar.
+- API for them: `GET /v1/me/home` and `GET /v1/me/activity` (apps/buyer-api/src/routes/home.ts, contract in packages/schema/src/social.ts).
+- Dashboard: `/dashboard` redirects to `/dashboard/overview`; the organisation page is the business "Setup".
+- Not built because the data is missing (see docs/ISSUES.md): per-week insights, scan confidence badges, reminders, terminal queue and location revenue.
+
+- **PDFs** (the buyer's download and the merchant archive) are drawn by `packages/receipt-pdf` from the same receipt template as the wallet (blocks, order, colours, font, paper, logo). Change the template renderer and the PDF renderer together.
+
 ## Frontend conventions (design system copied from Salespore)
 
 - Tailwind 4 + shadcn-vue (reka-ui), icons from `@lucide/vue`, font Outfit (JetBrains Mono for amounts and technical values).

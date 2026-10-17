@@ -446,6 +446,12 @@ Contrast is not part of `too_dark`: a bright but washed out photo is a blur or e
 - `e2e/photo-upload.spec.ts`, "a photo that cannot be read ends as failed": the 1 x 1 PNG is now (correctly) declined on the phone as too small before upload. The test now uploads a MOCK PNG with one pixel changed (tight, accepted, uploaded as it is, no recording, ends `failed` with the reason).
 - `apps/wallet/scripts/smoke.ts` (manual script) sent the bytes `not-a-real-png`; the wallet now decodes first, so it sends a MOCK PNG. Not run in this change.
 
+## Hosted database: passwords, pool sizes, seed (connection hygiene)
+
+- **Role passwords are not rotated by `pnpm db:migrate` on a hosted database.** After the live Supabase run the pooler returned `ECIRCUITBREAKER` ("failed to retrieve database credentials after multiple attempts"), and every migrate had re-run `ALTER ROLE … PASSWORD`, which makes the pooler drop its cached credentials. `migrate(env, { setRolePasswords })` defaults to `true` only when no connection-string variable is set (local Docker: fresh clones and tests need login roles). `pnpm db:set-role-passwords` and `pnpm db:migrate --set-role-passwords` set them explicitly. After a hosted migrate the CLI warns if a role still cannot log in. Verified against the local database in hosted mode: password hashes unchanged by `db:migrate`, changed by the flag and by the command.
+- **Pool sizes are configurable:** `PG_POOL_MAX`, `PG_BOSS_POOL_MAX`, `PG_ADMIN_POOL_MAX`. Defaults 10 / 4 / 4 locally (unchanged) and 3 / 2 / 2 when the connection-string variables are set, so one app uses 5 of the pooler's 15 connections per role. Migrations now use one connection for the migrator.
+- **The seed runs alone:** it uses three roles at once, so `pnpm db:seed` refuses to run against a hosted database while any app answers on its default port (`--force` overrides). RUNNING.md says to run migrate, seed and the check one at a time and to start the apps last.
+
 ## Deferred (v2 §17)
 
 Not built in this run, by design:

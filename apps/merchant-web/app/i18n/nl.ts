@@ -1,11 +1,17 @@
 import type { MessageKey } from './en';
 import { designNl } from './design.nl';
+import { adminNl } from './admin.nl';
+import { overviewNl } from './overview.nl';
+import { reportsNl } from './reports.nl';
 import { setupNl } from './setup.nl';
 
 /** Dutch dictionary. Typed against the English key set: a missing or extra key fails typecheck. */
 export const nl: Record<MessageKey, string> = {
   ...setupNl,
   ...designNl,
+  ...reportsNl,
+  ...overviewNl,
+  ...adminNl,
   'nav.template': 'Bonontwerp',
   'locale.label': 'Taal',
   'locale.en': 'English',
@@ -73,6 +79,7 @@ export const nl: Record<MessageKey, string> = {
   'nav.receiptCrumb': 'Bon',
 
   'login.title': 'Ondernemersdashboard',
+  'login.demoDescription': 'Ontwikkelmodus: vul het demo-account in en log in. Geen code nodig.',
   'login.description': 'Log in met je e-mailadres, wachtwoord en authenticatiecode.',
   'login.email': 'E-mail',
   'login.password': 'Wachtwoord',

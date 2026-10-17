@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LayoutDashboardIcon } from '@lucide/vue';
+import { CheckIcon, CopyIcon, ExternalLinkIcon, LayoutDashboardIcon } from '@lucide/vue';
 
 definePageMeta({ layout: 'default' });
 
@@ -7,6 +7,19 @@ const { t, tx } = useLocale();
 const sim = useSimulator();
 onMounted(() => sim.init());
 onBeforeUnmount(() => sim.dispose());
+
+const linkCopied = ref(false);
+async function copyLink() {
+  const url = sim.current.value?.qrUrl;
+  if (!url) return;
+  try {
+    await navigator.clipboard.writeText(url);
+    linkCopied.value = true;
+    setTimeout(() => (linkCopied.value = false), 2000);
+  } catch {
+    /* clipboard unavailable: the link stays visible and selectable */
+  }
+}
 </script>
 
 <template>
@@ -14,9 +27,10 @@ onBeforeUnmount(() => sim.dispose());
     <header class="flex flex-wrap items-center gap-3 px-2 pt-2">
       <div>
         <h1 class="text-2xl font-medium tracking-tight">{{ t('sim.title') }}</h1>
-        <p class="text-sm text-muted-foreground">{{ t('sim.subtitle') }}</p>
+        <p class="text-sm text-muted-foreground">{{ t('adm.sim.subtitle') }}</p>
       </div>
       <div class="ml-auto flex items-center gap-3">
+        <Badge v-if="sim.creds.value" :variant="sim.offline.value ? 'warning' : 'success'">{{ sim.offline.value ? t('sim.offline') : t('sim.online') }}</Badge>
         <AppLocaleSwitch />
         <Button variant="outline" as-child><NuxtLink to="/dashboard" data-testid="sim-dashboard-link"><LayoutDashboardIcon />{{ t('sim.dashboard') }}</NuxtLink></Button>
       </div>
@@ -38,17 +52,19 @@ onBeforeUnmount(() => sim.dispose());
         <Card>
           <CardHeader><CardTitle class="text-base">{{ t('sim.addItem') }}</CardTitle></CardHeader>
           <CardContent class="grid grid-cols-2 gap-3">
-            <Button v-for="p in PRODUCTS" :key="p.sku" variant="outline" class="h-auto flex-col gap-0.5 py-3" :disabled="!sim.editable.value || sim.busy.value" :data-testid="`sim-add-${p.sku}`" @click="sim.addItem(p.sku)">
+            <Button v-for="p in PRODUCTS" :key="p.sku" variant="outline" class="h-auto flex-col gap-0.5 py-3.5" :disabled="!sim.editable.value || sim.busy.value" :data-testid="`sim-add-${p.sku}`" @click="sim.addItem(p.sku)">
               <span>{{ p.label }}</span>
-              <span class="text-xs font-normal text-muted-foreground tabular-nums">{{ euro(p.unitPrice) }} · {{ p.vatRate }}%</span>
+              <span class="font-mono text-xs font-normal text-muted-foreground tabular-nums">{{ euro(p.unitPrice) }} · {{ p.vatRate }}%</span>
             </Button>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle class="text-base">{{ t('sim.cart') }}</CardTitle>
-            <CardDescription>{{ t('sim.state') }} <span data-testid="sim-state">{{ sim.state.value ? tx('status', sim.state.value) : t('sim.stateNone') }}</span> · {{ t('sim.version') }} <span data-testid="sim-version">{{ sim.current.value?.crf.version ?? 0 }}</span></CardDescription>
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+              <CardTitle class="text-base">{{ t('sim.cart') }}</CardTitle>
+              <CardDescription class="text-xs">{{ t('sim.state') }} <span data-testid="sim-state">{{ sim.state.value ? tx('status', sim.state.value) : t('sim.stateNone') }}</span> · {{ t('sim.version') }} <span data-testid="sim-version">{{ sim.current.value?.crf.version ?? 0 }}</span></CardDescription>
+            </div>
           </CardHeader>
           <CardContent class="space-y-4">
             <ul class="divide-y rounded-md border text-sm" data-testid="sim-cart">
@@ -61,10 +77,12 @@ onBeforeUnmount(() => sim.dispose());
               <div v-if="sim.rounding.value" class="flex justify-between text-sm text-muted-foreground"><span>{{ t('common.rounding') }}</span><span class="tabular-nums" data-testid="sim-rounding">{{ euro(sim.rounding.value) }}</span></div>
               <div class="flex justify-between text-xl font-medium"><span>{{ t('common.total') }}</span><span class="tabular-nums" data-testid="sim-total">{{ euro(sim.total.value + sim.rounding.value) }}</span></div>
             </div>
-            <div class="grid grid-cols-2 gap-3">
-              <Button class="col-span-2" :disabled="sim.busy.value || !sim.cart.value.length || !sim.editable.value" data-testid="sim-issue" @click="sim.issue()">{{ t('sim.issue') }}</Button>
-              <Button variant="destructive" :disabled="sim.busy.value || !sim.current.value || sim.state.value === 'void'" data-testid="sim-void" @click="sim.voidSale()">{{ t('sim.void') }}</Button>
-              <Button variant="ghost" data-testid="sim-new-sale" @click="sim.newSale()">{{ t('sim.newSale') }}</Button>
+            <div class="space-y-2">
+              <div class="flex gap-2">
+                <Button class="flex-1" :disabled="sim.busy.value || !sim.cart.value.length || !sim.editable.value" data-testid="sim-issue" @click="sim.issue()">{{ t('sim.issue') }}</Button>
+                <Button variant="outline" class="flex-1 text-danger hover:text-danger" :disabled="sim.busy.value || !sim.current.value || sim.state.value === 'void'" data-testid="sim-void" @click="sim.voidSale()">{{ t('sim.void') }}</Button>
+              </div>
+              <Button variant="ghost" class="w-full" data-testid="sim-new-sale" @click="sim.newSale()">{{ t('sim.newSale') }}</Button>
             </div>
             <AppErrorNote v-if="sim.error.value" data-testid="sim-error">{{ sim.error.value }}</AppErrorNote>
           </CardContent>
@@ -91,6 +109,10 @@ onBeforeUnmount(() => sim.dispose());
           <!-- sized for a phone held 30-50 cm from a laptop screen: up to 68% of the viewport height, capped -->
           <div class="aspect-square w-[min(68vh,36rem)] max-w-full rounded-md border bg-white p-2" data-testid="sim-qr" v-html="sim.qrSvg.value" />
           <p class="max-w-full break-all px-6 text-center font-mono text-xs text-muted-foreground" data-testid="sim-qr-url">{{ sim.current.value.qrUrl }}</p>
+          <div class="flex gap-2">
+            <Button type="button" variant="outline" size="sm" data-testid="sim-copy-link" @click="copyLink"><component :is="linkCopied ? CheckIcon : CopyIcon" />{{ linkCopied ? t('adm.copied') : t('adm.sim.copyLink') }}</Button>
+            <Button variant="outline" size="sm" as-child><a :href="sim.current.value.qrUrl" target="_blank" rel="noopener noreferrer" data-testid="sim-open-wallet"><ExternalLinkIcon />{{ t('adm.sim.openWallet') }}</a></Button>
+          </div>
         </template>
         <p v-else class="my-auto px-6 py-24 text-center text-muted-foreground" data-testid="sim-qr-placeholder">{{ t('sim.qrPlaceholder') }}</p>
       </Card>

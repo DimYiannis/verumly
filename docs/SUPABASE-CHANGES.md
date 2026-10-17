@@ -25,6 +25,10 @@ The database moves to Supabase Postgres in Frankfurt (eu-central-1); the apps ar
 
 The connection URLs have no SSL settings (`packages/config/src/index.ts:33-45`), and Supabase requires SSL.
 
+### Follow-up: connection hygiene (after the pooler circuit breaker)
+
+`db:migrate` no longer re-sets role passwords on a hosted database (`pnpm db:set-role-passwords` does), pool sizes are configurable with small hosted defaults, and the seed refuses to run next to the apps. See DECISIONS.md, "Hosted database: passwords, pool sizes, seed". Not yet run against Supabase, which was unreachable when this was written.
+
 ## 2. One connection URL per service role
 
 - The code currently builds `postgres://merchant_api:…@host/db`.

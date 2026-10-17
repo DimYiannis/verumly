@@ -211,14 +211,26 @@ Only the database moves; S3 (`adobe/s3mock`), Mailpit and everything else stay l
    ```sh
    set -a; source .env.supabase; set +a
    ```
-4. Migrate, seed, check, run:
+4. **First time only:** set the four role passwords once (see "Passwords and connection hygiene" below):
    ```sh
-   pnpm db:migrate               # idempotent; does not create databases when PG_ADMIN_URL is set
-   pnpm db:seed
-   pnpm check:supabase           # roles unprivileged, anon/authenticated locked out, merchant roles cannot read buyer data
-   pnpm dev --env-mode=loose     # Turborepo must pass the shell variables to the apps
+   pnpm db:migrate
+   pnpm db:set-role-passwords
    ```
-5. Do the demo flow above.
+5. Then, **one step at a time, each finishing before the next starts** (never in parallel, and never while the apps are running):
+   ```sh
+   pnpm db:migrate               # idempotent; leaves the role passwords alone on a hosted database
+   pnpm db:seed                  # on its own: refuses to run while the apps are up (--force skips the check)
+   pnpm check:supabase           # roles unprivileged, anon/authenticated locked out, merchant roles cannot read buyer data
+   pnpm dev --env-mode=loose     # only now start the apps (or pnpm dev:live for the live Qianfan model)
+   ```
+6. Do the demo flow above.
+
+### Passwords and connection hygiene
+
+- `pnpm db:migrate` does **not** change the role passwords on a hosted database. Changing a role's password makes the pooler drop its cached credentials; a connection attempt in that window can fail and, after repeated failures, open the pooler's circuit breaker ("new connections are temporarily blocked"). Set them with `pnpm db:set-role-passwords` (or `pnpm db:migrate --set-role-passwords`) only for a new project or when you rotate them. After a migrate on a new database the command warns if a role cannot log in yet.
+- On the local Docker database `pnpm db:migrate` still sets them, because fresh clones and the tests need login roles.
+- Pool sizes: Supabase's pooler allows 15 connections per role and database, and each app also runs a pg-boss pool as the same role. With the Supabase variables set, an app uses a query pool of 3 and a pg-boss pool of 2 (admin work: 2). Change them with `PG_POOL_MAX`, `PG_BOSS_POOL_MAX` and `PG_ADMIN_POOL_MAX`; locally the defaults stay 10, 4 and 4.
+- Do not retry a failing connection in a loop: wait a few minutes, then make one attempt.
 
 To go back to local, open a new shell (or `unset` the variables) and run `docker compose up -d` as before. If only some of the five URL variables are set, every app refuses to start and names the missing ones.
 
