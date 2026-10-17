@@ -220,23 +220,35 @@ function loadImage(file: File): Promise<HTMLImageElement> {
     img.src = url;
   });
 }
-/** Scales to at most 320 px wide and re-encodes (webp, else png) until the data URL is small enough. */
+/**
+ * Scales to at most 320 px wide and re-encodes until the data URL is small enough: PNG (keeps transparency), else JPEG on
+ * white. Never WebP: the receipt PDF is drawn with PNG and JPEG only.
+ */
 function encodeLogo(img: HTMLImageElement): string | null {
   let width = Math.min(LOGO_MAX_WIDTH, img.naturalWidth);
   for (let round = 0; round < 6; round++) {
     const height = Math.max(1, Math.round((img.naturalHeight * width) / img.naturalWidth));
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    ctx.drawImage(img, 0, 0, width, height);
+    const draw = (white: boolean) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      if (white) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      return canvas;
+    };
+    const png = draw(false)?.toDataURL('image/png');
+    if (png && png.startsWith('data:image/png') && png.length <= LOGO_TARGET_CHARS) return png;
+    const flat = draw(true);
+    if (!flat) return null;
     for (const q of [0.92, 0.8, 0.65, 0.5]) {
-      const url = canvas.toDataURL('image/webp', q);
-      if (url.startsWith('data:image/webp') && url.length <= LOGO_TARGET_CHARS) return url;
+      const jpeg = flat.toDataURL('image/jpeg', q);
+      if (jpeg.startsWith('data:image/jpeg') && jpeg.length <= LOGO_TARGET_CHARS) return jpeg;
     }
-    const png = canvas.toDataURL('image/png');
-    if (png.length <= LOGO_TARGET_CHARS) return png;
     width = Math.round(width * 0.75);
   }
   return null;

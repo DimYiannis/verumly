@@ -95,6 +95,8 @@ The approved designs live in the Claude Design canvas "Less Receipts UI book" (h
 - Dashboard: `/dashboard` redirects to `/dashboard/overview`; the organisation page is the business "Setup".
 - Not built because the data is missing (see docs/ISSUES.md): per-week insights, scan confidence badges, reminders, terminal queue and location revenue.
 
+- **PDFs** (the buyer's download and the merchant archive) are drawn by `packages/receipt-pdf` from the same receipt template as the wallet (blocks, order, colours, font, paper, logo). Change the template renderer and the PDF renderer together.
+
 ## Frontend conventions (design system copied from Salespore)
 
 - Tailwind 4 + shadcn-vue (reka-ui), icons from `@lucide/vue`, font Outfit (JetBrains Mono for amounts and technical values).

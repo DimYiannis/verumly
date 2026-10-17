@@ -177,3 +177,8 @@ Big issues found in the code review (2026-10-16) and still open. Tick an item wh
 - **P3: the dashboard greeting uses the e-mail name** (the session has no display name); "Arrived late" uses a 10 minute threshold chosen without a product decision.
 
 - **P3: overview location filter** fetches 60 archive rows and filters by location name in the browser (the archive endpoint has no location parameter), so a location with only old receipts can show fewer than 8 rows.
+
+## PDF follows the design
+
+- **P3: WebP logos are left out of the PDF** (pdfkit reads PNG and JPEG only). The designer now saves PNG, else JPEG; a logo saved earlier as WebP shows in the wallet but not in the PDF until it is uploaded again.
+- **P3: PDF wording is English** (labels such as Rate, Net, VAT, Card), whatever the wallet language is.

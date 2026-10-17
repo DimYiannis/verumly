@@ -24,7 +24,7 @@
     "fastify": "^5.0.0",
     "fastify-type-provider-zod": "^7.0.0",
     "nodemailer": "^10.1.2",
-    "pdfmake": "^0.3.0",
+    "@lr/receipt-pdf": "workspace:*",
     "zod": "^4.0.0"
   },
   "devDependencies": {

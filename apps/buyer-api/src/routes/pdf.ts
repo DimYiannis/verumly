@@ -3,7 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { uuidV7String } from '@lr/schema';
 import type { AppDeps } from '../context.ts';
-import { renderReceiptPdf } from '../receipt-pdf.ts';
+import { renderReceiptPdf } from '@lr/receipt-pdf';
 import { claimedBy, isFinal, loadReceipt } from '../receipts.ts';
 import { requireSession } from './auth.ts';
 
@@ -15,7 +15,7 @@ export function pdfRoutes(deps: AppDeps) {
       if ((await claimedBy(deps.db, req.params.id)) !== req.session!.userId) return reply.code(404).send({ error: 'not_found' });
       const receipt = await loadReceipt(deps.db, req.params.id);
       if (!receipt) return reply.code(404).send({ error: 'not_found' });
-      const pdf = await renderReceiptPdf(receipt.crf, { final: isFinal(receipt) });
+      const pdf = await renderReceiptPdf(receipt.crf, receipt.template, { final: isFinal(receipt) });
       return reply
         .header('content-type', 'application/pdf')
         .header('content-disposition', `attachment; filename="receipt-${receipt.id.slice(0, 8)}.pdf"`)
