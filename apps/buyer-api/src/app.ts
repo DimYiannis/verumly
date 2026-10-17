@@ -7,6 +7,8 @@ import { loggerOptions } from '@lr/config';
 import { buyerOpenApi } from '@lr/schema';
 import type { AppDeps } from './context.ts';
 import { authRoutes } from './routes/auth.ts';
+import { socialRoutes } from './routes/social.ts';
+import { splitRoutes } from './routes/splits.ts';
 import { meRoutes } from './routes/me.ts';
 import { resolveRoutes } from './routes/resolve.ts';
 import { insightRoutes } from './routes/insights.ts';
@@ -40,7 +42,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     }
   });
   await app.register(helmet);
-  await app.register(cors, { origin: [deps.allowedOrigin], methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], allowedHeaders: ['content-type', 'authorization'] });
+  await app.register(cors, { origin: corsOrigins(deps.allowedOrigin), methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], allowedHeaders: ['content-type', 'authorization'] });
   // in-memory store: limits are per process (documented in DECISIONS.md); failed-secret limits live in Postgres
   await app.register(rateLimit, { global: false });
 
@@ -50,6 +52,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(resolveRoutes(deps));
   await app.register(authRoutes(deps));
   await app.register(meRoutes(deps));
+  await app.register(socialRoutes(deps));
+  await app.register(splitRoutes(deps));
   await app.register(uploadRoutes(deps));
   await app.register(insightRoutes(deps));
   await app.register(consentRoutes(deps));
@@ -58,4 +62,19 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(pdfRoutes(deps));
   await app.register(accountRoutes(deps));
   return app;
+}
+
+/**
+ * The wallet's origin, plus its loopback twin: `localhost` and `127.0.0.1` are different origins to a browser, and a developer
+ * may open either. Only loopback hosts get a twin; any other origin is allowed exactly as configured.
+ */
+export function corsOrigins(allowed: string): string[] {
+  try {
+    const u = new URL(allowed);
+    if (u.hostname === 'localhost') return [allowed, `${u.protocol}//127.0.0.1${u.port ? `:${u.port}` : ''}`];
+    if (u.hostname === '127.0.0.1') return [allowed, `${u.protocol}//localhost${u.port ? `:${u.port}` : ''}`];
+  } catch {
+    /* not a URL: keep as is */
+  }
+  return [allowed];
 }

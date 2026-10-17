@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChartColumn, CirclePlus, ReceiptText, Settings, WifiOff } from '@lucide/vue';
+import { ChartColumn, CirclePlus, ReceiptText, Settings, Users, WifiOff } from '@lucide/vue';
 
 const wallet = useWallet();
 const route = useRoute();
@@ -8,6 +8,7 @@ const nav = [
   { to: '/', label: 'nav.wallet', testid: 'nav-wallet', icon: ReceiptText },
   { to: '/insights', label: 'nav.insights', testid: 'nav-insights', icon: ChartColumn },
   { to: '/add', label: 'nav.add', testid: 'nav-add', icon: CirclePlus },
+  { to: '/friends', label: 'social.nav', testid: 'nav-friends', icon: Users },
   { to: '/settings', label: 'nav.settings', testid: 'nav-settings', icon: Settings },
 ] as const;
 
@@ -16,6 +17,7 @@ function isActive(to: string): boolean {
   const p = route.path;
   if (to === '/') return p === '/' || p.startsWith('/receipts') || p.startsWith('/r/');
   if (to === '/add') return p.startsWith('/add') || p.startsWith('/uploads');
+  if (to === '/friends') return p.startsWith('/friends') || p.startsWith('/splits') || p.startsWith('/shared') || p.startsWith('/i/');
   return p.startsWith(to);
 }
 </script>

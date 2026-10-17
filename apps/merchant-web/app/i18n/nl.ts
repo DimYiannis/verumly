@@ -73,6 +73,7 @@ export const nl: Record<MessageKey, string> = {
   'nav.receiptCrumb': 'Bon',
 
   'login.title': 'Ondernemersdashboard',
+  'login.demoDescription': 'Ontwikkelmodus: vul het demo-account in en log in. Geen code nodig.',
   'login.description': 'Log in met je e-mailadres, wachtwoord en authenticatiecode.',
   'login.email': 'E-mail',
   'login.password': 'Wachtwoord',

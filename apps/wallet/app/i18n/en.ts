@@ -1,7 +1,9 @@
 import type { MessageKey } from './nl.ts';
+import { socialEn } from './social.en.ts';
 
 /** English dictionary. Typed against Dutch, so a missing or extra key fails typecheck. An empty string hides an optional line. */
 export const en: Record<MessageKey, string> = {
+  ...socialEn,
   // layout
   'layout.skip': 'Skip to content',
   'layout.brand': 'bonnen',

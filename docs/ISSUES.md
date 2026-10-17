@@ -158,3 +158,10 @@ Big issues found in the code review (2026-10-16) and still open. Tick an item wh
 - **P1: the legal research is unverified.** `packages/compliance` data was compiled from public and mostly secondary sources (first pass thin for LU, EE, CY, GR, SI, CZ, RO, LV, LT; second pass improved MT, LV, LT, SI, GR). No country was reviewed by a tax adviser. Retention years and standard VAT rates in the build script are indicative.
 - **P2: fiscal devices are not integrated.** The setup collects what a country asks for (TSE serial, RT serial, ATCUD, etc.) but nothing prints, signs or reports it (DE TSE, IT RT, ES Verifactu, PT ATCUD/QR, HR/SI/SK/HU/PL real-time reporting, FR NF525).
 - **P2: designer.** Blocks can be reordered only in the Layers list (not by dragging on the canvas). Templates are per organisation, not per location or per language.
+
+## Friends, shares and splits
+
+- **P2: no notifications.** A friend request, a share, a new split or a settled share does not trigger a push; people see changes when they open the Friends tab.
+- **P2: invites are single use and expire after 30 days.** A general friend-invite link works once. Guest slots of a split get a fresh link on demand (the earlier one stops working).
+- **P2: privacy review.** Sharing a receipt or splitting it shows the friend its items and total. There is no per-field redaction and no "unshare"; deleting a split removes the participants' access to it, and a share cannot be withdrawn yet. Handle search tells anyone whether a handle exists.
+- **P3: no comments, no groups, no feed**, only 1:1 shares with emoji reactions and splits with up to 10 people. Currency is the receipt currency (EUR); no cross-currency settle-up.
