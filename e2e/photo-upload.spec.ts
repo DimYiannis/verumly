@@ -101,11 +101,13 @@ test('photo receipt: upload from the wallet to S3, read, categories and VAT per 
 
   // --- insights follow the stored categories; VAT per rate ---
   await page.goto(`${URLS.wallet}/insights`);
+  // main's donut shows the total in the centre and each category's share: 9.75 + 4.49 + 4.99 + 0.50 = 19.73
   const categories = page.getByTestId('chart-categories');
-  await expect(categories).toContainText('€9.75'); // Groceries: 5.97 + the cola 3.78
-  await expect(categories).toContainText('€4.49'); // Food & drink: 5.99 - 1.50 bonus
-  await expect(categories).toContainText('€4.99'); // Household
-  await expect(categories).toContainText('€0.50'); // Deposit
+  await expect(categories).toContainText('€19.73');
+  await expect(categories).toContainText(/Groceries\s*49%/); // 5.97 + the cola 3.78 = 9.75
+  await expect(categories).toContainText(/Household\s*25%/); // 4.99
+  await expect(categories).toContainText(/Food & drink\s*23%/); // 5.99 - 1.50 bonus = 4.49
+  await expect(categories).toContainText(/Deposit\s*3%/); // 0.50
   const vat = page.getByTestId('chart-vat');
   await expect(vat).toContainText('21% VAT');
   await expect(vat).toContainText('€1.90');
@@ -178,7 +180,7 @@ test('a photo that cannot be read ends as failed, with the reason', async ({ pag
   const uploadId = uploadIdOf(page);
   await page.getByTestId('delete-upload').click();
   await page.getByTestId('confirm-delete').click();
-  await page.waitForURL(`${URLS.wallet}/`);
+  await page.waitForURL(`${URLS.wallet}/receipts`);
   expect(await uploadRow(uploadId)).toBeUndefined();
 });
 
@@ -211,6 +213,6 @@ test('a photo that needs review: the correction form has a category per line, th
 
   await page.getByTestId('delete-upload').click();
   await page.getByTestId('confirm-delete').click();
-  await page.waitForURL(`${URLS.wallet}/`);
+  await page.waitForURL(`${URLS.wallet}/receipts`);
   expect(await uploadRow(uploadId)).toBeUndefined();
 });
