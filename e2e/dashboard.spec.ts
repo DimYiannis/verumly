@@ -22,6 +22,8 @@ test('dashboard: TOTP login, create a terminal, key shown once, revoke', async (
 
   await page.getByTestId('nav-terminals').click();
   await expect(page.getByTestId('terminal-label')).toBeVisible();
+  // the form is usable before the location list has loaded; wait for it so the terminal is created for a real location
+  await expect(page.getByTestId('terminal-location').locator('option')).not.toHaveCount(0);
   await page.getByTestId('terminal-label').fill('Kassa E2E');
   await page.getByTestId('terminal-generate').click();
   await expect(page.getByTestId('terminal-public-key')).not.toHaveValue('');

@@ -47,7 +47,7 @@ sequenceDiagram
   participant M as merchant-api
   participant W as Wallet (phone)
   participant B as buyer-api
-  T->>T: uuidv7 + 256-bit secret, sign v1 (Ed25519 over JCS)
+  T->>T: uuidv7 + 256-bit secret, sign v1 in state paid (Ed25519 over JCS)
   T-->>W: QR https://host/r/id#secret (no network needed)
   W->>W: read fragment, history.replaceState, keep secret in memory
   W->>B: POST /v1/resolve/view {receiptId, secret}
@@ -55,10 +55,10 @@ sequenceDiagram
   T->>M: POST /v1/receipts (Bearer, X-Signature, Idempotency-Key)
   M->>M: verify signature, validate CRF, lifecycle, store version (RLS)
   W->>B: retry resolve/view
-  B-->>W: receipt + banner "Not a final receipt"
+  B-->>W: receipt (issued = paid, no pre-bill banner)
   W->>B: POST /v1/me/claims (session token, secret in body)
   B->>B: sha256(secret) constant-time check, INSERT claims (PK receipt_id)
-  T->>M: POST version 2 (paid)
+  T->>M: POST version 2 (void, only if the till cancels the sale)
   M->>Q: notify-version job
   Q->>B: worker looks up the claim, web-push to the owner
 ```

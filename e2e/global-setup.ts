@@ -97,7 +97,7 @@ export default async function globalSetup(): Promise<(() => Promise<void>) | und
     await migrate(dbEnv);
     mkdirSync(`${root}.local`, { recursive: true });
     const log = openSync(`${root}.local/e2e-pnpm-dev.log`, 'w');
-    started = spawn('pnpm', ['dev'], {
+    started = spawn('pnpm', ['dev', '--env-mode=loose'], {
       cwd: root,
       detached: true,
       stdio: ['ignore', log, log],

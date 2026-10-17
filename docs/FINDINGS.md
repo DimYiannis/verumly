@@ -50,7 +50,7 @@ Reset: `docker compose down -v && docker compose up -d && pnpm db:migrate && pnp
 
 | Scenario | Time |
 | --- | --- |
-| buyer journey on a phone (`iPhone 13` descriptor): pre-bill banner, Mailpit login, save, fragment gone, pay, final after reload, exactly one encrypted push | 12.7 s |
+| buyer journey on a phone (`iPhone 13` descriptor): issued receipt, login, save, fragment gone, void, exactly one encrypted push | 12.7 s |
 | buyer offline: link opens as "Arriving", claim completes online, saved receipts render offline | 1.2 s |
 | dashboard: TOTP login, create terminal, key shown once, revoke | 2.1 s |
 | merchant offline: 3 offline sales all reach the dashboard archive | 2.9 s |

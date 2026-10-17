@@ -57,6 +57,8 @@ test('buyer journey on a phone: issued receipt, save, void, exactly one encrypte
   await shot(m, 'save-receipt-sheet');
   await m.getByTestId('save-button').click();
   await m.waitForURL(new RegExp(`/receipts/${qr.receiptId}`));
+  // the claim has completed once the saved receipt renders; navigating away earlier can cancel the list refresh
+  await expect(m.getByTestId('receipt-view')).toBeVisible();
   expect(m.url()).not.toContain('#');
   await m.goto(`${URLS.wallet}/`);
   const item = m.locator(`[data-testid="receipt-item"][data-receipt-id="${qr.receiptId}"]`);

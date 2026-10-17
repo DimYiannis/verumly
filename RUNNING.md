@@ -2,7 +2,9 @@
 
 This guide covers starting the stack, then clicking through the demo:
 
-> **dashboard login → set up the till → sell → scan the QR → save the receipt in the wallet → pay → final receipt**
+> **dashboard login → set up the till → sell and issue the receipt → scan the QR → save it in the wallet → void it (optional)**
+>
+> An issued receipt is taken as paid: there is no pre-bill and no payment step.
 
 Commands run from the repo root unless a step says otherwise.
 

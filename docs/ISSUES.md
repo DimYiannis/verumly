@@ -98,6 +98,7 @@ Big issues found in the code review (2026-10-16) and still open. Tick an item wh
 - [ ] **#20 `resolve/view` stays readable after a claim:** anyone with a forwarded link can still see the receipt.
 - [ ] **#21 The resolver reveals whether a receipt ID exists:** it answers `pending` instead of 404 for unknown IDs. This is a recorded departure, against the spec's "same 404" rule.
 - [ ] **#22 Refused attempts from revoked terminals are not audit-logged,** and there is no way to replay dead-lettered versions.
+- [ ] **#24 "Issued means paid" is a UI decision; the backend still carries the full lifecycle.** The simulator now issues each receipt once, already `paid`, and the only later change is **Void**. The wallet shows no pre-bill banner, no "final" badge and no `presented` filter. merchant-api, the SDK, the CRF and `receipt-nl` still accept `open`, `presented` and version edits (v2 §6), and their tests still cover them. Decide whether the lifecycle stays as an unused capability (for restaurants' pre-bill later) or is removed, and whether v2 §6 should be updated.
 - [ ] **#23 Hardening:**
   - rate limiters are in memory per process, so they reset on restart and aren't shared
   - TOTP codes can be replayed

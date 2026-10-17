@@ -326,6 +326,12 @@ Hop 6 reads the archive and VAT report through `@lr/dashboard-core` (`searchArch
 
 - A real phone camera scanning the QR, real push delivery to a device (the worker POSTs to a local endpoint that decrypts), iOS/Safari/WebKit, the service worker's `notificationclick` (no CDP call to click a notification), PWA install, the upload/photo flow in the wallet UI, insights, settings, and the accountant/manager browser UI.
 
+## Issued means paid (demo UI)
+
+- **DEPARTURE from v2 §6/§13/§12 in the UI only.** The simulator has one **Issue receipt** button that signs v1 in state `paid` (card), plus **Void**. There is no Present, Add item or Pay step. The wallet shows no "Not a final receipt" banner, no "final" badge and no `presented` filter. Reason: a shop issues a receipt only after the sale was paid, so a pre-bill is not part of the demo.
+- The backend is unchanged: `open`/`presented`/`paid`/`void` transitions, version gaps and idempotency are still implemented and tested. Tracked as ISSUES #24.
+- E2E scenario 1 is now: issue, save, void, exactly one encrypted push.
+
 ## Database connection variables (Supabase)
 
 - **One full connection string per role plus one for the admin** (`PG_ADMIN_URL`, `MERCHANT_API_DB_URL`, `BUYER_API_DB_URL`, `WORKER_DB_URL`, `DASHBOARD_DB_URL`). When set, a URL is used verbatim, so SSL parameters and pooler usernames (`role.<project-ref>`) belong to the operator. Reason: Supabase needs SSL and role-specific usernames, which the local `PG_*` builder cannot express.
