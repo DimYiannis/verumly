@@ -83,3 +83,8 @@ kassabon is a single column.
 
 `colab_extract.ipynb` in this directory runs the same two prompts with `transformers` on Colab and writes the
 `<sha256>.qianfan.json` files that `EXTRACTOR=recorded` and `pnpm eval:extraction` read.
+
+## Troubleshooting
+
+- **`CUDNN_STATUS_SUBLIBRARY_VERSION_MISMATCH` during start-up (Colab).** Seen on a T4: vLLM crashed in the vision encoder's `conv2d`. Colab ships its own torch and CUDA libraries, and installing vLLM into the same Python mixes two cuDNN versions. `colab_serve.ipynb` therefore installs vLLM into a separate virtual environment (`/content/vllm-env`), puts that environment's cuDNN first on `LD_LIBRARY_PATH`, and runs a one-second GPU convolution check before it starts the server. On other machines, use a clean virtual environment too.
+- **"Engine core initialization failed. See root cause above."** is vLLM's generic last line; the cause is further up in `vllm.log`. Skip the harmless `ERROR … fa_utils … FA2 is only supported on devices with compute capability >= 8` line (the T4 falls back to another attention backend).
