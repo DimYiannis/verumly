@@ -26,6 +26,7 @@ export const reportsNl: Record<keyof typeof reportsEn, string> = {
   'reports2.group.payment': 'Betaalmethode',
   'reports2.group.vat_rate': 'Btw-tarief',
   'reports2.group.category': 'Categorie',
+  'reports2.group.item': 'Artikel',
   'reports2.metrics': 'Te tonen cijfers',
   'reports2.metric.receipts': 'Bonnen',
   'reports2.metric.gross': 'Bruto',

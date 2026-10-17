@@ -53,13 +53,14 @@ function toValues(a: Agg): ReportValues {
 }
 
 /** The receipts of the period (latest version), already filtered. `local_ts` is the Amsterdam wall-clock time. */
-function baseCte(from: string, to: string, spec: Pick<ReportSpec, 'locationId' | 'terminalId' | 'payment'>): SQL {
+function baseCte(from: string, to: string, spec: Pick<ReportSpec, 'locationId' | 'terminalId' | 'payment' | 'weekday'>): SQL {
   const parts: SQL[] = [
     sql`r.state in ('paid', 'void')`,
     sql`(v.created_on_terminal_at at time zone ${TZ})::date between ${from}::date and ${to}::date`,
   ];
   if (spec.locationId) parts.push(sql`r.location_id = ${spec.locationId}::uuid`);
   if (spec.terminalId) parts.push(sql`r.terminal_id = ${spec.terminalId}::uuid`);
+  if (spec.weekday) parts.push(sql`extract(isodow from (v.created_on_terminal_at at time zone ${TZ}))::int = ${spec.weekday}`);
   if (spec.payment) parts.push(sql`exists (select 1 from jsonb_array_elements(v.payload->'payments') p where p->>'method' = ${spec.payment})`);
   return sql`
     select r.id, r.state, r.location_id, r.terminal_id, v.payload,
@@ -125,6 +126,14 @@ function groupQuery(spec: ReportSpec): SQL {
              coalesce(sum((row->>'gross')::bigint), 0) as gross, coalesce(sum((row->>'net')::bigint), 0) as net, coalesce(sum((row->>'vat')::bigint), 0) as vat,
              ${zero} as tip, ${zero} as rounding, ${zero} as cancelled, ${zero} as cancelled_gross, ${zero} as items
       from b cross join lateral jsonb_array_elements(b.payload->'vatSummary') row where b.state = 'paid' group by 1`;
+  }
+  if (g === 'item') {
+    return sql`with b as (${base})
+      select l->>'description' as key, null as label, count(distinct b.id) as receipts,
+             coalesce(sum((l->>'total')::bigint), 0) as gross, ${zero} as net, ${zero} as vat, ${zero} as tip, ${zero} as rounding,
+             ${zero} as cancelled, ${zero} as cancelled_gross,
+             coalesce(sum((l->>'qty')::numeric) filter (where l->>'kind' = 'item'), 0) as items
+      from b cross join lateral jsonb_array_elements(b.payload->'lines') l where b.state = 'paid' and l->>'kind' = 'item' group by 1`;
   }
   return sql`with b as (${base})
     select coalesce(l->>'category', 'uncategorised') as key, null as label, count(distinct b.id) as receipts,

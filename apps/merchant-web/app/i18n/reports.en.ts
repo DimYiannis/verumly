@@ -24,6 +24,7 @@ export const reportsEn = {
   'reports2.group.payment': 'Payment method',
   'reports2.group.vat_rate': 'VAT rate',
   'reports2.group.category': 'Category',
+  'reports2.group.item': 'Item',
   'reports2.metrics': 'Numbers to show',
   'reports2.metric.receipts': 'Receipts',
   'reports2.metric.gross': 'Gross',

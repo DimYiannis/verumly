@@ -134,3 +134,28 @@ describe('saved views', () => {
     await expect(createReportView(f.dash.db, actor, { name: 'x', spec: { ...range, metrics: [] } })).rejects.toMatchObject({ code: 'validation' });
   });
 });
+
+describe('runReport: by item and by weekday', () => {
+  it('groups by item description (paid item lines only), best seller first', async () => {
+    const { actor } = await userWithRole(f, 0, 'owner');
+    const r = await runReport(f.dash.db, actor, { ...range, groupBy: 'item', metrics: ['items', 'gross'] });
+    expect(r.rows.map((x) => [x.key, x.values.items, x.values.gross])).toEqual([
+      ['Bier', 4, 1556],
+      ['Koffie', 4, 1360],
+      ['Wijn', 1, 495],
+    ]);
+    expect(r.notes.some((n) => n.startsWith('partial:item'))).toBe(false);
+  });
+
+  it('keeps only one weekday (Monday = 1), by Amsterdam time', async () => {
+    const { actor } = await userWithRole(f, 0, 'owner');
+    // 2026-03-10 is a Tuesday: R1 and R2 are sales that day, the third receipt was cancelled
+    const tue = await runReport(f.dash.db, actor, { ...range, groupBy: 'hour', metrics: ['receipts', 'gross'], weekday: 2 });
+    expect(tue.totals).toEqual({ receipts: 2, gross: 1798 });
+    // 2026-04-01 (01:30 Amsterdam) is a Wednesday, like 2026-03-11
+    const wed = await runReport(f.dash.db, actor, { ...range, groupBy: 'day', metrics: ['receipts'], weekday: 3 });
+    expect(wed.rows.map((x) => x.key)).toEqual(['2026-03-11', '2026-04-01']);
+    const sun = await runReport(f.dash.db, actor, { ...range, groupBy: 'day', metrics: ['receipts'], weekday: 7 });
+    expect(sun.rows).toEqual([]);
+  });
+});

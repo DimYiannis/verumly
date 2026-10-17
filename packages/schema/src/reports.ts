@@ -7,19 +7,20 @@ import { uuidString } from './crf.ts';
  * version of every receipt; `paid` receipts are sales and `void` receipts are cancellations.
  */
 
-export const REPORT_GROUPS = ['day', 'week', 'month', 'weekday', 'hour', 'location', 'terminal', 'payment', 'vat_rate', 'category'] as const;
+export const REPORT_GROUPS = ['day', 'week', 'month', 'weekday', 'hour', 'location', 'terminal', 'payment', 'vat_rate', 'category', 'item'] as const;
 export type ReportGroup = (typeof REPORT_GROUPS)[number];
 
 export const REPORT_METRICS = ['receipts', 'gross', 'net', 'vat', 'tip', 'rounding', 'cancelled', 'cancelledGross', 'avgTicket', 'items'] as const;
 export type ReportMetric = (typeof REPORT_METRICS)[number];
 
 /** Groupings that come from a part of the receipt (a payment, a VAT row, a line) rather than the receipt itself. */
-export const PARTIAL_GROUPS: readonly ReportGroup[] = ['payment', 'vat_rate', 'category'];
+export const PARTIAL_GROUPS: readonly ReportGroup[] = ['payment', 'vat_rate', 'category', 'item'];
 /** Which metrics mean something for each partial grouping; the others are 0 there. */
 export const PARTIAL_METRICS: Record<string, readonly ReportMetric[]> = {
   payment: ['receipts', 'gross', 'avgTicket'],
   vat_rate: ['receipts', 'gross', 'net', 'vat', 'avgTicket'],
   category: ['receipts', 'gross', 'items', 'avgTicket'],
+  item: ['receipts', 'gross', 'items', 'avgTicket'],
 };
 
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -37,6 +38,8 @@ export const reportSpec = z
     locationId: uuidString.optional(),
     terminalId: uuidString.optional(),
     payment: z.enum(['card', 'cash', 'other']).optional(),
+    /** only receipts of this weekday, Monday = 1 (Amsterdam time): "the usual Saturday" */
+    weekday: z.number().int().min(1).max(7).optional(),
     /** also compute the same totals for the period just before (same length) */
     compare: z.boolean().default(false),
     sort: z.object({ by: z.union([z.literal('group'), z.enum(REPORT_METRICS)]), dir: z.enum(['asc', 'desc']) }).strict().optional(),
