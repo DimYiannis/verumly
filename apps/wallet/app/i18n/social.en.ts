@@ -3,6 +3,7 @@ import type { socialNl } from './social.nl.ts';
 /** English strings of friends, shares and splits, typed against the Dutch key set. */
 export const socialEn: Record<keyof typeof socialNl, string> = {
   'social.nav': 'Friends',
+  'login.demoNote': 'Development mode: fill in a demo account and sign in. No code needed.',
   'login.fillDemoFriend': 'Fill in the demo friend ({name})',
   'social.title': 'Friends',
   'social.offline': 'You are offline. Friends and splits need an internet connection.',

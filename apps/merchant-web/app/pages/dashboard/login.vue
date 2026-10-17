@@ -92,7 +92,7 @@ async function submitCode() {
       <CardHeader class="px-8">
         <div class="mb-4 flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground"><ReceiptTextIcon class="size-5" /></div>
         <CardTitle class="text-2xl font-medium tracking-tight">{{ t('login.title') }}</CardTitle>
-        <CardDescription>{{ t('login.description') }}</CardDescription>
+        <CardDescription>{{ demo ? t('login.demoDescription') : t('login.description') }}</CardDescription>
       </CardHeader>
       <CardContent class="px-8">
         <form v-if="step === 'credentials'" class="space-y-6" @submit.prevent="submitCredentials">

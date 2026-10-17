@@ -77,6 +77,7 @@ export const en = {
 
   // login
   'login.title': 'Merchant dashboard',
+  'login.demoDescription': 'Development mode: fill in the demo account and sign in. No code needed.',
   'login.description': 'Sign in with your email, password and authenticator code.',
   'login.email': 'Email',
   'login.password': 'Password',

@@ -1,6 +1,7 @@
 /** Dutch strings of friends, shares and splits (keys `social.*`, `split.*`). Source dictionary for these keys. */
 export const socialNl = {
   'social.nav': 'Vrienden',
+  'login.demoNote': 'Ontwikkelmodus: vul een demo-account in en log in. Geen code nodig.',
   'login.fillDemoFriend': 'Demo-vriend invullen ({name})',
   'social.title': 'Vrienden',
   'social.offline': 'Je bent offline. Vrienden en splits werken alleen met internet.',

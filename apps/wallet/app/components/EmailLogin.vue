@@ -85,6 +85,7 @@ async function verify() {
           data-testid="login-email"
         />
       </div>
+      <p v-if="demoEmail" class="rounded-md border border-warning-border bg-warning-soft p-3 text-sm text-warning" data-testid="login-demo-note">{{ t('login.demoNote') }}</p>
       <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-send">{{ demoEmail ? t('login.signIn') : t('login.sendCode') }}</Button>
       <Button v-if="demoEmail" type="button" size="lg" variant="secondary" class="w-full" :disabled="busy" data-testid="login-fill-demo" @click="email = demoEmail ?? ''">{{ t('login.fillDemo') }}</Button>
       <Button v-for="u in demoUsers.slice(1)" :key="u.email" type="button" size="lg" variant="ghost" class="w-full" :disabled="busy" :data-testid="`login-fill-demo-${u.label.toLowerCase()}`" @click="email = u.email">{{ t('login.fillDemoFriend', { name: u.label }) }}</Button>
