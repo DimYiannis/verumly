@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { t } = useSiteLocale();
 const codes = ['NL', 'DE', 'FR', 'IT', 'ES', 'PT', 'BE', 'AT', 'PL', 'SE', 'DK', 'FI', 'IE', 'GR', 'CZ', 'HU', 'RO', 'HR', 'SI', 'SK', 'LU', 'MT', 'CY', 'EE', 'LV', 'LT', 'BG', 'NO', 'CH', 'GB', 'IS'];
 </script>
 
@@ -8,10 +9,10 @@ const codes = ['NL', 'DE', 'FR', 'IT', 'ES', 'PT', 'BE', 'AT', 'PL', 'SE', 'DK',
       <span v-for="c in codes" :key="c" class="rounded-md border px-2 py-1 font-mono text-xs" :class="c === 'DE' ? 'border-primary bg-primary text-white' : 'border-border bg-card text-muted-foreground'">{{ c }}</span>
     </div>
     <div class="space-y-2 rounded-xl border border-border bg-card p-4">
-      <p class="font-medium">What Germany asks of a till</p>
-      <p class="flex justify-between text-muted-foreground"><span>TSE serial number *</span><span class="text-[#9A3B2E]">missing</span></p>
-      <p class="flex justify-between text-muted-foreground"><span>Till ID (Kassen-ID) *</span><span>KASSE-1</span></p>
-      <p class="flex justify-between text-muted-foreground"><span>Registered with the Finanzamt *</span><span>yes</span></p>
+      <p class="font-medium">{{ t('frag.countries.germanyAsks') }}</p>
+      <p class="flex justify-between text-muted-foreground"><span>{{ t('frag.countries.tse') }}</span><span class="text-[#9A3B2E]">{{ t('frag.countries.missing') }}</span></p>
+      <p class="flex justify-between text-muted-foreground"><span>{{ t('frag.countries.tillId') }}</span><span>KASSE-1</span></p>
+      <p class="flex justify-between text-muted-foreground"><span>{{ t('frag.countries.finanzamt') }}</span><span>{{ t('frag.countries.yes') }}</span></p>
     </div>
   </div>
 </template>
