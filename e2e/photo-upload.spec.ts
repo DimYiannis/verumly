@@ -240,7 +240,7 @@ test('a photo that needs review: the correction form has a category per line, th
   const uploadId = uploadIdOf(page);
   await expect(page.getByTestId('upload-status')).toHaveAttribute('data-status', 'needs_review');
   await expect(page.getByTestId('correction-form')).toBeVisible();
-  await expect(page.getByTestId('upload-failures')).toContainText('gross_sum');
+  await expect(page.getByTestId('upload-failures')).toContainText('Items add up to');
   await expect(page.getByTestId('corr-line')).toHaveCount(5);
   await expect(page.getByTestId('corr-line').nth(0)).toHaveAttribute('data-category', 'dining'); // Koffie
   await expect(page.getByTestId('corr-line-vat-0')).toContainText('9%');
