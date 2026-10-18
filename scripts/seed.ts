@@ -333,34 +333,33 @@ export async function runSeed(opts: SeedOptions): Promise<SeedResult> {
       await db.delete(tables.uploads).where(inArray(tables.uploads.id, stale));
       log(`removed ${stale.length} upload(s) whose photo was missing from storage; seeding them again`);
     }
-    // uploads from corpus images with the recorded extractor; one matches an official receipt
-    if (seededUploads.length - stale.length < SEED.uploadTarget) {
-      const corpus = loadSeedCorpus({ fixturesDir: opts.env.FIXTURES_DIR });
-      const statusOf = (e: CorpusEntry) => {
-        const rec = readRecorded(e);
-        return rec ? parseExtraction({ markdown: rec.markdown, kie: rec.kie }, { now }) : null;
-      };
-      const withRecording = corpus.entries.filter((e) => statusOf(e) !== null);
-      const matchEntry = withRecording.find((e) => e.truth.gross > 0 && (e.truth.merchant.kvk || e.truth.merchant.vatNumber) && statusOf(e)?.status === 'done' && truthPrintedAtUtc(e.truth));
-      const reviewEntry = withRecording.find((e) => e !== matchEntry && statusOf(e)?.status === 'needs_review');
-      const otherEntry = withRecording.find((e) => e !== matchEntry && e !== reviewEntry && statusOf(e)?.status === 'done');
-      const picks = [matchEntry, reviewEntry, otherEntry].filter((e): e is CorpusEntry => e !== undefined);
-      if (picks.length < SEED.uploadTarget) throw new Error(`corpus offers only ${picks.length} usable receipts with recordings`);
+    // uploads from corpus images with the recorded extractor; one matches an official receipt. Only picks whose photo
+    // is not stored yet are created, so this is safe to run on every seed whatever other uploads the user has.
+    const corpus = loadSeedCorpus({ fixturesDir: opts.env.FIXTURES_DIR });
+    const statusOf = (e: CorpusEntry) => {
+      const rec = readRecorded(e);
+      return rec ? parseExtraction({ markdown: rec.markdown, kie: rec.kie }, { now }) : null;
+    };
+    const withRecording = corpus.entries.filter((e) => statusOf(e) !== null);
+    const matchEntry = withRecording.find((e) => e.truth.gross > 0 && (e.truth.merchant.kvk || e.truth.merchant.vatNumber) && statusOf(e)?.status === 'done' && truthPrintedAtUtc(e.truth));
+    const reviewEntry = withRecording.find((e) => e !== matchEntry && statusOf(e)?.status === 'needs_review');
+    const otherEntry = withRecording.find((e) => e !== matchEntry && e !== reviewEntry && statusOf(e)?.status === 'done');
+    const picks = [matchEntry, reviewEntry, otherEntry].filter((e): e is CorpusEntry => e !== undefined);
+    if (picks.length < SEED.uploadTarget) throw new Error(`corpus offers only ${picks.length} usable receipts with recordings`);
 
-      // a pick whose photo is already stored (same size) is not seeded twice
-      const todo = picks.filter((e) => !photoSizes.has(statSync(e.imagePath).size));
-      if (matchEntry && todo.includes(matchEntry)) await seedOfficialReceipt(admin.db, merchantHandle.db, matchEntry, created);
+    // a pick whose photo is already stored (same size) is not seeded twice
+    const todo = picks.filter((e) => !photoSizes.has(statSync(e.imagePath).size));
+    if (matchEntry && todo.includes(matchEntry)) await seedOfficialReceipt(admin.db, merchantHandle.db, matchEntry, created);
 
-      for (const e of todo) {
-        const bytes = new Uint8Array(readFileSync(e.imagePath));
-        const uploadId = crypto.randomUUID();
-        const key = `uploads/${buyerId}/${uploadId}`;
-        await ctx.s3.put(key, bytes, 'image/png');
-        await db.insert(tables.uploads).values({ id: uploadId, userId: buyerId, s3Key: key, contentType: 'image/png', status: 'processing' });
-        const out = await extractUpload(ctx, { uploadId });
-        created.uploads++;
-        log(`upload ${e.id}: ${out.status}${out.matchedReceiptId ? ', matches an official receipt' : ''}`);
-      }
+    for (const e of todo) {
+      const bytes = new Uint8Array(readFileSync(e.imagePath));
+      const uploadId = crypto.randomUUID();
+      const key = `uploads/${buyerId}/${uploadId}`;
+      await ctx.s3.put(key, bytes, 'image/png');
+      await db.insert(tables.uploads).values({ id: uploadId, userId: buyerId, s3Key: key, contentType: 'image/png', status: 'processing' });
+      const out = await extractUpload(ctx, { uploadId });
+      created.uploads++;
+      log(`upload ${e.id}: ${out.status}${out.matchedReceiptId ? ', matches an official receipt' : ''}`);
     }
     // dev DB: show categories and rollups without waiting for the worker's cron
     await categorise(ctx);
