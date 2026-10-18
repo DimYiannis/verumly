@@ -3,10 +3,12 @@ import { ChevronDown, ChevronLeft, Download, ReceiptText } from '@lucide/vue';
 import type { MessageKey } from '~/i18n';
 import { ApiError } from '~/utils/api';
 import type { ReceiptDetail } from '~/utils/api-schemas';
+import { RECEIPT_REFRESH_MS, isNewerVersion, shouldPollReceipt } from '~/utils/receipt-refresh';
 
 definePageMeta({ middleware: 'auth' });
 
 const route = useRoute();
+const router = useRouter();
 const wallet = useWallet();
 const { t } = useLocale();
 const id = String(route.params.id);
@@ -57,15 +59,45 @@ async function downloadPdf() {
   }
 }
 
-// a new version may have arrived while the app was in the background
-function onVisible() {
-  if (document.visibilityState === 'visible') void load();
+let refreshing = false;
+/** Quietly picks up a newer version (a void) while the page is open; a failed request keeps what is on screen. */
+async function refresh() {
+  if (status.value !== 'ready') return load();
+  if (refreshing) return;
+  refreshing = true;
+  try {
+    const fresh = await wallet.api.getReceipt(id);
+    fromCache.value = false;
+    if (isNewerVersion(detail.value, fresh)) {
+      detail.value = fresh;
+      await wallet.cache.putDetail(fresh);
+    }
+  } catch {
+    /* offline or a hiccup: the next tick, or the online event, tries again */
+  } finally {
+    refreshing = false;
+  }
 }
+
+const canPoll = () => shouldPollReceipt({ visible: document.visibilityState === 'visible', online: wallet.online.value });
+// a new version may have arrived while the app was in the background, or the network just came back
+function onWake() {
+  if (canPoll()) void refresh();
+}
+let timer: ReturnType<typeof setInterval> | undefined;
 onMounted(() => {
   void load();
-  document.addEventListener('visibilitychange', onVisible);
+  // the "Receipt saved" banner shows once: a reload must not bring it back
+  if (justSaved) void router.replace({ path: route.path, query: { ...route.query, saved: undefined }, hash: route.hash });
+  timer = setInterval(onWake, RECEIPT_REFRESH_MS);
+  document.addEventListener('visibilitychange', onWake);
+  window.addEventListener('online', onWake);
 });
-onBeforeUnmount(() => document.removeEventListener('visibilitychange', onVisible));
+onBeforeUnmount(() => {
+  clearInterval(timer);
+  document.removeEventListener('visibilitychange', onWake);
+  window.removeEventListener('online', onWake);
+});
 </script>
 
 <template>

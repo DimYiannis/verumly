@@ -17,6 +17,13 @@ const fiscalRows = computed(() => {
   return Object.entries(f.extra).map(([key, value]) => ({ key, label: names.get(key) ?? (key === 'mode' ? t('fiscal.mode') : key), value }));
 });
 
+const voidOpen = ref(false);
+const cancelled = computed(() => sim.state.value === 'void');
+async function confirmVoid() {
+  voidOpen.value = false;
+  await sim.voidSale();
+}
+
 const linkCopied = ref(false);
 async function copyLink() {
   const url = sim.current.value?.qrUrl;
@@ -89,7 +96,7 @@ async function copyLink() {
             <div class="space-y-2">
               <div class="flex gap-2">
                 <Button class="flex-1" :disabled="sim.busy.value || !sim.cart.value.length || !sim.editable.value" data-testid="sim-issue" @click="sim.issue()">{{ t('sim.issue') }}</Button>
-                <Button variant="outline" class="flex-1 text-danger hover:text-danger" :disabled="sim.busy.value || !sim.current.value || sim.state.value === 'void'" data-testid="sim-void" @click="sim.voidSale()">{{ t('sim.void') }}</Button>
+                <Button variant="outline" class="flex-1 text-danger hover:text-danger" :disabled="sim.busy.value || !sim.current.value || sim.state.value === 'void'" data-testid="sim-void" @click="voidOpen = true">{{ t('sim.void') }}</Button>
               </div>
               <Button variant="ghost" class="w-full" data-testid="sim-new-sale" @click="sim.newSale()">{{ t('sim.newSale') }}</Button>
             </div>
@@ -114,9 +121,16 @@ async function copyLink() {
 
       <Card class="items-center py-8 lg:sticky lg:top-4">
         <template v-if="sim.current.value">
-          <CardTitle class="text-lg">{{ t('sim.scan') }}</CardTitle>
+          <CardTitle v-if="cancelled" class="text-lg text-danger" data-testid="sim-cancelled-title">{{ t('sim.cancelledTitle') }}</CardTitle>
+          <CardTitle v-else class="text-lg">{{ t('sim.scan') }}</CardTitle>
           <!-- sized for a phone held 30-50 cm from a laptop screen: up to 68% of the viewport height, capped -->
-          <div class="aspect-square w-[min(68vh,36rem)] max-w-full rounded-md border bg-white p-2" data-testid="sim-qr" v-html="sim.qrSvg.value" />
+          <div class="relative aspect-square w-[min(68vh,36rem)] max-w-full">
+            <div class="size-full rounded-md border bg-white p-2 transition-opacity" :class="cancelled ? 'opacity-15 grayscale' : ''" data-testid="sim-qr" :aria-hidden="cancelled" v-html="sim.qrSvg.value" />
+            <div v-if="cancelled" class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center" role="status" data-testid="sim-cancelled">
+              <Badge variant="destructive" class="px-4 py-1.5 text-xl">{{ t('sim.cancelledBadge') }}</Badge>
+              <p class="text-sm text-muted-foreground">{{ t('sim.cancelledHelp') }}</p>
+            </div>
+          </div>
           <p class="max-w-full break-all px-6 text-center font-mono text-xs text-muted-foreground" data-testid="sim-qr-url">{{ sim.current.value.qrUrl }}</p>
           <div class="flex gap-2">
             <Button type="button" variant="outline" size="sm" data-testid="sim-copy-link" @click="copyLink"><component :is="linkCopied ? CheckIcon : CopyIcon" />{{ linkCopied ? t('adm.copied') : t('adm.sim.copyLink') }}</Button>
@@ -141,5 +155,18 @@ async function copyLink() {
         </CardContent>
       </Card>
     </div>
+
+    <AlertDialog v-model:open="voidOpen">
+      <AlertDialogContent data-testid="sim-void-dialog">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{{ t('sim.voidTitle') }}</AlertDialogTitle>
+          <AlertDialogDescription>{{ t('sim.voidBody') }}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel data-testid="sim-void-keep">{{ t('sim.voidKeep') }}</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" data-testid="sim-void-confirm" @click="confirmVoid">{{ t('sim.voidConfirm') }}</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>
