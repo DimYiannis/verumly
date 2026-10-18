@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MessageKey } from '~/i18n';
 import { ApiError } from '~/utils/api';
+import { isDemoAddress } from '~/utils/login-mode';
 
 const emit = defineEmits<{ done: [] }>();
 const wallet = useWallet();
@@ -33,14 +34,14 @@ onMounted(async () => {
   }
 });
 
+const isDemo = computed(() => !!demoEmail.value && isDemoAddress(demoUsers.value, email.value));
+
 async function sendCode() {
   busy.value = true;
   error.value = null;
   try {
-    if (demoEmail.value) {
-      // the demo user typed in (or filled by a button), else the default one
-      const typed = email.value.trim().toLowerCase();
-      await wallet.demoLogin(demoUsers.value.some((u) => u.email === typed) ? typed : demoEmail.value);
+    if (isDemo.value) {
+      await wallet.demoLogin(email.value.trim().toLowerCase());
       emit('done');
       return;
     }
@@ -85,8 +86,8 @@ async function verify() {
           data-testid="login-email"
         />
       </div>
-      <p v-if="demoEmail" class="rounded-md border border-warning-border bg-warning-soft p-3 text-sm text-warning" data-testid="login-demo-note">{{ t('login.demoNote') }}</p>
-      <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-send">{{ demoEmail ? t('login.signIn') : t('login.sendCode') }}</Button>
+      <p v-if="demoEmail" class="rounded-md border border-warning-border bg-warning-soft p-3 text-sm text-warning" data-testid="login-demo-note">{{ t('login.demoNote', { emails: demoUsers.map((u) => u.email).join(', ') }) }}</p>
+      <Button type="submit" size="lg" class="w-full" :disabled="busy" data-testid="login-send">{{ isDemo ? t('login.signIn') : t('login.sendCode') }}</Button>
       <div v-if="demoEmail" class="flex flex-wrap justify-center gap-2">
         <Button type="button" size="sm" variant="secondary" class="rounded-full" :disabled="busy" data-testid="login-fill-demo" @click="email = demoEmail ?? ''">{{ t('login.fillDemo') }}{{ demoUsers[0]?.label ? ` (${demoUsers[0].label})` : '' }}</Button>
         <Button v-for="u in demoUsers.slice(1)" :key="u.email" type="button" size="sm" variant="secondary" class="rounded-full" :disabled="busy" :data-testid="`login-fill-demo-${u.label.toLowerCase()}`" @click="email = u.email">{{ t('login.fillDemoFriend', { name: u.label }) }}</Button>
