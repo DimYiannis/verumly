@@ -5,9 +5,20 @@ import { loginDashboard } from './support/dashboard.ts';
 import { URLS } from './support/env.ts';
 import { createWorld, provisionLocation } from './support/world.ts';
 
+/** Opens the plan chooser; retries the click because on slow CI it can land during a re-render and be lost. */
+async function openPlanDialog(page: Page) {
+  const button = page.getByTestId('billing-change-plan');
+  const dialog = page.getByTestId('plan-dialog');
+  await expect(button).toBeEnabled();
+  await expect(async () => {
+    if (!(await dialog.isVisible())) await button.click({ timeout: 2_000 });
+    await expect(dialog).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
+}
+
 /** Billing page → plan card → checkout page with the given test card → back on Billing with the outcome. */
 async function payWithCard(page: Page, o: { plan: 'starter' | 'business'; interval: 'monthly' | 'annual'; card: string; screenshot?: string }) {
-  await page.getByTestId('billing-change-plan').click();
+  await openPlanDialog(page);
   await page.getByTestId(`billing-interval-${o.interval}`).click();
   await page.getByTestId(`plan-choose-${o.plan}`).click();
   await expect(page).toHaveURL(/\/billing\/checkout\/[0-9a-f-]{36}$/);
@@ -32,8 +43,7 @@ test('billing: trial → annual Business → checkout with card 4242 → active,
   await expect(page.getByTestId('billing-trial-ends')).toBeVisible();
 
   // the plan chooser is a dialog: annual prices show the per-month equivalent, billed per year, excl. and incl. BTW
-  await page.getByTestId('billing-change-plan').click();
-  await expect(page.getByTestId('plan-dialog')).toBeVisible();
+  await openPlanDialog(page);
   await page.getByTestId('billing-interval-annual').click();
   await expect(page.getByTestId('billing-two-months-free')).toBeVisible();
   await expect(page.getByTestId('plan-card-business')).toContainText('€40,83');
@@ -81,7 +91,7 @@ test('billing: trial → annual Business → checkout with card 4242 → active,
   expect(readFileSync(await download.path()).subarray(0, 5).toString()).toBe('%PDF-');
 
   // a plan change is scheduled for the renewal and can be undone
-  await page.getByTestId('billing-change-plan').click();
+  await openPlanDialog(page);
   await page.getByTestId('billing-interval-monthly').click();
   await page.getByTestId('plan-choose-starter').click();
   await expect(page.getByTestId('plan-dialog')).toBeHidden();
