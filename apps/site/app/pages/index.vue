@@ -7,11 +7,15 @@ import FragSplit from '~/components/FragSplit.vue';
 import FragTill from '~/components/FragTill.vue';
 
 const config = useRuntimeConfig().public;
-// Demo links: the env var wins; in `nuxt dev` an unset one falls back to the local apps; a production build without them
-// shows no demo buttons (the #try section says the demo is not linked yet).
-const walletUrl = config.walletUrl || (import.meta.dev ? 'http://localhost:3001' : '');
-const dashboardUrl = config.dashboardUrl || (import.meta.dev ? 'http://localhost:3000/dashboard' : '');
-const simulatorUrl = dashboardUrl ? `${new URL(dashboardUrl).origin}/simulator` : '';
+// Demo links: the env var wins; in `nuxt dev` an unset one falls back to the local apps. A URL that is still unresolved
+// (production build without env vars) makes its button link to #try instead, and the note there says the demo is coming.
+// `demoLive` is true only when both the wallet and dashboard URLs are resolved.
+const resolvedWalletUrl = config.walletUrl || (import.meta.dev ? 'http://localhost:3001' : '');
+const resolvedDashboardUrl = config.dashboardUrl || (import.meta.dev ? 'http://localhost:3000/dashboard' : '');
+const demoLive = Boolean(resolvedWalletUrl && resolvedDashboardUrl);
+const walletUrl = resolvedWalletUrl || '#try';
+const dashboardUrl = resolvedDashboardUrl || '#try';
+const simulatorUrl = resolvedDashboardUrl ? `${new URL(resolvedDashboardUrl).origin}/simulator` : '#try';
 const repoUrl = config.repoUrl;
 
 useSeoMeta({
@@ -206,7 +210,7 @@ const status = {
             <li>Bills split with friends, balances tracked, no payments in the middle</li>
             <li>No loyalty card, no tracking, delete everything whenever you like</li>
           </ul>
-          <a v-if="walletUrl" :href="walletUrl" class="mt-8 inline-block rounded-xl bg-primary px-7 py-3.5 font-medium text-white no-underline hover:bg-[#1C1F6E] hover:text-white">Open the wallet</a>
+          <a :href="walletUrl" class="mt-8 inline-block rounded-xl bg-primary px-7 py-3.5 font-medium text-white no-underline hover:bg-[#1C1F6E] hover:text-white">Open the wallet</a>
         </div>
         <div class="rounded-3xl bg-[#14152B] p-8 text-[#F8F7F4] md:p-10">
           <p class="font-medium text-[#8A8EE0]">For shops</p>
@@ -217,7 +221,7 @@ const status = {
             <li>Receipts in your own design, in the wallet and as PDF</li>
             <li>Setup that follows the rules of your country</li>
           </ul>
-          <a v-if="dashboardUrl" :href="dashboardUrl" class="mt-8 inline-block rounded-xl bg-white px-7 py-3.5 font-medium text-primary no-underline hover:bg-[#E6E7F8] hover:text-primary">Open the dashboard</a>
+          <a :href="dashboardUrl" class="mt-8 inline-block rounded-xl bg-white px-7 py-3.5 font-medium text-primary no-underline hover:bg-[#E6E7F8] hover:text-primary">Open the dashboard</a>
         </div>
       </div>
     </section>
@@ -275,11 +279,11 @@ const status = {
         <h2 class="text-4xl font-medium tracking-tight text-balance md:text-6xl">Try it with a demo shop.</h2>
         <p class="mx-auto mt-6 max-w-xl text-lg font-light text-[#E6E7F8] md:text-xl">Issue a receipt on the till simulator, scan it with your phone, split it with a demo friend, then look at the books from the shop side.</p>
         <div class="mt-10 flex flex-wrap justify-center gap-3">
-          <a v-if="walletUrl" :href="walletUrl" class="rounded-xl bg-white px-8 py-4 font-medium text-primary no-underline hover:bg-[#E6E7F8] hover:text-primary md:text-lg">Open the wallet</a>
-          <a v-if="dashboardUrl" :href="dashboardUrl" class="rounded-xl border border-white/45 px-8 py-4 font-medium text-white no-underline hover:bg-white/10 hover:text-white md:text-lg">Open the dashboard</a>
-          <a v-if="simulatorUrl" :href="simulatorUrl" class="rounded-xl border border-white/45 px-8 py-4 font-medium text-white no-underline hover:bg-white/10 hover:text-white md:text-lg">Till simulator</a>
+          <a :href="walletUrl" class="rounded-xl bg-white px-8 py-4 font-medium text-primary no-underline hover:bg-[#E6E7F8] hover:text-primary md:text-lg">Open the wallet</a>
+          <a :href="dashboardUrl" class="rounded-xl border border-white/45 px-8 py-4 font-medium text-white no-underline hover:bg-white/10 hover:text-white md:text-lg">Open the dashboard</a>
+          <a :href="simulatorUrl" class="rounded-xl border border-white/45 px-8 py-4 font-medium text-white no-underline hover:bg-white/10 hover:text-white md:text-lg">Till simulator</a>
         </div>
-        <p v-if="!walletUrl && !dashboardUrl" class="mt-6 text-sm text-[#B3B6EE]">The demo is not linked yet.<template v-if="repoUrl"> To run it yourself, see the <a :href="repoUrl" rel="noopener noreferrer" class="text-white underline">README in the repository</a>.</template></p>
+        <p v-if="!demoLive" class="mt-6 text-sm text-[#B3B6EE]">The demo goes online soon.<template v-if="repoUrl"> To run it yourself, see the <a :href="repoUrl" rel="noopener noreferrer" class="text-white underline">README in the repository</a>.</template></p>
       </div>
     </section>
 
