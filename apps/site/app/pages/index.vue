@@ -15,7 +15,6 @@ const resolvedDashboardUrl = config.dashboardUrl || (import.meta.dev ? 'http://l
 const demoLive = Boolean(resolvedWalletUrl && resolvedDashboardUrl);
 const walletUrl = resolvedWalletUrl || '#try';
 const dashboardUrl = resolvedDashboardUrl || '#try';
-const simulatorUrl = resolvedDashboardUrl ? `${new URL(resolvedDashboardUrl).origin}/simulator` : '#try';
 const repoUrl = config.repoUrl;
 
 useSeoMeta({
@@ -281,7 +280,6 @@ const status = {
         <div class="mt-10 flex flex-wrap justify-center gap-3">
           <a :href="walletUrl" class="rounded-xl bg-white px-8 py-4 font-medium text-primary no-underline hover:bg-[#E6E7F8] hover:text-primary md:text-lg">Open the wallet</a>
           <a :href="dashboardUrl" class="rounded-xl border border-white/45 px-8 py-4 font-medium text-white no-underline hover:bg-white/10 hover:text-white md:text-lg">Open the dashboard</a>
-          <a :href="simulatorUrl" class="rounded-xl border border-white/45 px-8 py-4 font-medium text-white no-underline hover:bg-white/10 hover:text-white md:text-lg">Till simulator</a>
         </div>
         <p v-if="!demoLive" class="mt-6 text-sm text-[#B3B6EE]">The demo goes online soon.<template v-if="repoUrl"> To run it yourself, see the <a :href="repoUrl" rel="noopener noreferrer" class="text-white underline">README in the repository</a>.</template></p>
       </div>
