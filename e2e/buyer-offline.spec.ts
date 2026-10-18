@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MemoryStore, TerminalSdk } from '@lr/terminal-sdk';
-import { newPhone, shot, walletLogin } from './support/browser.ts';
+import { newPhone, shot, walletLogin, waitForServiceWorkerControl } from './support/browser.ts';
 import { URLS } from './support/env.ts';
 import { createWorld, provisionTerminal, uniqueEmail } from './support/world.ts';
 
@@ -37,7 +37,9 @@ test('buyer offline: link opens as Arriving, claim completes online, saved recei
     await expect(m.getByTestId('receipt-line')).toHaveCount(1);
     await m.goto(`${URLS.wallet}/receipts`); // the wallet list is cached for offline use whenever it has been loaded online
     await expect(m.locator(`[data-testid="receipt-item"][data-receipt-id="${saved.receiptId}"]`)).toBeVisible();
-    await m.waitForFunction(() => navigator.serviceWorker.controller !== null);
+    // the list page must be controlled by the service worker before going offline (the helper may reload it once)
+    await waitForServiceWorkerControl(m);
+    await expect(m.locator(`[data-testid="receipt-item"][data-receipt-id="${saved.receiptId}"]`)).toBeVisible();
 
     // offline: opening a receipt link shows "Arriving"
     await phone.setOffline(true);
