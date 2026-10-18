@@ -52,6 +52,12 @@ function clearPreview() {
 }
 onBeforeUnmount(clearPreview);
 
+/** The messages sit below the chooser, often below the fold on a phone: bring the one that just appeared into view. */
+async function revealProblem() {
+  await nextTick();
+  document.querySelector('[data-testid="prep-error"], [data-testid="upload-error"]')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
 async function onFile(event: Event) {
   const input = event.target;
   const file = input instanceof HTMLInputElement ? input.files?.[0] : undefined;
@@ -62,6 +68,7 @@ async function onFile(event: Event) {
   const problem = validateUploadFile(file);
   if (problem) {
     error.value = START_ERROR[problem];
+    await revealProblem();
     return;
   }
   busy.value = true;
@@ -95,6 +102,7 @@ async function onFile(event: Event) {
     preparing.value = false;
     uploading.value = false;
     if (input instanceof HTMLInputElement) input.value = '';
+    if (error.value || prepError.value) await revealProblem();
   }
 }
 </script>

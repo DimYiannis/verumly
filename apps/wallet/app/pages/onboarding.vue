@@ -61,15 +61,19 @@ async function finish() {
       </div>
 
       <div v-else class="space-y-4" data-testid="onboarding-step-3">
+        <div class="space-y-2">
+          <h1 class="text-h1 font-semibold">{{ t('home.onb.3.title') }}</h1>
+          <p class="text-text-secondary">{{ t('home.onb.3.body') }}</p>
+        </div>
         <p v-if="loadError" role="alert" class="text-sm text-danger">{{ t(loadError) }}</p>
         <ConsentToggles v-model="consents" />
         <PushOptIn />
         <InstallHint />
       </div>
 
-      <div class="space-y-2" :class="step === 3 ? '' : 'text-center'">
-        <h1 class="text-h1 font-semibold">{{ t(step === 1 ? 'home.onb.1.title' : step === 2 ? 'home.onb.2.title' : 'home.onb.3.title') }}</h1>
-        <p class="text-text-secondary">{{ t(step === 1 ? 'home.onb.1.body' : step === 2 ? 'home.onb.2.body' : 'home.onb.3.body') }}</p>
+      <div v-if="step < 3" class="space-y-2 text-center">
+        <h1 class="text-h1 font-semibold">{{ t(step === 1 ? 'home.onb.1.title' : 'home.onb.2.title') }}</h1>
+        <p class="text-text-secondary">{{ t(step === 1 ? 'home.onb.1.body' : 'home.onb.2.body') }}</p>
       </div>
     </div>
 

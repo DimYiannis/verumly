@@ -298,6 +298,10 @@ export const nl = {
   // upload page (/uploads/[id])
   'uploadPage.pageTitle': 'Bon uitlezen',
   'uploadPage.title': 'Bon uitlezen',
+  'uploadPage.titleRead': 'Bon gelezen',
+  'uploadPage.titleReview': 'Controle nodig',
+  'uploadPage.titleFailed': 'Kon niet lezen',
+  'uploadPage.titleDeleted': 'Verwijderd',
   'uploadPage.loading': 'Bon laden…',
   'uploadPage.processing': 'We lezen je bon uit. Dit duurt meestal een paar seconden…',
   'uploadPage.slow': 'Het duurt langer dan verwacht. Je kunt later terugkomen; we blijven werken.',

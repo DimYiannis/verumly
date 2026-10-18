@@ -20,6 +20,10 @@ export const socialNl = {
   'social.cancel': 'Annuleren',
   'social.copy': 'Kopieer link',
   'social.copied': 'Gekopieerd',
+  'social.copyFailed': 'Kopiëren is niet gelukt. Selecteer de link en kopieer hem zelf.',
+  'login.invited': 'Je bent uitgenodigd voor een verdeling. Log in om je deel te zien.',
+  'split.detail.copied': 'Link gekopieerd. Stuur hem naar je gast.',
+  'split.detail.copyFailed': 'Kopiëren is niet gelukt. Selecteer de link hieronder en kopieer hem zelf.',
 
   'social.err.generic': 'Dat is niet gelukt. Probeer het later opnieuw.',
   'social.err.handleTaken': 'Deze gebruikersnaam is al bezet.',
@@ -131,6 +135,7 @@ export const socialNl = {
   'split.itemsHint': 'Tik per product aan wie het deelt. Meerdere mensen delen het product gelijk.',
   'split.everyone': 'Iedereen',
   'split.unassigned': 'Nog {n} producten zonder persoon.',
+  'split.unassignedPreview': '{n} producten ({amount}) zijn nog niet toegewezen. De bedragen verschijnen zodra alles een persoon heeft.',
   'split.customHint': 'Vul per persoon een bedrag in. Samen moet het precies het totaal zijn.',
   'split.customOver': 'Je zit {amount} te hoog.',
   'split.customUnder': 'Er ontbreekt nog {amount}.',

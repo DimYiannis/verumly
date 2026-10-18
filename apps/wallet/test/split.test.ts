@@ -22,6 +22,7 @@ describe('previewShares', () => {
   it('items: shared line splits equally, tip follows in proportion, unassigned blocks', () => {
     const open = previewShares({ payable: 800, mode: 'items', people: ['me', 'p0'], lines, assignments: { 1: ['me'] }, custom: {} });
     expect(open.unassigned).toEqual([2]);
+    expect(open.unassignedMinor).toBe(300);
     expect(open.valid).toBe(false);
     const p = previewShares({ payable: 880, mode: 'items', people: ['me', 'p0'], lines, assignments: { 1: ['me'], 2: ['me', 'p0'] }, custom: {} });
     // base me 650, p0 150; 880 * 650/800 = 715

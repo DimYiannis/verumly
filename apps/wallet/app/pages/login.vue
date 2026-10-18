@@ -10,6 +10,8 @@ function safeNext(value: unknown): string | null {
   return typeof value === 'string' && /^\/(?!\/)/.test(value) ? value : null;
 }
 
+const invited = computed(() => /^\/i\/[^/]+/.test(safeNext(route.query.next) ?? ''));
+
 async function done() {
   const next = safeNext(route.query.next);
   const onboarded = await wallet.kv.get('onboarded', z.boolean());
@@ -30,6 +32,7 @@ async function done() {
       </ul>
     </div>
     <div class="space-y-3">
+      <p v-if="invited" role="note" class="rounded-xl border border-[#B3B6EE] px-4 py-3 text-body text-[#E6E7F8]" data-testid="login-invited">{{ t('login.invited') }}</p>
       <div class="rounded-xl border border-border bg-card p-4 text-foreground"><EmailLogin @done="done" /></div>
     </div>
   </section>

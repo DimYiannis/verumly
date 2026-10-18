@@ -3,7 +3,7 @@ import { ChevronRight, ScanLine, WifiOff } from '@lucide/vue';
 import { ApiError } from '~/utils/api';
 import type { Balances, HomeSummary } from '~/utils/api-schemas';
 import { dayKey, formatMoney, formatTime } from '~/utils/format';
-import { budgetProgress, dayPart, parseBudgetInput, percentChange, sparkPoints } from '~/utils/home';
+import { budgetInputText, budgetProgress, dayPart, parseBudgetInput, percentChange, sparkPoints } from '~/utils/home';
 import { userName } from '~/utils/social';
 
 definePageMeta({ middleware: 'auth' });
@@ -53,7 +53,7 @@ function readBudget() {
   }
 }
 function openEditor() {
-  budgetText.value = budget.value ? String(budget.value / 100).replace('.', locale.value === 'nl' ? ',' : '.') : '';
+  budgetText.value = budget.value ? budgetInputText(budget.value, locale.value === 'nl' ? ',' : '.') : '';
   budgetError.value = false;
   editing.value = true;
 }

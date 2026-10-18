@@ -11,6 +11,11 @@ export interface WalletOptions {
   vault: Record<string, string>;
 }
 
+/** The `kv` key under which the signed-in person's profile is cached; shared by `useProfile` and logout/delete cleanup. */
+export function profileCacheKey(s: Pick<Session, 'userId' | 'email'>): string {
+  return `profile:${s.userId ?? s.email}`;
+}
+
 /** Everything stateful in the wallet: session, API client, offline stores, pending-claim retrier. Browser only. */
 export async function createWallet(opts: WalletOptions) {
   const db = openWalletDb();
@@ -44,6 +49,10 @@ export async function createWallet(opts: WalletOptions) {
   async function endSession() {
     session.value = null;
     await sessionStore.clear();
+  }
+
+  async function forgetProfile() {
+    if (session.value) await kv.delete(profileCacheKey(session.value));
   }
 
   let forceNext = false;
@@ -111,13 +120,16 @@ export async function createWallet(opts: WalletOptions) {
       await sessionStore.save(next);
       session.value = next;
     },
-    /** Explicit logout: also wipes cached receipts and pending claims so the next person on this phone sees nothing. */
+    /** Drops the cached profile of the current session from `kv`; call before the session ends. */
+    forgetProfile,
+    /** Explicit logout: also wipes cached receipts, the cached profile and pending claims so the next person on this phone sees nothing. */
     async logout(): Promise<void> {
       try {
         await api.logout();
       } catch {
         // token may already be invalid or we are offline; local state is cleared either way
       }
+      await forgetProfile();
       await endSession();
       await cache.clear();
       for (const c of [...(await claims.listPending()), ...(await claims.listClosed())]) await claims.remove(c.receiptId);

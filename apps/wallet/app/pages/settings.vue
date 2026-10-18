@@ -9,7 +9,7 @@ const { t } = useLocale();
 useHead({ title: () => t('settings.title') });
 
 const wallet = useWallet();
-const { profile, name, load: loadProfile } = useProfile();
+const { profile, name, load: loadProfile, reset: resetProfile } = useProfile();
 onMounted(() => void loadProfile());
 const consents = ref<Consents>({ analytics: false, marketing: false, push: false });
 const error = ref<MessageKey | null>(null);
@@ -44,6 +44,7 @@ async function exportData() {
 async function logout() {
   busy.value = true;
   await wallet.logout();
+  resetProfile();
   await navigateTo('/');
 }
 
@@ -52,7 +53,9 @@ async function deleteAccount() {
   error.value = null;
   try {
     await wallet.api.deleteAccount();
+    await wallet.forgetProfile();
     await wallet.endSession();
+    resetProfile();
     await wallet.cache.clear();
     for (const c of [...wallet.pending.value, ...wallet.closed.value]) await wallet.claims.remove(c.receiptId);
     await wallet.refreshPending();

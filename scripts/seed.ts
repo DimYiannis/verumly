@@ -1,7 +1,7 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { and, count, desc, eq, isNull, or } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, isNull, or } from 'drizzle-orm';
 import { z } from 'zod';
 import { MemoryStore, TerminalSdk, type DraftLine } from '@lr/terminal-sdk';
 import { addInterval, amsterdamYear, paymentProvider, priceFor, VAT_RATE } from '@lr/billing';
@@ -319,33 +319,47 @@ export async function runSeed(opts: SeedOptions): Promise<SeedResult> {
       now: () => now,
     };
 
-    // uploads from corpus images with the recorded extractor; one matches an official receipt
-    const [existingUploads] = await db.select({ n: count() }).from(tables.uploads).where(eq(tables.uploads.userId, buyerId));
-    if ((existingUploads?.n ?? 0) < SEED.uploadTarget) {
-      const corpus = loadSeedCorpus({ fixturesDir: opts.env.FIXTURES_DIR });
-      const statusOf = (e: CorpusEntry) => {
-        const rec = readRecorded(e);
-        return rec ? parseExtraction({ markdown: rec.markdown, kie: rec.kie }, { now }) : null;
-      };
-      const withRecording = corpus.entries.filter((e) => statusOf(e) !== null);
-      const matchEntry = withRecording.find((e) => e.truth.gross > 0 && (e.truth.merchant.kvk || e.truth.merchant.vatNumber) && statusOf(e)?.status === 'done' && truthPrintedAtUtc(e.truth));
-      const reviewEntry = withRecording.find((e) => e !== matchEntry && statusOf(e)?.status === 'needs_review');
-      const otherEntry = withRecording.find((e) => e !== matchEntry && e !== reviewEntry && statusOf(e)?.status === 'done');
-      const picks = [matchEntry, reviewEntry, otherEntry].filter((e): e is CorpusEntry => e !== undefined);
-      if (picks.length < SEED.uploadTarget) throw new Error(`corpus offers only ${picks.length} usable receipts with recordings`);
+    // The database outlives the S3 mock (a recreated container starts empty), so a seeded upload can point at a photo
+    // that is gone and its page shows "The photo could not be loaded". Drop those rows and seed them again below.
+    const seededUploads = await db.select({ id: tables.uploads.id, s3Key: tables.uploads.s3Key }).from(tables.uploads).where(eq(tables.uploads.userId, buyerId));
+    const photoSizes = new Set<number>();
+    const stale: string[] = [];
+    for (const u of seededUploads) {
+      const head = await ctx.s3.head(u.s3Key);
+      if (head) photoSizes.add(head.size);
+      else stale.push(u.id);
+    }
+    if (stale.length > 0) {
+      await db.delete(tables.uploads).where(inArray(tables.uploads.id, stale));
+      log(`removed ${stale.length} upload(s) whose photo was missing from storage; seeding them again`);
+    }
+    // uploads from corpus images with the recorded extractor; one matches an official receipt. Only picks whose photo
+    // is not stored yet are created, so this is safe to run on every seed whatever other uploads the user has.
+    const corpus = loadSeedCorpus({ fixturesDir: opts.env.FIXTURES_DIR });
+    const statusOf = (e: CorpusEntry) => {
+      const rec = readRecorded(e);
+      return rec ? parseExtraction({ markdown: rec.markdown, kie: rec.kie }, { now }) : null;
+    };
+    const withRecording = corpus.entries.filter((e) => statusOf(e) !== null);
+    const matchEntry = withRecording.find((e) => e.truth.gross > 0 && (e.truth.merchant.kvk || e.truth.merchant.vatNumber) && statusOf(e)?.status === 'done' && truthPrintedAtUtc(e.truth));
+    const reviewEntry = withRecording.find((e) => e !== matchEntry && statusOf(e)?.status === 'needs_review');
+    const otherEntry = withRecording.find((e) => e !== matchEntry && e !== reviewEntry && statusOf(e)?.status === 'done');
+    const picks = [matchEntry, reviewEntry, otherEntry].filter((e): e is CorpusEntry => e !== undefined);
+    if (picks.length < SEED.uploadTarget) throw new Error(`corpus offers only ${picks.length} usable receipts with recordings`);
 
-      if (matchEntry) await seedOfficialReceipt(admin.db, merchantHandle.db, matchEntry, created);
+    // a pick whose photo is already stored (same size) is not seeded twice
+    const todo = picks.filter((e) => !photoSizes.has(statSync(e.imagePath).size));
+    if (matchEntry && todo.includes(matchEntry)) await seedOfficialReceipt(admin.db, merchantHandle.db, matchEntry, created);
 
-      for (const e of picks) {
-        const bytes = new Uint8Array(readFileSync(e.imagePath));
-        const uploadId = crypto.randomUUID();
-        const key = `uploads/${buyerId}/${uploadId}`;
-        await ctx.s3.put(key, bytes, 'image/png');
-        await db.insert(tables.uploads).values({ id: uploadId, userId: buyerId, s3Key: key, contentType: 'image/png', status: 'processing' });
-        const out = await extractUpload(ctx, { uploadId });
-        created.uploads++;
-        log(`upload ${e.id}: ${out.status}${out.matchedReceiptId ? ', matches an official receipt' : ''}`);
-      }
+    for (const e of todo) {
+      const bytes = new Uint8Array(readFileSync(e.imagePath));
+      const uploadId = crypto.randomUUID();
+      const key = `uploads/${buyerId}/${uploadId}`;
+      await ctx.s3.put(key, bytes, 'image/png');
+      await db.insert(tables.uploads).values({ id: uploadId, userId: buyerId, s3Key: key, contentType: 'image/png', status: 'processing' });
+      const out = await extractUpload(ctx, { uploadId });
+      created.uploads++;
+      log(`upload ${e.id}: ${out.status}${out.matchedReceiptId ? ', matches an official receipt' : ''}`);
     }
     // dev DB: show categories and rollups without waiting for the worker's cron
     await categorise(ctx);
