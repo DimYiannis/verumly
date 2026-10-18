@@ -12,7 +12,8 @@ export const receipts2En: Record<keyof typeof receipts2Nl, string> = {
   'rcpt.list.chipCancelled': 'Cancelled',
   'rcpt.list.sharedWith': 'shared with {names}',
   'rcpt.list.from': 'from {name}',
-  'rcpt.list.noShared': 'No shared receipts found.',
+  'rcpt.list.noResults': 'No results',
+  'rcpt.list.clearFilters': 'Clear filters',
 
   // receipt page
   'rcpt.detail.stillOpen': 'Still open',
