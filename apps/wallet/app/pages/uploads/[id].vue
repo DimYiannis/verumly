@@ -6,6 +6,7 @@ import { LINE_CATEGORIES, type LineCategory, type ParsedLineDto } from '@lr/sche
 import type { UploadStatus } from '~/utils/api-schemas';
 import { amsterdamLocalToUtcIso, centsFromInput, formatDateTime, formatEuro, inputFromCents, utcIsoToAmsterdamLocal } from '~/utils/format';
 import { pollUpload } from '~/utils/uploads';
+import { uploadFailureText } from '~/utils/upload-failures';
 
 definePageMeta({ middleware: 'auth' });
 const { t, tOr, locale } = useLocale();
@@ -257,7 +258,7 @@ onBeforeUnmount(() => {
       <h2 class="text-h3 font-semibold">{{ t('uploadPage.failedTitle') }}</h2>
       <p class="text-text-secondary">{{ t('uploadPage.failedBody') }}</p>
       <ul v-if="upload.failures.length > 0" class="list-disc pl-5 text-sm text-danger" data-testid="upload-failed-reason" :aria-label="t('uploadPage.reason')">
-        <li v-for="f in upload.failures" :key="f">{{ tOr('uploadFailure', f) }}</li>
+        <li v-for="f in upload.failures" :key="f">{{ uploadFailureText(f, upload.draft, locale) }}</li>
       </ul>
       <Button as-child variant="secondary" size="lg" class="w-full">
         <NuxtLink to="/add">{{ t('common.retry') }}</NuxtLink>
@@ -301,7 +302,7 @@ onBeforeUnmount(() => {
           <p class="text-text-secondary">{{ t('uploadPage.reviewBody') }}</p>
         </div>
         <ul v-if="upload.failures.length > 0" class="list-disc pl-5 text-sm text-text-secondary" data-testid="upload-failures">
-          <li v-for="f in upload.failures" :key="f"><code class="font-mono">{{ f }}</code></li>
+          <li v-for="f in upload.failures" :key="f">{{ uploadFailureText(f, upload.draft, locale) }}</li>
         </ul>
         <form class="space-y-4 rounded-xl border border-border bg-card p-4" data-testid="correction-form" novalidate @submit.prevent="submitCorrections">
           <div class="space-y-2">
