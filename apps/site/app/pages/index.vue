@@ -28,6 +28,14 @@ useSeoMeta({
   twitterCard: 'summary_large_image',
 });
 
+// Phone menu: toggled by the header button, closed by a link click or Escape.
+const menuOpen = ref(false);
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') menuOpen.value = false;
+}
+onMounted(() => window.addEventListener('keydown', onKeydown));
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
+
 const navLinks = [
   { label: 'Why', href: '#why' },
   { label: 'How it works', href: '#how-it-works' },
@@ -62,6 +70,8 @@ const features = [
   { title: 'Reports you build', body: 'Group by day, hour, item, location or payment method, pick the numbers, compare with last period, save the view.' },
   { title: 'Legal setup by country', body: 'Pick your country and the setup asks for exactly what the law requires there, with sources and a clear disclaimer.' },
   { title: 'Works offline', body: 'Tills keep selling without a connection and the wallet shows saved receipts without one too.' },
+  { title: 'Photo receipts', body: 'Take a photo of a paper receipt or upload a photo or PDF. It is read automatically into items, categories and VAT, and you check the result.' },
+  { title: 'Plans for shops', body: 'Starter and Business plans, with a free Business trial to begin. Payments are demo only for now: no money moves.' },
   { title: 'Private by default', body: 'No loyalty tracking, no public feed, no buyer analytics for shops. Delete your account any time.' },
 ];
 
@@ -71,7 +81,7 @@ const faqs = [
   { q: 'Is it legal in my country?', a: 'Receipt rules differ a lot. We have mapped them for 31 countries and the setup asks for the right details, but the research is not reviewed by a tax adviser and is not legal advice. Issuing receipts is live for the Netherlands; other countries are the next step.' },
   { q: 'What do shops get to know about me?', a: 'Sales, items and VAT, never who you are. Receipts are stored under the shop only, and the only link to a person sits in a table the shop systems cannot read.' },
   { q: 'What if the shop is offline?', a: 'The till stores signed sales and sends them in order when the connection is back. Your receipt link shows an "arriving" state until then.' },
-  { q: 'Is this finished?', a: 'It is a working MVP built at a hackathon: the till, wallet, dashboard, splitting, designer and reports run end to end. See the status below for what is still ahead.' },
+  { q: 'Is this finished?', a: 'It is a working MVP built at a hackathon: the till, wallet, dashboard, splitting, designer and reports run end to end. See “Where we are” above for what is still ahead.' },
 ];
 
 const status = {
@@ -90,8 +100,17 @@ const status = {
           <nav class="flex items-center gap-5 md:gap-9" aria-label="Main">
             <a v-for="l in navLinks" :key="l.href" :href="l.href" class="hidden text-lg font-light text-white no-underline transition-opacity hover:text-white hover:opacity-75 lg:block">{{ l.label }}</a>
             <a href="#try" class="rounded-xl bg-white px-5 py-2.5 font-medium text-primary no-underline hover:bg-[#E6E7F8] hover:text-primary md:px-6 md:py-3 md:text-lg">Try the demo</a>
+            <button type="button" class="grid size-11 place-items-center rounded-xl border border-white/45 text-white hover:bg-white/10 lg:hidden" aria-label="Menu" aria-controls="site-menu" :aria-expanded="menuOpen" data-testid="site-menu-button" @click="menuOpen = !menuOpen">
+              <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path v-if="menuOpen" d="M6 6l12 12M18 6L6 18" />
+                <path v-else d="M4 7h16M4 12h16M4 17h16" />
+              </svg>
+            </button>
           </nav>
         </header>
+        <div v-show="menuOpen" id="site-menu" class="-mt-2 mb-4 rounded-2xl bg-white/10 p-2 lg:hidden" data-testid="site-menu">
+          <a v-for="l in navLinks" :key="l.href" :href="l.href" class="block rounded-xl px-4 py-3 text-lg font-light text-white no-underline hover:bg-white/10 hover:text-white" @click="menuOpen = false">{{ l.label }}</a>
+        </div>
 
         <div class="flex flex-1 flex-col gap-14 pt-6 md:pt-10 lg:grid lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] lg:items-center">
           <div class="max-w-[36rem]">
@@ -145,8 +164,9 @@ const status = {
           <p class="font-medium text-primary">How it works</p>
           <h2 class="mt-3 text-4xl font-medium tracking-tight md:text-5xl">From the till to your wallet in the time it takes to pay.</h2>
           <p class="mt-6 max-w-md text-lg leading-relaxed font-light text-muted-foreground">Four steps, no sign-up on the way in, and nothing that tells the shop who you are.</p>
-          <ol class="mt-10 hidden space-y-1 lg:block">
-            <li v-for="(s, i) in steps" :key="s.label" class="flex items-center gap-4 rounded-lg px-4 py-3 text-muted-foreground"><span class="text-sm tabular-nums">{{ String(i + 1).padStart(2, '0') }}</span><span class="text-lg font-medium text-foreground">{{ s.label }}</span></li>
+          <!-- plain outline of the steps on the right: not interactive, so no padding, hover or button look -->
+          <ol class="mt-10 hidden space-y-2 border-l-2 border-border pl-5 lg:block" aria-hidden="true">
+            <li v-for="(s, i) in steps" :key="s.label" class="flex items-baseline gap-4 text-muted-foreground"><span class="text-sm tabular-nums">{{ String(i + 1).padStart(2, '0') }}</span><span class="text-lg text-muted-foreground">{{ s.label }}</span></li>
           </ol>
         </div>
         <div class="min-w-0">

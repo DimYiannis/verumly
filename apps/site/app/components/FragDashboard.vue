@@ -2,7 +2,7 @@
   <div class="space-y-3 bg-background p-4 text-[12px] text-foreground sm:p-5">
     <div class="flex items-center justify-between">
       <p class="text-base font-semibold tracking-tight">Today, Saturday 17 October</p>
-      <span class="rounded-md border border-[#E6D29C] bg-[#F7EED6] px-2 py-0.5 text-[10px] text-[#7A5A10]">1 needs a look</span>
+      <span class="rounded-md border border-[#E6D29C] bg-[#F7EED6] px-2 py-0.5 text-[10px] text-[#7A5A10]">2 need a look</span>
     </div>
     <div class="rounded-xl border border-border bg-card p-3">
       <p class="mb-1 text-[10px] tracking-wider text-muted-foreground">SALES TODAY BY HOUR</p>
@@ -22,7 +22,7 @@
       <div class="space-y-1.5 rounded-xl border border-border bg-card p-3">
         <p class="text-[10px] tracking-wider text-muted-foreground">NEEDS A LOOK</p>
         <p>1 cancelled today</p>
-        <p class="text-muted-foreground">Add your TSE serial</p>
+        <p class="text-muted-foreground">Offline terminals: 1</p>
       </div>
       <div class="space-y-1.5 rounded-xl border border-border bg-card p-3">
         <p class="text-[10px] tracking-wider text-muted-foreground">TOP ITEMS</p>

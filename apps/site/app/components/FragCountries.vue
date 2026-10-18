@@ -4,7 +4,7 @@ const codes = ['NL', 'DE', 'FR', 'IT', 'ES', 'PT', 'BE', 'AT', 'PL', 'SE', 'DK',
 
 <template>
   <div class="space-y-4 p-6 text-sm">
-    <div class="flex flex-wrap gap-1.5">
+    <div class="flex flex-wrap gap-1.5" aria-hidden="true">
       <span v-for="c in codes" :key="c" class="rounded-md border px-2 py-1 font-mono text-xs" :class="c === 'DE' ? 'border-primary bg-primary text-white' : 'border-border bg-card text-muted-foreground'">{{ c }}</span>
     </div>
     <div class="space-y-2 rounded-xl border border-border bg-card p-4">
