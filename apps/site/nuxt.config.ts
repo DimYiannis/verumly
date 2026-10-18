@@ -2,6 +2,10 @@ import tailwindcss from '@tailwindcss/vite';
 
 // The public website: a static page that explains why and how. No API, no database, nothing to configure to build it.
 // Deploys to Vercel as a Nuxt app (see apps/site/README.md); every route is prerendered.
+// Absolute site address for share previews (og:image must be absolute): NUXT_PUBLIC_SITE_URL wins, then Vercel's production
+// domain from the build environment; empty (relative image) when neither is set.
+const siteUrl = (process.env.NUXT_PUBLIC_SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '')).replace(/\/+$/, '');
+
 export default defineNuxtConfig({
   compatibilityDate: '2026-10-01',
   devtools: { enabled: false },
@@ -13,7 +17,7 @@ export default defineNuxtConfig({
       walletUrl: process.env.NUXT_PUBLIC_WALLET_URL ?? '',
       dashboardUrl: process.env.NUXT_PUBLIC_DASHBOARD_URL ?? '',
       repoUrl: process.env.NUXT_PUBLIC_REPO_URL ?? '',
-      siteUrl: process.env.NUXT_PUBLIC_SITE_URL ?? '',
+      siteUrl,
     },
   },
   nitro: { prerender: { routes: ['/', '/privacy'], crawlLinks: true } },

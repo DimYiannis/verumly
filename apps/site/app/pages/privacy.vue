@@ -41,12 +41,14 @@ const roles = [
       <h2 class="mt-16 text-3xl font-medium tracking-tight">Four database roles that cannot see each other</h2>
       <p class="mt-3 max-w-2xl font-light text-muted-foreground">Every part of the system connects to the database as its own role, with row-level security by shop. The shop-side roles have no access at all to the buyer schema: a test tries to read, write and truncate every buyer table as each of them and expects a permission error.</p>
       <div class="mt-6 overflow-hidden rounded-2xl border border-border bg-card">
-        <table class="w-full text-left text-sm">
+        <div class="overflow-x-auto">
+        <table class="w-full min-w-[34rem] text-left text-sm">
           <thead class="bg-muted text-xs tracking-wider text-muted-foreground"><tr><th class="px-5 py-3">ROLE</th><th class="px-5 py-3">DOES</th><th class="px-5 py-3">CANNOT</th></tr></thead>
           <tbody>
             <tr v-for="r in roles" :key="r.name" class="border-t border-border"><td class="px-5 py-3 font-mono">{{ r.name }}</td><td class="px-5 py-3">{{ r.does }}</td><td class="px-5 py-3 text-muted-foreground">{{ r.cannot }}</td></tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       <h2 class="mt-16 text-3xl font-medium tracking-tight">Friends, sharing and splits</h2>
