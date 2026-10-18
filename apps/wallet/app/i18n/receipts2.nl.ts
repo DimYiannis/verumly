@@ -10,7 +10,8 @@ export const receipts2Nl = {
   'rcpt.list.chipCancelled': 'Geannuleerd',
   'rcpt.list.sharedWith': 'gedeeld met {names}',
   'rcpt.list.from': 'van {name}',
-  'rcpt.list.noShared': 'Geen gedeelde bonnen gevonden.',
+  'rcpt.list.noResults': 'Geen resultaten',
+  'rcpt.list.clearFilters': 'Filters wissen',
 
   // receipt page
   'rcpt.detail.stillOpen': 'Nog open',
