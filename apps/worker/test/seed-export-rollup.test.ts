@@ -27,6 +27,8 @@ beforeAll(async () => {
   seeded = await runSeed({ env, secretsPath: false, log: () => {} });
   worker = connect('worker', testDb.env);
   admin = new pg.Pool({ connectionString: adminDbUrl(testDb.env), max: 2 });
+  // `drop database … with (force)` may kill an idle client just before it has said goodbye; that must not crash the run
+  admin.on('error', () => {});
   ctx = { db: worker.db, s3: createObjectStore(env), extractor: recordedExtractor(env.FIXTURES_DIR), vapid: null, leadThreshold: 20, payments: demoProvider, log: () => {}, now: () => new Date() };
 }, 180_000);
 

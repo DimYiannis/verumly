@@ -20,6 +20,8 @@ const pool = (role: DbRole): pg.Pool => {
 beforeAll(async () => {
   testDb = await createTestDb('roles');
   admin = new pg.Pool({ connectionString: adminDbUrl(testDb.env), max: 4 });
+  // `drop database … with (force)` may kill an idle client just before it has said goodbye; that must not crash the run
+  admin.on('error', () => {});
   a = await seedOrg(admin, 1);
   b = await seedOrg(admin, 2);
   buyerUserId = (await seedBuyerSide(admin, a.receiptId)).userId;

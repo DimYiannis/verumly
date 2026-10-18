@@ -21,6 +21,8 @@ let ctx: WorkerCtx;
 beforeAll(async () => {
   testDb = await createTestDb('billing');
   adminPool = new pg.Pool({ connectionString: adminDbUrl(testDb.env), max: 2 });
+  // `drop database … with (force)` may kill an idle client just before it has said goodbye; that must not crash the run
+  adminPool.on('error', () => {});
   admin = drizzle(adminPool) as unknown as Db;
   worker = connect('worker', testDb.env);
   ctx = { db: worker.db, s3: createObjectStore(loadEnv(s3EnvSchema)), extractor: recordedExtractor('unused'), vapid: null, leadThreshold: 20, payments: demoProvider, log: () => {}, now: () => new Date() };

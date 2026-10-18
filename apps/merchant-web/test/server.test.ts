@@ -39,7 +39,9 @@ Object.assign(process.env, {
   DEMO_MODE: 'false',
 });
 
-await setup({ rootDir: fileURLToPath(new URL('..', import.meta.url)), server: true, build: true, dev: false });
+// This builds the Nuxt app inside the setup hook. The default limit is 120 s; on a shared CI runner, with the other packages'
+// tests running at the same time, the build takes longer than that.
+await setup({ rootDir: fileURLToPath(new URL('..', import.meta.url)), server: true, build: true, dev: false, setupTimeout: 600_000 });
 
 /** Minimal cookie-jar client: the same-origin browser, as far as the server can tell. */
 class Browser {
@@ -75,6 +77,8 @@ async function signIn(email: string): Promise<Browser> {
 
 beforeAll(async () => {
   adminPool = new pg.Pool({ connectionString: adminDbUrl(testDb.env), max: 3 });
+  // `drop database … with (force)` may kill an idle client just before it has said goodbye; that must not crash the run
+  adminPool.on('error', () => {});
   admin = drizzle(adminPool) as unknown as Db;
   const org = await createOrg(admin, { legalName: 'Café Het Plein B.V.', kvkNumber: '12345678', vatNumber: 'NL123456789B01' });
   orgId = org.id;

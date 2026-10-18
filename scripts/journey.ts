@@ -166,7 +166,8 @@ export async function runJourney(opts: JourneyOptions = {}): Promise<JourneyResu
         const detail = await getReceiptWithVersions(dash.db, stack.org.id, created.receiptId);
         merchantSideResponses.push(JSON.stringify(detail));
         assert.equal(detail?.versions.length, 3);
-        const today = new Date().toISOString().slice(0, 10);
+        // the BTW report groups by Amsterdam day: between 22:00 and 24:00 UTC that is already tomorrow's UTC date
+        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(new Date());
         const rows = await vatByDay(dash.db, stack.org.id, today, today);
         const csv = vatCsv(rows);
         merchantSideResponses.push(csv);

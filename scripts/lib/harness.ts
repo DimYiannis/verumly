@@ -53,6 +53,8 @@ export interface Stack {
 export async function startStack(opts: { startMerchant?: boolean; claimWindowDays?: number } = {}): Promise<Stack> {
   const testDb = await createTestDb('journey');
   const admin = new pg.Pool({ connectionString: adminDbUrl(testDb.env), max: 4 });
+  // `drop database … with (force)` may kill an idle client just before it has said goodbye; that must not crash the run
+  admin.on('error', () => {});
   const adminDb = drizzle(admin, { schema: tables });
   const org = await createOrg(adminDb, { legalName: 'Café Het Plein B.V.', kvkNumber: '12345678', vatNumber: 'NL123456789B01' });
   const loc = await createLocation(adminDb, org.id, 'Café Het Plein');

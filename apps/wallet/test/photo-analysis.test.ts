@@ -69,40 +69,31 @@ function render(scene: Scene): PixelImage & { data: Uint8ClampedArray } {
   return { data, width, height };
 }
 
-/** Separable box blur: a stand-in for defocus or motion. */
+/**
+ * Separable box blur with clamped edges: a stand-in for defocus or motion. Sliding window, so the cost does not grow with
+ * the radius (the first version summed the window for every pixel and took 15 to 35 s on the CI runners).
+ */
 function blur(image: PixelImage, radius: number): PixelImage {
   const { width, height } = image;
-  const src = image.data;
-  const out = new Uint8ClampedArray(width * height * 4);
+  const n = 2 * radius + 1;
   const tmp = new Float32Array(width * height * 4);
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      for (let c = 0; c < 4; c++) {
-        let sum = 0;
-        let n = 0;
-        for (let d = -radius; d <= radius; d++) {
-          const xx = Math.min(width - 1, Math.max(0, x + d));
-          sum += src[(y * width + xx) * 4 + c]!;
-          n += 1;
-        }
-        tmp[(y * width + x) * 4 + c] = sum / n;
+  const out = new Uint8ClampedArray(width * height * 4);
+
+  // one line of `length` samples (stride `step`, 4 channels) read from `read`, written to `write`
+  const line = (read: ArrayLike<number>, write: { [i: number]: number }, base: number, step: number, length: number) => {
+    for (let c = 0; c < 4; c++) {
+      const at = (i: number) => read[base + Math.min(length - 1, Math.max(0, i)) * step + c]!;
+      let sum = 0;
+      for (let d = -radius; d <= radius; d++) sum += at(d);
+      for (let i = 0; i < length; i++) {
+        write[base + i * step + c] = sum / n;
+        sum += at(i + radius + 1) - at(i - radius);
       }
     }
-  }
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      for (let c = 0; c < 4; c++) {
-        let sum = 0;
-        let n = 0;
-        for (let d = -radius; d <= radius; d++) {
-          const yy = Math.min(height - 1, Math.max(0, y + d));
-          sum += tmp[(yy * width + x) * 4 + c]!;
-          n += 1;
-        }
-        out[(y * width + x) * 4 + c] = sum / n;
-      }
-    }
-  }
+  };
+
+  for (let y = 0; y < height; y++) line(image.data, tmp, y * width * 4, 4, width);
+  for (let x = 0; x < width; x++) line(tmp, out, x * 4, width * 4, height);
   return { data: out, width, height };
 }
 
@@ -110,7 +101,11 @@ function describeBox(a: PhotoAnalysis): string {
   return `${a.box.x},${a.box.y} ${a.box.width}x${a.box.height}`;
 }
 
-describe('analysePhoto on synthetic photos', () => {
+// These tests render 1512 x 1512 pixel scenes and analyse them: CPU-bound, about 20 times slower on a shared CI runner than
+// on a laptop (a test that takes 0.3 s here took 5 to 16 s there, over vitest's default 5 s). The assertions are unchanged.
+const CPU_BOUND = { timeout: 120_000 };
+
+describe('analysePhoto on synthetic photos', CPU_BOUND, () => {
   const STRIP = { x: 520, y: 0, width: 380, height: 1512 };
 
   it('finds a thin receipt strip on a noisy wood table with a laptop and a finger, and crops it with a small margin', () => {
@@ -200,7 +195,7 @@ describe('analysePhoto on synthetic photos', () => {
   });
 });
 
-describe('analysePhoto on the MOCK receipt images', () => {
+describe('analysePhoto on the MOCK receipt images', CPU_BOUND, () => {
   const dir = fileURLToPath(new URL('../../../fixtures/receipts-nl/mock/', import.meta.url));
   const files = readdirSync(dir).filter((f) => f.endsWith('.png'));
 
