@@ -44,7 +44,7 @@ export const homeEn: Record<keyof typeof homeNl, string> = {
   'home.offline': 'You are offline. Your receipts stay readable under Receipts.',
   'home.err.failed': 'Could not load the overview.',
   'home.login.tagline': 'Every receipt saved the moment you pay. Split it with friends in two taps.',
-  'home.login.point1': 'No paper, no photos, no searching',
+  'home.login.point1': 'No paper, no lost receipts, no searching',
   'home.login.point2': 'Only you see what you bought',
   'home.onb.step': 'Step {n} of {total}',
   'home.onb.next': 'Next',
