@@ -98,3 +98,46 @@ describe('renderReceiptPdf', () => {
     expect((Buffer.from(a).toString('latin1').match(/\/Type\s*\/Page\b/g) ?? []).length).toBe(1);
   });
 });
+
+describe('receipts of other countries', () => {
+  const de = {
+    ...crf,
+    merchant: { ...crf.merchant, kvkNumber: '1234567890', vatNumber: 'DE123456789', name: 'Café Zum Löwen' },
+    lines: [{ lineNo: 1, kind: 'item', sku: null, description: 'Kaffee', qty: '1', unitPrice: 1000, vatRate: 19, discount: 0, total: 1000, category: null }],
+    vatSummary: [{ rate: 19, gross: 1000, net: 840, vat: 160 }],
+    totals: { gross: 1000, net: 840, vat: 160, tip: 0, rounding: 0 },
+    payments: [{ method: 'card', amount: 1000 }],
+    state: 'fiscalised',
+    fiscal: { country: 'DE', registerSerial: 'TSE-1', documentNumber: '7', extra: { tseSerial: 'TSE-1', transactionNumber: '7', signature: 'abc', mode: 'sandbox' } },
+  } as unknown as Crf;
+  const pl = {
+    ...de,
+    currency: 'PLN',
+    merchant: { ...de.merchant, name: 'Kawiarnia Żółć', kvkNumber: '5213456789', vatNumber: null },
+    lines: [{ ...de.lines[0]!, description: 'Kawa łagodna', vatRate: 23 }],
+    fiscal: { country: 'PL', registerSerial: 'REG', documentNumber: '5', extra: { registerNo: 'REG', receiptNo: '5' } },
+  } as unknown as Crf;
+
+  it('uses the labels, the amounts and the fiscal data of the country', () => {
+    const t = texts(buildPdfDefinition(de, null));
+    expect(t).toContain('Steuernr. 1234567890');
+    expect(t).toContain('USt-IdNr. DE123456789');
+    expect(t).toContain('TSE-Seriennummer');
+    expect(t).toContain('Transaktionsnummer');
+    expect(t).toContain('Mode');
+    expect(t).toMatch(/10,00\s€/);
+  });
+
+  it('keeps the standard font when the text fits, and switches to Roboto for Polish text', () => {
+    expect((buildPdfDefinition(de, null) as { defaultStyle: { font: string } }).defaultStyle.font).toBe('Helvetica');
+    const def = buildPdfDefinition(pl, null) as { defaultStyle: { font: string } };
+    expect(def.defaultStyle.font).toBe('Roboto');
+    expect(texts(def as unknown as Record<string, unknown>)).toMatch(/zł/);
+  });
+
+  it('renders a real PDF with the Polish text', async () => {
+    const bytes = await renderReceiptPdf(pl, null);
+    expect(Buffer.from(bytes.slice(0, 5)).toString()).toBe('%PDF-');
+    expect(bytes.byteLength).toBeGreaterThan(5000);
+  });
+});

@@ -64,6 +64,13 @@
       "when": 1792258520567,
       "tag": "0008_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792318511889,
+      "tag": "0009_vat_rate_decimal",
+      "breakpoints": true
     }
   ]
 }

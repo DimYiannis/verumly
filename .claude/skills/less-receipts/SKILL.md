@@ -13,6 +13,7 @@ The full, current guide is `AGENTS.md` at the repo root. Read it first; it is sh
 2. Open the doc that matches the task:
    - run or demo: `RUNNING.md`
    - architecture: `docs/ARCHITECTURE.md`
+   - receipts per country and the state (fiscal) integration: `docs/COUNTRIES.md`
    - why a choice was made: `docs/DECISIONS.md`
    - open problems: `docs/ISSUES.md`, `docs/FINDINGS.md`
    - the spec: `coding-agent-prompt-v2.md`

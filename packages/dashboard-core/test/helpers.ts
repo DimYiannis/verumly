@@ -19,11 +19,12 @@ export interface Fixture {
   adminPool: pg.Pool;
   dash: DbHandle;
   deps: AuthDeps;
-  orgs: Array<{ id: string; locationId: string; kvk: string }>;
+  /** 0 and 1 are Dutch; 2 is German (needs the fiscal step), 3 is French (decimal VAT rates) */
+  orgs: Array<{ id: string; locationId: string; kvk: string; country: string }>;
   close(): Promise<void>;
 }
 
-/** Fresh migrated database with two organisations, each with one location. Everything runs as the `dashboard` role. */
+/** Fresh migrated database with four organisations (NL, NL, DE, FR), each with one location. Everything runs as the `dashboard` role. */
 export async function fixture(prefix: string): Promise<Fixture> {
   const testDb = await createTestDb(prefix);
   const adminPool = new pg.Pool({ connectionString: adminDbUrl(testDb.env), max: 3 });
@@ -31,10 +32,16 @@ export async function fixture(prefix: string): Promise<Fixture> {
   adminPool.on('error', () => {});
   const admin = drizzle(adminPool) as unknown as Db;
   const orgs = [];
-  for (const [i, kvk] of ['12345678', '87654321'].entries()) {
-    const org = await createOrg(admin, { legalName: `Org ${i}`, kvkNumber: kvk, vatNumber: `NL12345678${i}B01` });
+  const specs = [
+    { kvk: '12345678', vat: 'NL123456780B01', country: 'NL' },
+    { kvk: '87654321', vat: 'NL123456781B01', country: 'NL' },
+    { kvk: '1234567890', vat: 'DE123456789', country: 'DE' },
+    { kvk: '12345678901234', vat: 'FR12123456789', country: 'FR' },
+  ];
+  for (const [i, s] of specs.entries()) {
+    const org = await createOrg(admin, { legalName: `Org ${i}`, kvkNumber: s.kvk, vatNumber: s.vat, country: s.country });
     const loc = await createLocation(admin, org.id, `Loc ${i}`);
-    orgs.push({ id: org.id, locationId: loc.id, kvk });
+    orgs.push({ id: org.id, locationId: loc.id, kvk: s.kvk, country: s.country });
   }
   const dash = connect('dashboard', testDb.env);
   return {
@@ -70,7 +77,7 @@ export const WIJN = { description: 'Wijn', unitPrice: 495, vatRate: 21 as const 
 export interface SaleSpec {
   /** terminal clock for the first version (ISO UTC); later versions are +1 min each */
   at: string;
-  lines: Array<{ description: string; unitPrice: number; vatRate: 9 | 21 | 0; qty?: number }>;
+  lines: Array<{ description: string; unitPrice: number; vatRate: number; qty?: number }>;
   steps: Array<'present' | 'pay-card' | 'pay-cash' | 'void'>;
 }
 
@@ -96,6 +103,7 @@ export async function seedSales(f: Fixture, orgIndex: number, terminal: { termin
       apiKey: 'unused',
       privateKey: terminal.privateKey,
       merchant: { kvkNumber: org.kvk, vatNumber: null, name: `Org ${orgIndex}`, locationId: org.locationId },
+      country: org.country,
       store,
       now: () => new Date((clock += 60_000) - 60_000),
     });

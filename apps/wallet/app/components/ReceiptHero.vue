@@ -8,7 +8,8 @@ import { Check, SquareSplitHorizontal, UserPlus } from '@lucide/vue';
 import { buttonVariants } from '~/components/ui/button';
 import type { MessageKey } from '~/i18n';
 import type { ReceiptDetail, SplitDetail } from '~/utils/api-schemas';
-import { formatDateTime, formatEuro, formatQty } from '~/utils/format';
+import { receiptContext } from '~/utils/country';
+import { formatDateTime, formatMoney, formatQty } from '~/utils/format';
 import { errorKey, userName } from '~/utils/social';
 import { describeShare, openAmount, splitHeadline, type ShareRow } from '~/utils/receipt-people';
 
@@ -90,7 +91,7 @@ const modeRows = computed(() => split.value?.mode === 'items');
     <template v-if="split && headline">
       <section class="flex flex-col items-center gap-2 rounded-[14px] border border-brand-900 bg-brand-900 px-4 py-6 text-center text-white" data-testid="split-hero">
         <span class="text-xs font-medium tracking-wide text-[#B3B6EE] uppercase">{{ open > 0 ? t('rcpt.detail.stillOpen') : t('rcpt.detail.allSettled') }}</span>
-        <span class="font-mono text-[44px] leading-[48px] font-semibold tracking-tight tabular-nums" data-testid="split-hero-amount">{{ formatEuro(open > 0 ? open : split.totalMinor, locale) }}</span>
+        <span class="font-mono text-[44px] leading-[48px] font-semibold tracking-tight tabular-nums" data-testid="split-hero-amount">{{ formatMoney(open > 0 ? open : split.totalMinor, locale, crf.currency) }}</span>
         <span class="text-sm text-[#E6E7F8]">{{ open > 0 ? (split.creatorIsMe ? t('rcpt.detail.owesYou', { names: headline.names.join(', ') }) : t('rcpt.detail.youOweCreator', { name: creatorName })) : t('rcpt.detail.nothingOwed') }}</span>
       </section>
 
@@ -105,7 +106,7 @@ const modeRows = computed(() => split.value?.mode === 'items');
           <PersonAvatar :user="s.who" :name="name(s)" :me="s.isMe" :guest="!s.who && !s.isMe" size="lg" />
           <div class="flex flex-col items-center">
             <span class="max-w-full truncate text-[15px] font-semibold">{{ name(s) }}</span>
-            <span class="font-mono text-sm tabular-nums" :class="s.settled ? 'text-text-secondary' : ''">{{ formatEuro(s.amountMinor, locale) }}</span>
+            <span class="font-mono text-sm tabular-nums" :class="s.settled ? 'text-text-secondary' : ''">{{ formatMoney(s.amountMinor, locale, crf.currency) }}</span>
           </div>
           <Badge v-if="s.settled" variant="success"><Check aria-hidden="true" />{{ s.isMe && split.creatorIsMe ? t('rcpt.detail.paidAll') : t('rcpt.detail.settled') }}</Badge>
           <Badge v-else variant="warning">{{ s.isMe ? t('rcpt.detail.youOwe') : split.creatorIsMe ? t('rcpt.detail.owesYouBadge') : t('rcpt.detail.owes') }}</Badge>
@@ -126,7 +127,7 @@ const modeRows = computed(() => split.value?.mode === 'items');
           <div v-for="s in split.shares" :key="s.id" class="flex items-center gap-3 border-b border-border px-4 py-3">
             <PersonAvatar :user="s.who" :name="name(s)" :me="s.isMe" :guest="!s.who && !s.isMe" size="sm" />
             <span class="min-w-0 flex-1 text-sm">{{ modeRows ? had(s) : name(s) }}</span>
-            <span class="font-mono text-sm tabular-nums">{{ formatEuro(s.amountMinor, locale) }}</span>
+            <span class="font-mono text-sm tabular-nums">{{ formatMoney(s.amountMinor, locale, crf.currency) }}</span>
           </div>
           <p class="px-4 py-3 text-[13px] text-text-secondary">{{ modeNote }}</p>
         </div>
@@ -140,12 +141,12 @@ const modeRows = computed(() => split.value?.mode === 'items');
           <MerchantLogo :name="crf.merchant.name" />
           <div class="min-w-0 flex-1">
             <p class="truncate text-[15px] font-semibold">{{ crf.merchant.name }}</p>
-            <p class="text-xs text-text-secondary">{{ formatDateTime(crf.createdAt, locale) }}</p>
+            <p class="text-xs text-text-secondary">{{ formatDateTime(crf.createdAt, locale, receiptContext(crf.fiscal.country).timeZone) }}</p>
           </div>
           <Badge v-if="isVoid" variant="danger">{{ t('wallet.badgeVoid') }}</Badge>
         </div>
-        <p class="mt-4 font-mono text-[40px] leading-[44px] font-semibold tracking-tight tabular-nums" :class="isVoid ? 'text-text-secondary line-through' : ''" data-testid="hero-total">{{ formatEuro(total, locale) }}</p>
-        <p class="mt-1 text-[13px] text-text-secondary">{{ t('rcpt.detail.vatLine', { vat: formatEuro(crf.totals.vat, locale) }) }}</p>
+        <p class="mt-4 font-mono text-[40px] leading-[44px] font-semibold tracking-tight tabular-nums" :class="isVoid ? 'text-text-secondary line-through' : ''" data-testid="hero-total">{{ formatMoney(total, locale, crf.currency) }}</p>
+        <p class="mt-1 text-[13px] text-text-secondary">{{ t('rcpt.detail.vatLine', { vat: formatMoney(crf.totals.vat, locale, crf.currency) }) }}</p>
       </section>
       <div v-if="!offline && !isVoid" class="space-y-2">
         <NuxtLink :to="`/receipts/${crf.receiptId}/split`" data-testid="receipt-split" :class="buttonVariants({ size: 'lg' })" class="w-full no-underline hover:text-primary-foreground">

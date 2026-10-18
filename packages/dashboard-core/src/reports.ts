@@ -5,7 +5,8 @@ import { requireRole, type Actor } from './roles.ts';
 
 export interface VatDayRow {
   day: string;
-  rate: 21 | 9 | 0;
+  /** percent, with decimals where the country has them (5.5) */
+  rate: number;
   gross: number;
   net: number;
   vat: number;
@@ -20,7 +21,7 @@ export async function vatByDay(db: Db, orgId: string, from: string, to: string):
   return withOrg(db, orgId, async (tx) => {
     const res = await tx.execute<{ day: string; rate: number; gross: string; net: string; vat: string; receipts: string }>(sql`
       select to_char((v.created_on_terminal_at at time zone 'Europe/Amsterdam')::date, 'YYYY-MM-DD') as day,
-             (row->>'rate')::int as rate,
+             (row->>'rate')::numeric as rate,
              sum((row->>'gross')::bigint) as gross,
              sum((row->>'net')::bigint) as net,
              sum((row->>'vat')::bigint) as vat,
@@ -28,14 +29,14 @@ export async function vatByDay(db: Db, orgId: string, from: string, to: string):
       from merchant.receipts r
       join merchant.receipt_versions v on v.receipt_id = r.id and v.version = r.current_version
       cross join lateral jsonb_array_elements(v.payload->'vatSummary') as row
-      where r.state = 'paid'
+      where r.state in ('paid', 'fiscalised')
         and (v.created_on_terminal_at at time zone 'Europe/Amsterdam')::date between ${from}::date and ${to}::date
       group by 1, 2
       order by 1, 2 desc
     `);
     return res.rows.map((r) => ({
       day: r.day,
-      rate: r.rate as 21 | 9 | 0,
+      rate: Number(r.rate),
       gross: Number(r.gross),
       net: Number(r.net),
       vat: Number(r.vat),
@@ -44,12 +45,12 @@ export async function vatByDay(db: Db, orgId: string, from: string, to: string):
   });
 }
 
-/** VAT return boxes: 1a = 21%, 1b = 9%, 1e = 0% / outside scope. */
-export const RUBRIEK: Record<21 | 9 | 0, string> = { 21: '1a', 9: '1b', 0: '1e' };
+/** Dutch VAT return boxes: 1a = 21%, 1b = 9%, 1e = 0% / outside scope. Other countries and rates have no box here (empty in the CSV). */
+export const RUBRIEK: Record<number, string> = { 21: '1a', 9: '1b', 0: '1e' };
 
 export function vatCsv(rows: VatDayRow[]): string {
   const lines = ['date,vat_return_box,rate,gross_cents,net_cents,vat_cents,receipts'];
-  for (const r of rows) lines.push([r.day, RUBRIEK[r.rate], r.rate, r.gross, r.net, r.vat, r.receipts].join(','));
+  for (const r of rows) lines.push([r.day, RUBRIEK[r.rate] ?? '', r.rate, r.gross, r.net, r.vat, r.receipts].join(','));
   return `${lines.join('\n')}\n`;
 }
 
@@ -82,7 +83,7 @@ export interface SalesRow {
 
 export interface VatRateRow {
   period: string;
-  rate: 21 | 9 | 0;
+  rate: number;
   gross: number;
   net: number;
   vat: number;
@@ -119,28 +120,28 @@ export async function salesReport(db: Db, actor: Actor, f: ReportFilters): Promi
              sum((v.payload->'totals'->>'rounding')::bigint) as rounding
       from merchant.receipts r
       join merchant.receipt_versions v on v.receipt_id = r.id and v.version = r.current_version
-      where r.state in ('paid', 'void') and ${range} ${loc}
+      where r.state in ('paid', 'fiscalised', 'void') and ${range} ${loc}
       group by 1, 2
     `);
     const rates = await tx.execute<{ period: string; rate: number; gross: string; net: string; vat: string }>(sql`
-      select ${period} as period, (row->>'rate')::int as rate,
+      select ${period} as period, (row->>'rate')::numeric as rate,
              sum((row->>'gross')::bigint) as gross, sum((row->>'net')::bigint) as net, sum((row->>'vat')::bigint) as vat
       from merchant.receipts r
       join merchant.receipt_versions v on v.receipt_id = r.id and v.version = r.current_version
       cross join lateral jsonb_array_elements(v.payload->'vatSummary') as row
-      where r.state = 'paid' and ${range} ${loc}
+      where r.state in ('paid', 'fiscalised') and ${range} ${loc}
       group by 1, 2
       order by 1, 2 desc
     `);
     const byPeriod: Record<string, SalesRow> = {};
     for (const r of sales.rows) {
       const row = (byPeriod[r.period] ??= { period: r.period, receipts: 0, gross: 0, net: 0, vat: 0, tip: 0, rounding: 0, voids: 0, voidGross: 0 });
-      if (r.state === 'paid') Object.assign(row, { receipts: Number(r.receipts), gross: Number(r.gross), net: Number(r.net), vat: Number(r.vat), tip: Number(r.tip), rounding: Number(r.rounding) });
+      if (r.state !== 'void') Object.assign(row, { receipts: Number(r.receipts), gross: Number(r.gross), net: Number(r.net), vat: Number(r.vat), tip: Number(r.tip), rounding: Number(r.rounding) });
       else Object.assign(row, { voids: Number(r.receipts), voidGross: Number(r.gross) });
     }
     return {
       sales: Object.values(byPeriod).sort((a, b) => a.period.localeCompare(b.period)),
-      vatByRate: rates.rows.map((r) => ({ period: r.period, rate: r.rate as 21 | 9 | 0, gross: Number(r.gross), net: Number(r.net), vat: Number(r.vat) })),
+      vatByRate: rates.rows.map((r) => ({ period: r.period, rate: Number(r.rate), gross: Number(r.gross), net: Number(r.net), vat: Number(r.vat) })),
     };
   });
 }

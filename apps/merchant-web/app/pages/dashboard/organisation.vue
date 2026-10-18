@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { DISCLAIMER, getCountry, listCountries, validateSetup } from '@lr/compliance';
+import { getFormat } from '@lr/compliance/formats';
+import { getFiscalSpec } from '@lr/fiscal/specs';
 import { CheckIcon, ChevronDownIcon } from '@lucide/vue';
 
 definePageMeta({ layout: 'dashboard', middleware: 'dashboard-auth' });
@@ -29,6 +31,16 @@ const error = ref('');
 const saved = ref(false);
 
 const country = computed(() => getCountry(form.country) ?? getCountry('NL')!);
+const format = computed(() => getFormat(form.country) ?? getFormat('NL')!);
+const spec = computed(() => getFiscalSpec(form.country));
+/** the settings the country's state integration reads, and whether the business has filled each in */
+const needed = computed(() =>
+  (spec.value?.needs ?? []).map((key) => {
+    const v = values.value[key];
+    return { key, label: country.value.settings.find((s) => s.key === key)?.label ?? key, filled: v === true || (typeof v === 'string' && v.trim() !== '') };
+  }),
+);
+const money = (n: number) => new Intl.NumberFormat(intlLocale.value, { style: 'currency', currency: format.value.currency }).format(n);
 const minRetention = computed(() => Math.max(1, country.value.retentionYearsIndicative));
 
 function apply(o: Org) {
@@ -141,7 +153,6 @@ async function save() {
   </nav>
 
   <form class="space-y-4" @submit.prevent="save">
-    <p v-if="form.country !== 'NL'" class="rounded-md border border-warning-border bg-warning-soft p-3 text-sm text-warning" role="status" data-testid="org-nl-only">{{ t('setup.nlOnly') }}</p>
     <ul v-if="missing.length" class="list-disc space-y-1 pl-5 text-sm text-muted-foreground" data-testid="org-missing">
       <li v-for="m in missing" :key="m">{{ m }}</li>
     </ul>
@@ -228,6 +239,40 @@ async function save() {
                 <p v-if="s.hint" class="text-xs text-muted-foreground">{{ s.hint }}</p>
               </template>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card id="org-section-state" class="scroll-mt-4" data-testid="org-state">
+          <CardHeader>
+            <CardTitle class="text-base">{{ t('fmt.title', { country: country.name }) }}</CardTitle>
+            <CardDescription>{{ t('fmt.help') }}</CardDescription>
+          </CardHeader>
+          <CardContent class="mt-2 space-y-6 text-sm">
+            <dl class="grid gap-x-6 gap-y-3 sm:grid-cols-2" data-testid="org-format">
+              <div><dt class="text-muted-foreground">{{ t('fmt.currency') }}</dt><dd class="font-medium">{{ format.currency }} · {{ money(1234.5) }}</dd></div>
+              <div><dt class="text-muted-foreground">{{ t('fmt.vatRates') }}</dt><dd class="font-medium">{{ format.vatRates.map((r) => `${r}%`).join(' · ') }}</dd></div>
+              <div><dt class="text-muted-foreground">{{ t('fmt.rounding') }}</dt><dd class="font-medium">{{ format.cashRoundingStep ? t('fmt.roundingStep', { step: format.cashRoundingStep / 100 }) : t('fmt.roundingNone') }}</dd></div>
+              <div><dt class="text-muted-foreground">{{ t('fmt.timezone') }}</dt><dd class="font-medium">{{ format.timezone }}</dd></div>
+              <div class="sm:col-span-2"><dt class="text-muted-foreground">{{ t('fmt.ids') }}</dt><dd class="font-medium">{{ format.idLabels.company }} · {{ format.idLabels.vat }}</dd></div>
+            </dl>
+
+            <div v-if="spec" class="space-y-4 rounded-md border border-border p-4" data-testid="org-fiscal">
+              <div class="space-y-1">
+                <p class="font-medium">{{ spec.system }}</p>
+                <p class="text-muted-foreground">{{ spec.authority }} · {{ t(format.fiscal === 'required' ? 'fmt.required' : 'fmt.optional') }}</p>
+                <p>{{ spec.how }}</p>
+              </div>
+              <div class="space-y-1">
+                <p class="text-muted-foreground">{{ t('fmt.fields') }}</p>
+                <ul class="flex flex-wrap gap-2"><li v-for="f in spec.fields" :key="f.key" class="rounded-md bg-muted px-2 py-1 text-xs">{{ f.label }}</li></ul>
+              </div>
+              <div v-if="needed.length" class="space-y-1">
+                <p class="text-muted-foreground">{{ t('fmt.needs') }}</p>
+                <ul class="space-y-1"><li v-for="n in needed" :key="n.key" class="flex items-center gap-2"><Badge :variant="n.filled ? 'success' : 'warning'">{{ n.filled ? t('fmt.filled') : t('fmt.missing') }}</Badge>{{ n.label }}</li></ul>
+              </div>
+              <p class="text-muted-foreground">{{ t('fmt.connect') }}</p>
+            </div>
+            <p v-else class="text-muted-foreground" data-testid="org-no-fiscal">{{ t('fmt.none', { country: country.name }) }}</p>
           </CardContent>
         </Card>
 

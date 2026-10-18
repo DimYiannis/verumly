@@ -3,7 +3,7 @@ import { Search, SlidersHorizontal } from '@lucide/vue';
 import { z } from 'zod';
 import { ApiError } from '~/utils/api';
 import type { ReceiptFilters, ReceiptListItem, UploadStatus } from '~/utils/api-schemas';
-import { dayKey, filterCachedItems, formatDayHeading, formatEuro, formatTime, groupByDay } from '~/utils/format';
+import { dayKey, filterCachedItems, formatDayHeading, formatEuro, formatMoney, formatTime, groupByDay } from '~/utils/format';
 import { userName } from '~/utils/social';
 
 const wallet = useWallet();
@@ -91,7 +91,9 @@ const visible = computed(() => (onlySplit.value ? items.value.filter((i) => spli
 const groups = computed(() => groupByDay(visible.value));
 
 const monthKey = dayKey(new Date().toISOString()).slice(0, 7);
-const monthTotal = computed(() => items.value.filter((i) => i.state !== 'void' && dayKey(i.createdAt).startsWith(monthKey)).reduce((a, i) => a + i.total, 0));
+/** the month total counts one currency: the one of the newest receipt */
+const totalCurrency = computed(() => items.value[0]?.currency ?? 'EUR');
+const monthTotal = computed(() => items.value.filter((i) => i.state !== 'void' && i.currency === totalCurrency.value && dayKey(i.createdAt).startsWith(monthKey)).reduce((a, i) => a + i.total, 0));
 const monthName = computed(() => new Intl.DateTimeFormat(locale.value === 'nl' ? 'nl-NL' : 'en-GB', { month: 'long', timeZone: 'UTC' }).format(new Date(`${monthKey}-15T12:00:00Z`)));
 
 function hintFor(receiptId: string): string | null {
@@ -226,7 +228,7 @@ onBeforeUnmount(() => clearTimeout(debounce));
         </div>
       </form>
 
-      <p v-if="loaded && items.length > 0" class="text-xs font-medium tracking-wide text-text-secondary uppercase" data-testid="month-total">{{ monthName }} · {{ formatEuro(monthTotal, locale) }}</p>
+      <p v-if="loaded && items.length > 0" class="text-xs font-medium tracking-wide text-text-secondary uppercase" data-testid="month-total">{{ monthName }} · {{ formatMoney(monthTotal, locale, totalCurrency) }}</p>
 
       <p v-if="offlineList" role="status" data-testid="offline-list-note" class="rounded-lg border border-warning-border bg-warning-soft p-3 text-sm text-warning">
         {{ t('wallet.offlineList') }}
@@ -266,7 +268,7 @@ onBeforeUnmount(() => clearTimeout(debounce));
                     <Badge v-if="r.state === 'void'" variant="danger">{{ t('wallet.badgeVoid') }}</Badge>
                   </span>
                 </span>
-                <span class="shrink-0 font-mono text-[15px] tabular-nums" :class="r.state === 'void' ? 'text-text-secondary line-through' : ''">{{ formatEuro(r.total, locale) }}</span>
+                <span class="shrink-0 font-mono text-[15px] tabular-nums" :class="r.state === 'void' ? 'text-text-secondary line-through' : ''">{{ formatMoney(r.total, locale, r.currency) }}</span>
               </NuxtLink>
             </li>
           </ul>

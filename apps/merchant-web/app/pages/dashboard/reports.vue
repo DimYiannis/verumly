@@ -147,7 +147,7 @@ const shownMetrics = computed<ReportMetric[]>(() => result.value?.spec.metrics ?
 const metricName = (m: ReportMetric) => tx('reports2.metric', m);
 const groupName = (g: ReportGroup) => tx('reports2.group', g);
 const numFmt = computed(() => new Intl.NumberFormat(intlLocale.value));
-const fmt = (m: ReportMetric, v: number | undefined) => (isMoney(m) ? euro(v ?? 0) : numFmt.value.format(v ?? 0));
+const fmt = (m: ReportMetric, v: number | undefined) => (isMoney(m) ? money(v ?? 0) : numFmt.value.format(v ?? 0));
 
 function rowLabel(g: ReportGroup, key: string, label: string): string {
   switch (g) {

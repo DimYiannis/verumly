@@ -6,5 +6,5 @@ export default publicHandler(async ({ event, ctx }) => {
   if (s.state !== 'ready') return { state: s.state };
   const { userId, orgId, role } = s.session;
   const u = await currentUser(ctx.deps.db, { userId, orgId, role });
-  return { state: s.state, user: { email: u.email, role: u.role, orgName: u.orgName } };
+  return { state: s.state, user: { email: u.email, role: u.role, orgName: u.orgName, country: u.country } };
 });

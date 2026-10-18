@@ -1,0 +1,1 @@
+ALTER TABLE "merchant"."receipt_lines" ALTER COLUMN "vat_rate" SET DATA TYPE numeric(5, 2);

@@ -87,7 +87,7 @@ export function toPreview(r: ReceiptRow, claimed: boolean): ReceiptPreview {
     merchantName: r.crf.merchant.name,
     locationName: r.locationName,
     total: r.totalMinor,
-    currency: 'EUR',
+    currency: r.currency,
     createdAt: r.createdOnTerminalAt.toISOString(),
     state: r.state,
     claimed,

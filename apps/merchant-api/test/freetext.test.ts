@@ -68,13 +68,13 @@ describe('residual free-text channels (documented, NOT closed by the server)', (
     expect(v?.extra).toEqual({ tag: 'Jan Jansen pas 1234567890123' });
   });
 
-  it('fiscal.extra is bounded: more than 10 keys or a value over 80 characters is rejected', async () => {
+  it('fiscal.extra is bounded: more than 12 keys or a value over 200 characters is rejected', async () => {
     const many = await post((c) => {
-      Reflect.set(Object(Reflect.get(c, 'fiscal')), 'extra', Object.fromEntries(Array.from({ length: 11 }, (_, i) => [`k${i}`, 'v'])));
+      Reflect.set(Object(Reflect.get(c, 'fiscal')), 'extra', Object.fromEntries(Array.from({ length: 13 }, (_, i) => [`k${i}`, 'v'])));
     });
     expect(many.res.status).toBe(400);
     const long = await post((c) => {
-      Reflect.set(Object(Reflect.get(c, 'fiscal')), 'extra', { k: 'x'.repeat(81) });
+      Reflect.set(Object(Reflect.get(c, 'fiscal')), 'extra', { k: 'x'.repeat(201) });
     });
     expect(long.res.status).toBe(400);
   });

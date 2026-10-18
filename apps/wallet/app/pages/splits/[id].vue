@@ -5,7 +5,7 @@ import { formatRelative } from '~/utils/relative-time';
 import type { MessageKey } from '~/i18n';
 import type { SplitDetail } from '~/utils/api-schemas';
 import { ApiError } from '~/utils/api';
-import { formatDateTime, formatEuro } from '~/utils/format';
+import { formatDateTime, formatMoney } from '~/utils/format';
 import { copyText, errorKey, inviteLink, isOffline, userName } from '~/utils/social';
 
 definePageMeta({ middleware: 'auth' });
@@ -123,14 +123,14 @@ async function remove() {
         <p class="text-[13px] text-text-secondary">
           {{ t('split.detail.by', { name: split.creatorIsMe ? t('split.you') : userName(split.creator), date: formatDateTime(split.createdAt, locale) }) }}
         </p>
-        <p class="sr-only">{{ t('split.detail.total') }} {{ formatEuro(split.totalMinor, locale) }}</p>
+        <p class="sr-only">{{ t('split.detail.total') }} {{ formatMoney(split.totalMinor, locale, split.currency) }}</p>
       </section>
 
       <section class="space-y-3 rounded-[14px] border border-border bg-card p-4" :aria-label="t('split.detail.open')">
         <div class="flex items-center justify-between gap-3">
           <p class="text-xs font-medium tracking-wide text-text-secondary uppercase">
-            <span class="font-mono tabular-nums" data-testid="split-open-amount">{{ formatEuro(owed, locale) }}</span>
-            {{ t('rcpt.sd.openOfTotal', { total: formatEuro(split.totalMinor, locale) }) }}
+            <span class="font-mono tabular-nums" data-testid="split-open-amount">{{ formatMoney(owed, locale, split.currency) }}</span>
+            {{ t('rcpt.sd.openOfTotal', { total: formatMoney(split.totalMinor, locale, split.currency) }) }}
           </p>
           <span class="font-mono text-[13px] tabular-nums">{{ paidPercent }}%</span>
         </div>
@@ -154,7 +154,7 @@ async function remove() {
                 <p class="text-xs text-text-secondary">{{ shareNote(s) }}</p>
               </div>
               <div class="flex flex-col items-end gap-1">
-                <p class="font-mono text-[15px] tabular-nums" :class="s.settled ? 'text-text-secondary line-through' : ''">{{ formatEuro(s.amountMinor, locale) }}</p>
+                <p class="font-mono text-[15px] tabular-nums" :class="s.settled ? 'text-text-secondary line-through' : ''">{{ formatMoney(s.amountMinor, locale, split.currency) }}</p>
                 <Badge :variant="s.settled ? 'success' : 'warning'">{{ s.settled ? t('split.detail.settled') : t('split.detail.unsettled') }}</Badge>
               </div>
             </div>

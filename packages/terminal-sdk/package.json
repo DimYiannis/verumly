@@ -15,12 +15,14 @@
     "demo": "node src/demo.ts"
   },
   "dependencies": {
+    "@lr/compliance": "workspace:*",
     "@lr/crypto": "workspace:*",
+    "@lr/fiscal": "workspace:*",
     "@lr/receipt-nl": "workspace:*",
     "@lr/schema": "workspace:*",
     "better-sqlite3": "^13.0.3",
-    "qrcode": "^1.5.4",
-    "idb": "^8.0.0"
+    "idb": "^8.0.0",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",

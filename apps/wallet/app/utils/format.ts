@@ -1,26 +1,40 @@
-/** Locale-aware (Dutch by default) formatting and list helpers. Receipt times are shown in Europe/Amsterdam (v2 §2.6). */
+/**
+ * Locale-aware formatting and list helpers. Receipt times are shown in the time zone of the receipt's country
+ * (Europe/Amsterdam unless told otherwise, v2 §2.6); amounts in the receipt's currency (euro unless told otherwise).
+ */
 import { messages, type Locale } from '../i18n/index.ts';
 import type { ReceiptFilters, ReceiptListItem } from './api-schemas.ts';
 
 const TZ = 'Europe/Amsterdam';
 const BCP47: Record<Locale, string> = { nl: 'nl-NL', en: 'en-GB' };
-const euros: Partial<Record<Locale, Intl.NumberFormat>> = {};
+const monies = new Map<string, Intl.NumberFormat>();
 
-export function formatEuro(cents: number, locale: Locale = 'en'): string {
-  const fmt = (euros[locale] ??= new Intl.NumberFormat(BCP47[locale], { style: 'currency', currency: 'EUR' }));
+/** Minor units (1/100 of the unit, for every currency) as money: `€5,34`, `5,34 zł`, `HUF 1,250`. */
+export function formatMoney(cents: number, locale: Locale = 'en', currency = 'EUR'): string {
+  const key = `${locale}|${currency}`;
+  let fmt = monies.get(key);
+  if (!fmt) {
+    fmt = new Intl.NumberFormat(BCP47[locale], { style: 'currency', currency });
+    monies.set(key, fmt);
+  }
   return fmt.format(cents / 100);
+}
+
+/** Euro amounts; `formatMoney` takes the currency. */
+export function formatEuro(cents: number, locale: Locale = 'en'): string {
+  return formatMoney(cents, locale, 'EUR');
 }
 
 export function formatQty(qty: string, locale: Locale = 'en'): string {
   return locale === 'nl' ? qty.replace('.', ',') : qty;
 }
 
-export function formatTime(iso: string, locale: Locale = 'en'): string {
-  return new Intl.DateTimeFormat(BCP47[locale], { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+export function formatTime(iso: string, locale: Locale = 'en', timeZone = TZ): string {
+  return new Intl.DateTimeFormat(BCP47[locale], { timeZone, hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 }
 
-export function formatDateTime(iso: string, locale: Locale = 'en'): string {
-  return new Intl.DateTimeFormat(BCP47[locale], { timeZone: TZ, day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+export function formatDateTime(iso: string, locale: Locale = 'en', timeZone = TZ): string {
+  return new Intl.DateTimeFormat(BCP47[locale], { timeZone, day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 }
 
 /** `YYYY-MM-DD` of the Amsterdam calendar day the instant falls on */

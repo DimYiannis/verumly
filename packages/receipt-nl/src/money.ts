@@ -22,15 +22,16 @@ export function lineTotal(qty: string, unitPrice: number, discount: number): num
   return divRoundHalfUp(qtyToMilli(qty) * BigInt(unitPrice), 1000n) - discount;
 }
 
-/** vat = roundHalfUp(rateGross × r / (100 + r)); net = rateGross − vat. Rounded per rate total. */
+/** vat = roundHalfUp(rateGross × r / (100 + r)); net = rateGross − vat. Rounded per rate total. The rate may have two decimals (5.5). */
 export function vatFromGross(gross: number, rate: number): { net: number; vat: number } {
-  const vat = divRoundHalfUp(BigInt(gross) * BigInt(rate), BigInt(100 + rate));
+  const r = BigInt(Math.round(rate * 100));
+  const vat = divRoundHalfUp(BigInt(gross) * r, 10_000n + r);
   return { net: gross - vat, vat };
 }
 
-/** Round cents to nearest 5 cents (Dutch cash rounding); returns the signed rounding delta. */
-export function cashRounding(gross: number): number {
-  const rounded = divRoundHalfUp(BigInt(gross), 5n) * 5;
+/** Round to the nearest multiple of `step` minor units (5 = Dutch cash rounding, the default); returns the signed rounding delta. */
+export function cashRounding(gross: number, step = 5): number {
+  const rounded = divRoundHalfUp(BigInt(gross), BigInt(step)) * step;
   return rounded - gross;
 }
 

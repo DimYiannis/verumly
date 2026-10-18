@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { formatEuro } from '~/utils/format';
+import { formatMoney } from '~/utils/format';
 
 const { locale, t } = useLocale();
 
-/** Donut by share with a legend, hand-written SVG. Values are euro cents; the centre shows the total. */
-const props = defineProps<{ title: string; items: { label: string; value: number }[]; centreLabel?: string; testid?: string }>();
+/** Donut by share with a legend, hand-written SVG. Values are minor units (cents) of `currency`; the centre shows the total. */
+const props = defineProps<{ title: string; items: { label: string; value: number }[]; centreLabel?: string; currency?: string; testid?: string }>();
 
 const COLOURS = ['#3338B8', '#8A8EE0', '#B3B6EE', '#5C8F6B', '#DDECE3', '#DCDCD3'] as const;
 const R = 42;
@@ -37,7 +37,7 @@ const segments = computed(() => {
       </svg>
       <div class="absolute inset-0 flex flex-col items-center justify-center" aria-hidden="true">
         <span v-if="centreLabel" class="text-xs text-muted-foreground">{{ centreLabel }}</span>
-        <span class="font-mono text-h3 font-medium">{{ formatEuro(total, locale).replace(/[,.]00(?=\D*$)/, '') }}</span>
+        <span class="font-mono text-h3 font-medium">{{ formatMoney(total, locale, currency).replace(/[,.]00(?=\D*$)/, '') }}</span>
       </div>
     </div>
     <ul class="min-w-0 flex-1 space-y-2 text-small">

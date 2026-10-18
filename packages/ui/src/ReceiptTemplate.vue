@@ -28,11 +28,13 @@ const props = withDefaults(
     dateTime?: (iso: string) => string;
     /** text of the fixed labels (translate in the host app); missing keys fall back to English */
     labels?: Record<string, string>;
+    /** names of the keys in `receipt.fiscal.extra` (the country fiscal fields); a key without a name is shown as it is */
+    fiscalLabels?: Record<string, string>;
     /** designer mode: empty blocks show a placeholder so they can be selected */
     designer?: boolean;
     selectedId?: string | null;
   }>(),
-  { money: undefined, dateTime: undefined, labels: () => ({}), designer: false, selectedId: null },
+  { money: undefined, dateTime: undefined, labels: () => ({}), fiscalLabels: () => ({}), designer: false, selectedId: null },
 );
 const emit = defineEmits<{ select: [id: string] }>();
 
@@ -53,6 +55,7 @@ const EN: Record<string, string> = {
   logo: 'Logo',
   text: 'Text',
   fiscalData: 'Fiscal data',
+  fiscalMode: 'Mode',
 };
 const t = (k: string) => props.labels[k] ?? EN[k] ?? k;
 const money = (c: number) => (props.money ? props.money(c) : new Intl.NumberFormat('en-GB', { style: 'currency', currency: props.receipt.currency ?? 'EUR' }).format(c / 100));
@@ -97,7 +100,7 @@ const fiscalRows = computed(() => {
   const out: Array<[string, string]> = [];
   if (f.documentNumber) out.push([t('document'), f.documentNumber]);
   if (f.registerSerial) out.push([t('register'), f.registerSerial]);
-  for (const [k, v] of Object.entries(f.extra)) out.push([k, v]);
+  for (const [k, v] of Object.entries(f.extra)) out.push([props.fiscalLabels[k] ?? (k === 'mode' ? t('fiscalMode') : k), v]);
   return out;
 });
 </script>

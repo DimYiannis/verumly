@@ -83,7 +83,26 @@ describe('validateCrf and fiscalised', () => {
     expect(validateCrf(base).map((i) => i.code)).toContain('fiscalised_not_allowed_nl');
   });
 
-  it('another country: fiscalised is not an issue', () => {
-    expect(validateCrf(base, { country: 'DE' })).toEqual([]);
+  it('another country with a fiscal step: fiscalised is not an issue when the receipt is a valid DE receipt with its TSE data', () => {
+    const de = {
+      ...base,
+      merchant: { ...base.merchant, kvkNumber: '1234567890' },
+      lines: [{ ...base.lines[0]!, vatRate: 19 }],
+      vatSummary: [{ rate: 19, gross: 680, net: 571, vat: 109 }],
+      totals: { gross: 680, net: 571, vat: 109, tip: 0, rounding: 0 },
+      fiscal: {
+        country: 'DE',
+        registerSerial: 'TSE-1',
+        documentNumber: '1',
+        extra: { tseSerial: 'TSE-1', tillId: 'K1', transactionNumber: '1', signatureCounter: '1', start: base.createdAt, end: base.createdAt, signature: 'abc' },
+      },
+    };
+    expect(validateCrf(de, { country: 'DE' })).toEqual([]);
+    // the same receipt without the TSE data is not final
+    expect(validateCrf({ ...de, fiscal: { ...de.fiscal, extra: {} } }, { country: 'DE' }).map((i) => i.code)).toContain('fiscal_fields_missing');
+  });
+
+  it('a country without a fiscal step rejects fiscalised too, with its own code', () => {
+    expect(validateCrf({ ...base, fiscal: { ...base.fiscal, country: 'GB' }, currency: 'GBP' }, { country: 'GB' }).map((i) => i.code)).toContain('fiscalised_not_allowed');
   });
 });

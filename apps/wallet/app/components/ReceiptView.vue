@@ -3,14 +3,15 @@ import { Ban } from '@lucide/vue';
 import ReceiptTemplate from '@lr/ui/src/ReceiptTemplate.vue';
 import { defaultReceiptTemplate } from '@lr/schema';
 import type { ReceiptDetail } from '~/utils/api-schemas';
-import { formatDateTime, formatEuro, formatQty } from '~/utils/format';
+import { receiptContext } from '~/utils/country';
+import { formatDateTime, formatMoney } from '~/utils/format';
 
 const { t, tOr, locale } = useLocale();
 const props = defineProps<{ detail: Pick<ReceiptDetail, 'receipt' | 'final' | 'versions'> & { template?: ReceiptDetail['template'] } }>();
 const template = computed(() => props.detail.template ?? defaultReceiptTemplate());
 const labels = computed(() => ({
-  company: latest.value.fiscal.country === 'NL' ? 'KvK' : t('receipt.companyNo'),
-  vat: t('receipt.vat'),
+  company: ctx.value.companyLabel,
+  vat: ctx.value.vatLabel,
   total: t('receipt.total'),
   net: t('receipt.vatNet'),
   gross: t('receipt.vatGross'),
@@ -23,6 +24,8 @@ const labels = computed(() => ({
   document: t('receipt.documentNo'),
   register: t('receipt.register'),
 }));
+
+const ctx = computed(() => receiptContext(props.detail.receipt.fiscal.country));
 
 /** null = latest version */
 const selected = ref<number | null>(null);
@@ -48,7 +51,7 @@ const viewingOld = computed(() => shown.value.version !== latest.value.version);
     </p>
 
     <!-- the receipt as the merchant designed it (Dashboard > Receipt design); the default layout when none was saved -->
-    <ReceiptTemplate :template="template" :receipt="shown" :money="(c: number) => formatEuro(c, locale)" :date-time="(iso: string) => formatDateTime(iso, locale)" :labels="labels" />
+    <ReceiptTemplate :template="template" :receipt="shown" :money="(c: number) => formatMoney(c, locale, shown.currency)" :date-time="(iso: string) => formatDateTime(iso, locale, ctx.timeZone)" :labels="labels" :fiscal-labels="ctx.fiscalLabels" />
     <!-- an issued receipt is paid: only a later version (cancelled, corrected) is worth a line -->
     <p v-if="shown.state !== 'paid' || shown.version > 1" class="text-center text-sm text-text-secondary">{{ tOr('state', shown.state) }} · {{ t('receipt.version', { n: shown.version }) }}</p>
 
@@ -65,7 +68,7 @@ const viewingOld = computed(() => shown.value.version !== latest.value.version);
             @click="selected = v.version === latest.version ? null : v.version"
           >
             <span>{{ t('receipt.versionRow', { n: v.version, state: tOr('state', v.state) }) }}</span>
-            <time :datetime="v.createdAt" class="text-xs text-text-secondary">{{ formatDateTime(v.createdAt, locale) }}</time>
+            <time :datetime="v.createdAt" class="text-xs text-text-secondary">{{ formatDateTime(v.createdAt, locale, ctx.timeZone) }}</time>
           </button>
         </li>
       </ol>

@@ -2,6 +2,7 @@ import data from './data/countries.json' with { type: 'json' };
 import type { ComplianceSettings, CountryRules } from './types.ts';
 
 export * from './types.ts';
+export * from './formats.ts';
 
 const countries = data.countries as unknown as Record<string, CountryRules>;
 
@@ -85,4 +86,18 @@ export function cleanSettings(code: string, values: Record<string, unknown>): Re
 
 export function emptyCompliance(country: string): ComplianceSettings {
   return { country, values: {}, confirmedAt: null };
+}
+
+/** null when `value` is a plausible company registry number for the country, otherwise a message. Countries the research has no pattern for accept anything. */
+export function companyIdProblem(code: string, value: string): string | null {
+  const c = getCountry(code);
+  if (!c) return `unknown country ${code}`;
+  return matches(c.companyId.pattern, value.trim()) ? null : `${c.companyId.label}: ${c.companyId.example ? `expected something like ${c.companyId.example}` : 'invalid format'}`;
+}
+
+/** Same for the VAT number (compact form, as stored). */
+export function vatIdProblem(code: string, value: string): string | null {
+  const c = getCountry(code);
+  if (!c) return `unknown country ${code}`;
+  return matches(c.vatId.pattern ?? GENERIC_VAT_RE, normaliseVatId(value)) ? null : `${c.vatId.label}: ${c.vatId.example ? `expected something like ${c.vatId.example}` : 'invalid format'}`;
 }

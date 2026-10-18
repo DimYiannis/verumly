@@ -1,21 +1,66 @@
 import { z } from 'zod';
+import { getFormat } from '@lr/compliance/formats';
 import { generateKeyPair } from '@lr/crypto';
+import type { FiscalStateStore } from '@lr/fiscal';
+import { getFiscalSpec } from '@lr/fiscal/specs';
 import type { Crf } from '@lr/schema';
 import { TerminalSdk, type Draft, type DraftLine } from '@lr/terminal-sdk';
 import { IndexedDbStore } from '@lr/terminal-sdk/idb';
 
-export const PRODUCTS = [
-  { sku: 'koffie', label: 'Koffie', unitPrice: 340, vatRate: 9 },
-  { sku: 'appeltaart', label: 'Appeltaart', unitPrice: 395, vatRate: 9 },
-  { sku: 'bier', label: 'Bier', unitPrice: 389, vatRate: 21 },
-  { sku: 'wijn', label: 'Wijn', unitPrice: 495, vatRate: 21 },
-] as const;
+/** Roughly what a coffee costs in each currency, relative to the euro: keeps the demo prices believable. */
+const PRICE_FACTOR: Record<string, number> = { EUR: 1, GBP: 1, CHF: 1, SEK: 11, NOK: 11, DKK: 7.5, PLN: 4.3, CZK: 25, HUF: 400, RON: 5, ISK: 150 };
+
+export interface Product {
+  sku: string;
+  label: string;
+  unitPrice: number;
+  vatRate: number;
+}
+
+/** The demo menu of a country: coffee and cake at the reduced rate, beer and wine at the standard one, priced in its currency. */
+export function productsFor(country: string): Product[] {
+  const f = getFormat(country) ?? getFormat('NL')!;
+  const standard = f.vatRates[0]!;
+  const reduced = f.vatRates[1] ?? standard;
+  const k = PRICE_FACTOR[f.currency] ?? 1;
+  // euro, pound and franc keep the euro prices; others are rounded to 0.10 of the currency, or to whole units where there are no small coins
+  const price = (eurCents: number) => (k === 1 ? eurCents : k >= 100 ? Math.round((eurCents * k) / 100) * 100 : Math.round((eurCents * k) / 10) * 10);
+  const nl = f.code === 'NL';
+  return [
+    { sku: 'koffie', label: nl ? 'Koffie' : 'Coffee', unitPrice: price(340), vatRate: reduced },
+    { sku: 'appeltaart', label: nl ? 'Appeltaart' : 'Apple pie', unitPrice: price(395), vatRate: reduced },
+    { sku: 'bier', label: nl ? 'Bier' : 'Beer', unitPrice: price(389), vatRate: standard },
+    { sku: 'wijn', label: nl ? 'Wijn' : 'Wine', unitPrice: price(495), vatRate: standard },
+  ];
+}
+
+/** Counters and hash chains of the sandbox fiscal device, kept in the browser so a reload does not restart the numbering. */
+class LocalFiscalState implements FiscalStateStore {
+  constructor(private readonly terminalId: string) {}
+  async get(key: string) {
+    try {
+      return localStorage.getItem(`lr.sim.fiscal.${this.terminalId}.${key}`) ?? undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  async set(key: string, value: string) {
+    try {
+      localStorage.setItem(`lr.sim.fiscal.${this.terminalId}.${key}`, value);
+    } catch {
+      // private mode: the numbering restarts with the page, it is only a sandbox
+    }
+  }
+}
 
 const credsSchema = z.object({
   terminalId: z.string(),
   apiKey: z.string(),
   privateKey: z.string(),
   merchant: z.object({ kvkNumber: z.string(), vatNumber: z.string().nullable(), name: z.string(), locationId: z.string() }),
+  /** the organisation's country and its legal settings (TSE serial, register id, ...) as set up in the dashboard */
+  country: z.string().default('NL'),
+  settings: z.record(z.string(), z.union([z.string(), z.boolean()])).default({}),
 });
 export type SimCreds = z.infer<typeof credsSchema>;
 
@@ -26,7 +71,7 @@ interface CartLine {
   sku: string;
   description: string;
   unitPrice: number;
-  vatRate: 9 | 21;
+  vatRate: number;
   qty: number;
 }
 
@@ -65,6 +110,9 @@ export function useSimulator() {
   let poll: ReturnType<typeof setInterval> | undefined;
   let receiptHost = 'http://localhost:3001';
 
+  const products = computed(() => productsFor(creds.value?.country ?? 'NL'));
+  /** the country's state integration, for the panel next to the receipt (null: no fiscal step there) */
+  const fiscal = computed(() => getFiscalSpec(creds.value?.country ?? 'NL'));
   const lines = computed<DraftLine[]>(() => cart.value.map((l) => ({ sku: l.sku, description: l.description, unitPrice: l.unitPrice, vatRate: l.vatRate, qty: l.qty })));
   const state = computed(() => current.value?.crf.state ?? null);
   const total = computed(() => (current.value ? current.value.crf.totals.gross : cart.value.reduce((s, l) => s + l.unitPrice * l.qty, 0)));
@@ -103,6 +151,8 @@ export function useSimulator() {
       apiKey: c.apiKey,
       privateKey: c.privateKey,
       merchant: c.merchant,
+      country: c.country,
+      fiscal: { settings: c.settings, state: new LocalFiscalState(c.terminalId) },
       store,
       // the Offline toggle fails every request, exactly like a dead network
       fetch: (input, init) => (offline.value ? Promise.reject(new TypeError('Simulated offline')) : fetch(input, init)),
@@ -116,8 +166,14 @@ export function useSimulator() {
   async function init() {
     const cfg = await $fetch<{ receiptHost: string }>('/api/simulator/config');
     receiptHost = cfg.receiptHost;
-    const c = readCreds();
+    let c = readCreds();
     if (!c) return;
+    // the business may have changed its country or its numbers since this terminal was set up: the till follows the setup
+    const org = await $fetch<{ kvkNumber: string; vatNumber: string | null; country: string; compliance: { values?: Record<string, string | boolean> } }>('/api/dashboard/org').catch(() => null);
+    if (org) {
+      c = { ...c, country: org.country, settings: org.compliance?.values ?? {}, merchant: { ...c.merchant, kvkNumber: org.kvkNumber, vatNumber: org.vatNumber } };
+      localStorage.setItem(CREDS_KEY, JSON.stringify(c));
+    }
     start(c);
     const id = localStorage.getItem(CURRENT_KEY);
     if (id) await show(id);
@@ -135,7 +191,7 @@ export function useSimulator() {
       const s = await $fetch<{ state: string }>('/api/dashboard/session');
       if (s.state !== 'ready') throw new Error(tr('sim.errLogin'));
       const [org, locs] = await Promise.all([
-        $fetch<{ legalName: string; kvkNumber: string; vatNumber: string | null }>('/api/dashboard/org'),
+        $fetch<{ legalName: string; kvkNumber: string; vatNumber: string | null; country: string; compliance: { values?: Record<string, string | boolean> } }>('/api/dashboard/org'),
         $fetch<Array<{ id: string }>>('/api/dashboard/locations'),
       ]);
       const location = locs[0];
@@ -145,7 +201,7 @@ export function useSimulator() {
         method: 'POST',
         body: { locationId: location.id, label: `Simulator ${new Date().toISOString().slice(0, 16)}`, publicKey: keys.publicKey },
       });
-      const c: SimCreds = { terminalId: t.terminalId, apiKey: t.apiKey, privateKey: keys.privateKey, merchant: { kvkNumber: org.kvkNumber, vatNumber: org.vatNumber, name: org.legalName, locationId: location.id } };
+      const c: SimCreds = { terminalId: t.terminalId, apiKey: t.apiKey, privateKey: keys.privateKey, merchant: { kvkNumber: org.kvkNumber, vatNumber: org.vatNumber, name: org.legalName, locationId: location.id }, country: org.country, settings: org.compliance?.values ?? {} };
       localStorage.setItem(CREDS_KEY, JSON.stringify(c));
       dispose();
       start(c);
@@ -168,7 +224,7 @@ export function useSimulator() {
   }
 
   function addItem(sku: string) {
-    const p = PRODUCTS.find((x) => x.sku === sku);
+    const p = products.value.find((x) => x.sku === sku);
     if (!p || !editable.value) return;
     const line = cart.value.find((l) => l.sku === sku);
     if (line) line.qty += 1;
@@ -199,5 +255,5 @@ export function useSimulator() {
     else sdk.startFlusher({ idleMs: 500 });
   }
 
-  return { creds, cart, current, qrSvg, offline, stats, error, busy, state, total, rounding, editable, init, dispose, setupDemoTerminal, forgetTerminal, newSale, addItem, issue, voidSale, setOffline };
+  return { creds, products, fiscal, cart, current, qrSvg, offline, stats, error, busy, state, total, rounding, editable, init, dispose, setupDemoTerminal, forgetTerminal, newSale, addItem, issue, voidSale, setOffline };
 }

@@ -17,7 +17,7 @@ onMounted(async () => {
 const newestFirst = computed(() => [...(detail.value?.versions ?? [])].reverse());
 const latest = computed(() => newestFirst.value[0]);
 const first = computed(() => detail.value?.versions[0]);
-const dot = (state: string) => (state === 'void' || state === 'failed' ? 'bg-danger' : state === 'paid' ? 'bg-success' : 'bg-muted-foreground');
+const dot = (state: string) => (state === 'void' || state === 'failed' ? 'bg-danger' : state === 'paid' || state === 'fiscalised' ? 'bg-success' : 'bg-muted-foreground');
 const country = computed(() => {
   const c = latest.value?.crf.fiscal.country;
   if (!c) return '';
@@ -34,7 +34,7 @@ const methods = (v: Detail['versions'][number]) => v.crf.payments.map((p) => tx(
   <div class="px-2 pt-2">
     <NuxtLink to="/dashboard/archive" class="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"><ArrowLeftIcon class="size-4" />{{ t('archive.back') }}</NuxtLink>
     <h1 class="mt-2 flex flex-wrap items-center gap-3 text-[30px] font-semibold leading-9 tracking-tight">
-      <span v-if="detail" class="tabular-nums">{{ euro(detail.totalMinor) }}</span>
+      <span v-if="detail" class="tabular-nums">{{ money(detail.totalMinor) }}</span>
       <span v-else>{{ t('archive.receipt') }}</span>
       <AppStatusBadge v-if="detail && detail.state === 'void'" :status="detail.state" data-testid="archive-detail-state" />
     </h1>
@@ -89,16 +89,16 @@ const methods = (v: Detail['versions'][number]) => v.crf.payments.map((p) => tx(
                   <TableCell class="px-4">{{ l.description }}</TableCell>
                   <TableCell class="tabular-nums">{{ l.qty }}</TableCell>
                   <TableCell class="tabular-nums">{{ l.vatRate === null ? '-' : `${l.vatRate}%` }}</TableCell>
-                  <TableCell class="px-4 text-right tabular-nums">{{ euro(l.total) }}</TableCell>
+                  <TableCell class="px-4 text-right tabular-nums">{{ money(l.total) }}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
           </div>
           <dl class="ml-auto max-w-sm space-y-2 text-sm">
-            <div v-for="s in v.crf.vatSummary" :key="s.rate" class="flex justify-between text-muted-foreground" data-testid="archive-vat"><dt>{{ t('archive.vatOver', { rate: s.rate, net: euro(s.net) }) }}</dt><dd class="tabular-nums">{{ euro(s.vat) }}</dd></div>
-            <div v-if="v.crf.totals.rounding" class="flex justify-between text-muted-foreground"><dt>{{ t('common.rounding') }}</dt><dd class="tabular-nums">{{ euro(v.crf.totals.rounding) }}</dd></div>
-            <div class="flex justify-between border-t pt-2 text-base font-medium"><dt>{{ t('common.total') }}</dt><dd class="tabular-nums" data-testid="archive-version-total">{{ euro(v.crf.totals.gross + v.crf.totals.tip + v.crf.totals.rounding) }}</dd></div>
-            <div v-for="(p, i) in v.crf.payments" :key="i" class="flex justify-between text-muted-foreground"><dt>{{ t('archive.paidWith', { method: tx('archive.method', p.method) }) }}</dt><dd class="tabular-nums">{{ euro(p.amount) }}</dd></div>
+            <div v-for="s in v.crf.vatSummary" :key="s.rate" class="flex justify-between text-muted-foreground" data-testid="archive-vat"><dt>{{ t('archive.vatOver', { rate: s.rate, net: money(s.net) }) }}</dt><dd class="tabular-nums">{{ money(s.vat) }}</dd></div>
+            <div v-if="v.crf.totals.rounding" class="flex justify-between text-muted-foreground"><dt>{{ t('common.rounding') }}</dt><dd class="tabular-nums">{{ money(v.crf.totals.rounding) }}</dd></div>
+            <div class="flex justify-between border-t pt-2 text-base font-medium"><dt>{{ t('common.total') }}</dt><dd class="tabular-nums" data-testid="archive-version-total">{{ money(v.crf.totals.gross + v.crf.totals.tip + v.crf.totals.rounding) }}</dd></div>
+            <div v-for="(p, i) in v.crf.payments" :key="i" class="flex justify-between text-muted-foreground"><dt>{{ t('archive.paidWith', { method: tx('archive.method', p.method) }) }}</dt><dd class="tabular-nums">{{ money(p.amount) }}</dd></div>
           </dl>
         </CardContent>
       </Card>
@@ -108,8 +108,8 @@ const methods = (v: Detail['versions'][number]) => v.crf.payments.map((p) => tx(
       <Card>
         <CardContent class="flex flex-col gap-2 text-sm">
           <span class="text-xs font-medium uppercase tracking-wide text-muted-foreground">{{ t('ov.arch.vat') }}</span>
-          <div v-for="s in latest.crf.vatSummary" :key="s.rate" class="flex justify-between"><span>{{ t('archive.vatOver', { rate: s.rate, net: euro(s.net) }) }}</span><span class="font-mono tabular-nums">{{ euro(s.vat) }}</span></div>
-          <div class="flex justify-between"><span>{{ t('ov.arch.net') }}</span><span class="font-mono tabular-nums">{{ euro(latest.crf.totals.net) }}</span></div>
+          <div v-for="s in latest.crf.vatSummary" :key="s.rate" class="flex justify-between"><span>{{ t('archive.vatOver', { rate: s.rate, net: money(s.net) }) }}</span><span class="font-mono tabular-nums">{{ money(s.vat) }}</span></div>
+          <div class="flex justify-between"><span>{{ t('ov.arch.net') }}</span><span class="font-mono tabular-nums">{{ money(latest.crf.totals.net) }}</span></div>
         </CardContent>
       </Card>
       <Card>

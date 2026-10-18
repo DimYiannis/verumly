@@ -1,9 +1,10 @@
-import { and, desc, eq, gte, lt, lte, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, lt, lte, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { tables } from '@lr/db';
-import { claimBody, uuidV7String } from '@lr/schema';
+import { isFinalState } from '@lr/receipt-nl';
+import { claimBody, uuidV7String, type Crf } from '@lr/schema';
 import type { AppDeps } from '../context.ts';
 import { checkSecret, claimedBy, isFinal, loadReceipt, loadVersions } from '../receipts.ts';
 import { requireSession } from './auth.ts';
@@ -78,7 +79,9 @@ export function meRoutes(deps: AppDeps) {
           )!,
         );
       }
-      if (q.state) conds.push(eq(tables.receipts.state, q.state));
+      // `paid` is what the wallet calls issued: in countries with a fiscal step that is `paid` or `fiscalised`
+      if (q.state === 'paid') conds.push(inArray(tables.receipts.state, ['paid', 'fiscalised']));
+      else if (q.state) conds.push(eq(tables.receipts.state, q.state));
       if (q.from) conds.push(gte(tables.receipts.createdOnTerminalAt, new Date(`${q.from}T00:00:00Z`)));
       if (q.to) conds.push(lte(tables.receipts.createdOnTerminalAt, new Date(`${q.to}T23:59:59.999Z`)));
       if (q.merchant) conds.push(sql`${tables.receiptVersions.payload}->'merchant'->>'name' ilike ${`%${q.merchant}%`}`);
@@ -132,7 +135,7 @@ export function meRoutes(deps: AppDeps) {
           source: x.source,
           state: x.state,
           version: x.currentVersion,
-          final: x.state === 'void' || (x.country === 'NL' ? x.state === 'paid' : x.state === 'fiscalised'),
+          final: isFinalState(x.state as Crf['state'], x.country ?? 'NL'),
         })),
         nextCursor: rows.length > q.limit && last ? encodeCursor(last.createdAt, last.id) : null,
       };

@@ -150,9 +150,9 @@ const hourLabels = computed(() => {
   return out;
 });
 const caption = computed(() => {
-  const todaySoFar = euro(Math.round(todayCum.value[ams.value.hour] ?? 0));
+  const todaySoFar = money(Math.round(todayCum.value[ams.value.hour] ?? 0));
   const usualSoFar = usualCum.value[ams.value.hour] ?? 0;
-  return usualSoFar > 0 ? t('ov.caption', { today: todaySoFar, usual: euro(Math.round(usualSoFar)), weekday: weekdayName.value }) : t('ov.captionNoUsual', { today: todaySoFar, weekday: weekdayName.value });
+  return usualSoFar > 0 ? t('ov.caption', { today: todaySoFar, usual: money(Math.round(usualSoFar)), weekday: weekdayName.value }) : t('ov.captionNoUsual', { today: todaySoFar, weekday: weekdayName.value });
 });
 </script>
 
@@ -236,7 +236,7 @@ const caption = computed(() => {
             <TableRow v-for="r in recent" :key="r.id" class="h-[52px] cursor-pointer" data-testid="overview-row" @click="navigateTo(`/dashboard/archive/${r.id}`)">
               <TableCell class="px-4"><NuxtLink :to="`/dashboard/archive/${r.id}`" class="font-medium hover:underline">{{ timeOf(r.createdAt) }}</NuxtLink></TableCell>
               <TableCell>{{ r.locationName }}</TableCell>
-              <TableCell class="px-4 text-right tabular-nums">{{ euro(r.totalMinor) }}</TableCell>
+              <TableCell class="px-4 text-right tabular-nums">{{ money(r.totalMinor) }}</TableCell>
               <TableCell><div class="flex justify-end gap-2"><Badge v-if="r.state === 'void'" variant="danger">{{ t('ov.tag.cancelled') }}</Badge><Badge v-if="isLate(r)" variant="warning">{{ t('ov.arch.late') }}</Badge></div></TableCell>
             </TableRow>
             <TableRow v-if="loaded && !recent.length" class="hover:bg-transparent"><TableCell colspan="4" class="h-[52px] text-center text-muted-foreground">{{ t('overview.empty') }}</TableCell></TableRow>

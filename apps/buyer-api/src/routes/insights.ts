@@ -5,6 +5,7 @@ import { tables } from '@lr/db';
 import { FALLBACK_CATEGORY, HEALTH_CATEGORY } from '@lr/receipt-nl';
 import type { AppDeps } from '../context.ts';
 import { readExtracted } from '../uploads.ts';
+import { mainCurrency } from '../currency.ts';
 import { requireSession } from './auth.ts';
 
 const TOP_MERCHANTS = 10;
@@ -25,6 +26,7 @@ export function insightRoutes(deps: AppDeps) {
   return async (app: FastifyInstance) => {
     app.get('/v1/me/insights', { preHandler: requireSession(deps) }, async (req) => {
       const userId = req.session!.userId;
+      const currency = await mainCurrency(deps.db, userId);
       // dynamic keys (merchant names come from receipts): Maps, never plain objects
       const month = new Map<string, number>();
       const category = new Map<string, number>();
@@ -37,7 +39,7 @@ export function insightRoutes(deps: AppDeps) {
       const perMonth = await deps.db.execute<{ m: string; total: string }>(sql`
         select to_char(r.created_on_terminal_at at time zone 'Europe/Amsterdam', 'YYYY-MM') as m, sum(r.total_minor)::bigint as total
         from buyer.claims c join merchant.receipts r on r.id = c.receipt_id
-        where c.user_id = ${userId}::uuid and r.state in ('paid', 'fiscalised')
+        where c.user_id = ${userId}::uuid and r.state in ('paid', 'fiscalised') and r.currency = ${currency}
         group by 1`);
       for (const r of perMonth.rows) add(month, r.m, Number(r.total));
 
@@ -46,17 +48,17 @@ export function insightRoutes(deps: AppDeps) {
         from buyer.claims c
         join merchant.receipts r on r.id = c.receipt_id
         join merchant.receipt_lines l on l.receipt_id = r.id
-        where c.user_id = ${userId}::uuid and r.state in ('paid', 'fiscalised')
+        where c.user_id = ${userId}::uuid and r.state in ('paid', 'fiscalised') and r.currency = ${currency}
         group by 1`);
       for (const r of perCategory.rows) add(category, r.cat, Number(r.total));
 
       const perVat = await deps.db.execute<{ rate: number; vat: string }>(sql`
-        select (e->>'rate')::int as rate, sum((e->>'vat')::bigint)::bigint as vat
+        select (e->>'rate')::numeric as rate, sum((e->>'vat')::bigint)::bigint as vat
         from buyer.claims c
         join merchant.receipts r on r.id = c.receipt_id
         join merchant.receipt_versions v on v.receipt_id = r.id and v.version = r.current_version
         cross join lateral jsonb_array_elements(v.payload->'vatSummary') e
-        where c.user_id = ${userId}::uuid and r.state in ('paid', 'fiscalised')
+        where c.user_id = ${userId}::uuid and r.state in ('paid', 'fiscalised') and r.currency = ${currency}
         group by 1`);
       for (const r of perVat.rows) vat.set(Number(r.rate), (vat.get(Number(r.rate)) ?? 0) + Number(r.vat));
 
@@ -65,11 +67,12 @@ export function insightRoutes(deps: AppDeps) {
         from buyer.claims c
         join merchant.receipts r on r.id = c.receipt_id
         join merchant.receipt_versions v on v.receipt_id = r.id and v.version = r.current_version
-        where c.user_id = ${userId}::uuid and r.state in ('paid', 'fiscalised')
+        where c.user_id = ${userId}::uuid and r.state in ('paid', 'fiscalised') and r.currency = ${currency}
         group by 1`);
       for (const r of perMerchant.rows) merchant.set(r.name, { total: Number(r.total), count: Number(r.n) });
 
-      const uploads = await deps.db
+      // uploaded photos are Dutch receipts: they only count towards totals in euro
+      const uploads = currency !== 'EUR' ? [] : await deps.db
         .select({ extracted: tables.uploads.extracted, createdAt: tables.uploads.createdAt })
         .from(tables.uploads)
         .where(and(eq(tables.uploads.userId, userId), eq(tables.uploads.status, 'done')));
@@ -88,6 +91,7 @@ export function insightRoutes(deps: AppDeps) {
       }
 
       return {
+        currency,
         perMonth: [...month.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([m, total]) => ({ month: m, total })),
         perCategory: [...category.entries()].sort(([, a], [, b]) => b - a).map(([c, total]) => ({ category: c, total })),
         vatPerRate: [...vat.entries()].sort(([a], [b]) => b - a).map(([rate, total]) => ({ rate, vat: total })),

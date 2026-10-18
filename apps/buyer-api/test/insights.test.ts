@@ -55,6 +55,7 @@ describe('GET /v1/me/insights', () => {
     const res = await buyerCall(w, 'GET', '/v1/me/insights', { token: me.token });
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
+      currency: 'EUR',
       // hand-computed: Aug 680+389; Sep 475+450 (paid receipts) + 1500 (upload); the pre-bill and the stranger do not count
       perMonth: [
         { month: '2026-08', total: 1069 },
@@ -79,7 +80,7 @@ describe('GET /v1/me/insights', () => {
       ],
     });
     // nothing else is exposed
-    expect(Object.keys(res.body as object).sort()).toEqual(['perCategory', 'perMonth', 'topMerchants', 'vatPerRate']);
+    expect(Object.keys(res.body as object).sort()).toEqual(['currency', 'perCategory', 'perMonth', 'topMerchants', 'vatPerRate']);
     expect(res.text).not.toContain('gezondheid');
   });
 
@@ -109,7 +110,7 @@ describe('GET /v1/me/insights', () => {
 
   it('a user with no data gets empty lists; a session is required', async () => {
     const empty = await loginUser(w);
-    expect((await buyerCall(w, 'GET', '/v1/me/insights', { token: empty.token })).body).toEqual({ perMonth: [], perCategory: [], vatPerRate: [], topMerchants: [] });
+    expect((await buyerCall(w, 'GET', '/v1/me/insights', { token: empty.token })).body).toEqual({ currency: 'EUR', perMonth: [], perCategory: [], vatPerRate: [], topMerchants: [] });
     expect((await buyerCall(w, 'GET', '/v1/me/insights')).status).toBe(401);
   });
 

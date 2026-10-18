@@ -2,7 +2,7 @@
 import { ChevronRight, ScanLine, WifiOff } from '@lucide/vue';
 import { ApiError } from '~/utils/api';
 import type { Balances, HomeSummary } from '~/utils/api-schemas';
-import { dayKey, formatEuro, formatTime } from '~/utils/format';
+import { dayKey, formatMoney, formatTime } from '~/utils/format';
 import { budgetProgress, dayPart, parseBudgetInput, percentChange, sparkPoints } from '~/utils/home';
 import { userName } from '~/utils/social';
 
@@ -81,7 +81,7 @@ function removeBudget() {
   }
 }
 const progress = computed(() => (home.value && budget.value ? budgetProgress(home.value.total, budget.value) : null));
-const wholeEuro = (cents: number) => formatEuro(cents, locale.value).replace(/[,.]00(?=\D*$)/, '');
+const wholeEuro = (cents: number) => formatMoney(cents, locale.value, home.value?.currency).replace(/[,.]00(?=\D*$)/, '');
 
 function people(rows: Balances['friends'], key: 'owesMe' | 'iOwe') {
   return rows
@@ -120,6 +120,7 @@ onMounted(async () => {
         total: i.total,
         createdAt: i.createdAt,
         state: i.state,
+        currency: i.currency,
         splitWith: [],
         itemCount: 0,
       }));
@@ -167,7 +168,7 @@ onMounted(async () => {
         <span class="text-label text-[#B3B6EE] uppercase">{{ t('home.hero.title') }}</span>
         <span v-if="changeLabel" data-testid="home-change" class="rounded-full border border-white/25 bg-white/15 px-2.5 py-0.5 text-xs font-medium">{{ changeLabel }}</span>
       </div>
-      <p class="font-mono text-[38px] leading-[44px] font-medium tracking-tight" data-testid="home-total">{{ formatEuro(home.total, locale) }}</p>
+      <p class="font-mono text-[38px] leading-[44px] font-medium tracking-tight" data-testid="home-total">{{ formatMoney(home.total, locale, home.currency) }}</p>
       <svg v-if="spark" viewBox="0 0 300 56" preserveAspectRatio="none" class="h-14 w-full" role="img" :aria-label="t('home.hero.spark')" data-testid="home-spark">
         <polygon :points="spark.area" fill="rgba(179,182,238,.16)" />
         <polyline :points="spark.line" fill="none" stroke="#B3B6EE" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" />
@@ -197,7 +198,7 @@ onMounted(async () => {
     <div v-if="balances" class="grid grid-cols-2 gap-3" data-testid="home-balances">
       <NuxtLink to="/friends" class="space-y-2 rounded-xl border border-border bg-card p-4 text-foreground no-underline hover:text-foreground">
         <span class="block text-label text-text-secondary uppercase">{{ t('home.owed.label') }}</span>
-        <span class="block font-mono text-h2 font-medium text-success" data-testid="home-owed">{{ formatEuro(balances.totalOwedToMe, locale) }}</span>
+        <span class="block font-mono text-h2 font-medium text-success" data-testid="home-owed">{{ formatMoney(balances.totalOwedToMe, locale, balances.currency) }}</span>
         <span class="flex items-center gap-2">
           <span v-if="owedBy.length" class="flex -space-x-2"><HomeAvatar v-for="u in owedBy" :key="userName(u)" :name="userName(u)" :emoji="u.avatar" size="sm" /></span>
           <span class="truncate text-xs text-text-secondary">{{ owedBy.length ? names(owedBy) : t('home.owed.none') }}</span>
@@ -205,7 +206,7 @@ onMounted(async () => {
       </NuxtLink>
       <NuxtLink to="/friends" class="space-y-2 rounded-xl border border-border bg-card p-4 text-foreground no-underline hover:text-foreground">
         <span class="block text-label text-text-secondary uppercase">{{ t('home.owe.label') }}</span>
-        <span class="block font-mono text-h2 font-medium" data-testid="home-owe">{{ formatEuro(balances.totalIOwe, locale) }}</span>
+        <span class="block font-mono text-h2 font-medium" data-testid="home-owe">{{ formatMoney(balances.totalIOwe, locale, balances.currency) }}</span>
         <span class="flex items-center gap-2">
           <span v-if="oweTo.length" class="flex -space-x-2"><HomeAvatar v-for="u in oweTo" :key="userName(u)" :name="userName(u)" :emoji="u.avatar" size="sm" /></span>
           <span class="truncate text-xs text-text-secondary">{{ oweTo.length ? names(oweTo) : t('home.owe.none') }}</span>
@@ -229,7 +230,7 @@ onMounted(async () => {
               </span>
             </span>
             <Badge v-if="r.state === 'void'" variant="warning">{{ t('home.recent.cancelled') }}</Badge>
-            <span class="font-mono text-sm">{{ formatEuro(r.total, locale) }}</span>
+            <span class="font-mono text-sm">{{ formatMoney(r.total, locale, r.currency) }}</span>
             <ChevronRight class="size-4 text-muted-foreground" aria-hidden="true" />
           </NuxtLink>
         </li>

@@ -2,7 +2,7 @@
 const props = defineProps<{ status: string }>();
 const { tx } = useLocale();
 
-const SUCCESS = ['paid', 'active', 'done', 'ready', 'completed', 'succeeded', 'enrolled'];
+const SUCCESS = ['paid', 'fiscalised', 'active', 'done', 'ready', 'completed', 'succeeded', 'enrolled'];
 const WARNING = ['presented', 'queued', 'processing', 'pending'];
 // every issued receipt is paid: only the exception (cancelled) is worth a badge
 const HIDDEN = ['paid'];

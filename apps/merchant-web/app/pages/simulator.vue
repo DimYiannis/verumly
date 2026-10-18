@@ -8,6 +8,15 @@ const sim = useSimulator();
 onMounted(() => sim.init());
 onBeforeUnmount(() => sim.dispose());
 
+/** the fiscal data the state integration added to the receipt, with the country's names for them */
+const fiscalRows = computed(() => {
+  const f = sim.current.value?.crf.fiscal;
+  const spec = sim.fiscal.value;
+  if (!f || !spec) return [];
+  const names = new Map(spec.fields.map((x) => [x.key, x.label]));
+  return Object.entries(f.extra).map(([key, value]) => ({ key, label: names.get(key) ?? (key === 'mode' ? t('fiscal.mode') : key), value }));
+});
+
 const linkCopied = ref(false);
 async function copyLink() {
   const url = sim.current.value?.qrUrl;
@@ -52,9 +61,9 @@ async function copyLink() {
         <Card>
           <CardHeader><CardTitle class="text-base">{{ t('sim.addItem') }}</CardTitle></CardHeader>
           <CardContent class="grid grid-cols-2 gap-3">
-            <Button v-for="p in PRODUCTS" :key="p.sku" variant="outline" class="h-auto flex-col gap-0.5 py-3.5" :disabled="!sim.editable.value || sim.busy.value" :data-testid="`sim-add-${p.sku}`" @click="sim.addItem(p.sku)">
+            <Button v-for="p in sim.products.value" :key="p.sku" variant="outline" class="h-auto flex-col gap-0.5 py-3.5" :disabled="!sim.editable.value || sim.busy.value" :data-testid="`sim-add-${p.sku}`" @click="sim.addItem(p.sku)">
               <span>{{ p.label }}</span>
-              <span class="font-mono text-xs font-normal text-muted-foreground tabular-nums">{{ euro(p.unitPrice) }} · {{ p.vatRate }}%</span>
+              <span class="font-mono text-xs font-normal text-muted-foreground tabular-nums">{{ money(p.unitPrice) }} · {{ p.vatRate }}%</span>
             </Button>
           </CardContent>
         </Card>
@@ -69,13 +78,13 @@ async function copyLink() {
           <CardContent class="space-y-4">
             <ul class="divide-y rounded-md border text-sm" data-testid="sim-cart">
               <li v-for="l in sim.cart.value" :key="l.sku" class="flex h-[52px] items-center justify-between px-4" data-testid="sim-cart-line">
-                <span>{{ l.qty }} × {{ l.description }}</span><span class="tabular-nums">{{ euro(l.qty * l.unitPrice) }}</span>
+                <span>{{ l.qty }} × {{ l.description }}</span><span class="tabular-nums">{{ money(l.qty * l.unitPrice) }}</span>
               </li>
               <li v-if="!sim.cart.value.length" class="flex h-[52px] items-center px-4 text-muted-foreground">{{ t('sim.empty') }}</li>
             </ul>
             <div class="space-y-1">
-              <div v-if="sim.rounding.value" class="flex justify-between text-sm text-muted-foreground"><span>{{ t('common.rounding') }}</span><span class="tabular-nums" data-testid="sim-rounding">{{ euro(sim.rounding.value) }}</span></div>
-              <div class="flex justify-between text-xl font-medium"><span>{{ t('common.total') }}</span><span class="tabular-nums" data-testid="sim-total">{{ euro(sim.total.value + sim.rounding.value) }}</span></div>
+              <div v-if="sim.rounding.value" class="flex justify-between text-sm text-muted-foreground"><span>{{ t('common.rounding') }}</span><span class="tabular-nums" data-testid="sim-rounding">{{ money(sim.rounding.value) }}</span></div>
+              <div class="flex justify-between text-xl font-medium"><span>{{ t('common.total') }}</span><span class="tabular-nums" data-testid="sim-total">{{ money(sim.total.value + sim.rounding.value) }}</span></div>
             </div>
             <div class="space-y-2">
               <div class="flex gap-2">
@@ -115,6 +124,21 @@ async function copyLink() {
           </div>
         </template>
         <p v-else class="my-auto px-6 py-24 text-center text-muted-foreground" data-testid="sim-qr-placeholder">{{ t('sim.qrPlaceholder') }}</p>
+      </Card>
+
+      <Card v-if="sim.fiscal.value" class="lg:col-start-2" data-testid="sim-fiscal">
+        <CardHeader>
+          <CardTitle class="text-base">{{ t('fiscal.title') }}</CardTitle>
+          <CardDescription>{{ sim.fiscal.value.system }} · {{ sim.fiscal.value.authority }}</CardDescription>
+        </CardHeader>
+        <CardContent class="space-y-3 text-sm">
+          <p class="text-muted-foreground">{{ sim.fiscal.value.how }}</p>
+          <dl v-if="sim.current.value && fiscalRows.length" class="space-y-1 rounded-md border p-3" data-testid="sim-fiscal-data">
+            <div v-for="r in fiscalRows" :key="r.key" class="flex justify-between gap-4"><dt class="shrink-0 text-muted-foreground">{{ r.label }}</dt><dd class="min-w-0 break-all text-right font-mono text-xs">{{ r.value }}</dd></div>
+          </dl>
+          <p v-else class="text-muted-foreground" data-testid="sim-fiscal-pending">{{ t('fiscal.waiting') }}</p>
+          <Badge variant="warning">{{ t('fiscal.sandbox') }}</Badge>
+        </CardContent>
       </Card>
     </div>
   </div>

@@ -12,12 +12,18 @@ export const RECEIPT_STATES = ['open', 'presented', 'paid', 'fiscalised', 'void'
 export const receiptState = z.enum(RECEIPT_STATES);
 export type ReceiptState = z.infer<typeof receiptState>;
 
+/** The Dutch rates. Other countries have their own (`@lr/compliance` formats): the schema takes any rate, `validateCrf` checks it against the country. */
 export const VAT_RATES = [21, 9, 0] as const;
 export const KVK_RE = /^\d{8}$/;
 export const BTW_ID_RE = /^NL\d{9}B\d{2}$/;
 export const MAX_DESCRIPTION = 80;
 
 const cents = z.number().int().min(-100_000_000).max(100_000_000);
+
+/** A VAT rate in percent with at most two decimals (5.5, 8.1, 25.5). Which rates exist is a per-country question. */
+export const vatRateNumber = z.number().min(0).max(40).refine((v) => Math.round(v * 100) / 100 === v, 'at most two decimals');
+/** ISO 4217 code. Which one is right is a per-country question. */
+export const currencyCode = z.string().regex(/^[A-Z]{3}$/);
 
 export const crfLine = z
   .object({
@@ -28,7 +34,7 @@ export const crfLine = z
     /** decimal string, at most 3 decimals; negative for returns */
     qty: z.string().regex(/^-?\d{1,7}(\.\d{1,3})?$/),
     unitPrice: cents,
-    vatRate: z.union([z.literal(21), z.literal(9), z.literal(0), z.null()]),
+    vatRate: vatRateNumber.nullable(),
     discount: cents,
     total: cents,
     category: z.string().max(40).nullable(),
@@ -38,7 +44,7 @@ export type CrfLine = z.infer<typeof crfLine>;
 
 export const crfVatRow = z
   .object({
-    rate: z.union([z.literal(21), z.literal(9), z.literal(0)]),
+    rate: vatRateNumber,
     gross: cents,
     net: cents,
     vat: cents,
@@ -48,8 +54,9 @@ export type CrfVatRow = z.infer<typeof crfVatRow>;
 
 export const crfMerchant = z
   .object({
-    kvkNumber: z.string().regex(KVK_RE),
-    vatNumber: z.string().regex(BTW_ID_RE).nullable(),
+    /** company registry number of the organisation's country (KvK in NL, SIRET in FR, ...): the name is historical. Its format is checked per country by `validateCrf`. */
+    kvkNumber: z.string().min(1).max(40),
+    vatNumber: z.string().min(4).max(20).nullable(),
     name: z.string().min(1).max(120),
     locationId: uuidString,
     terminalId: uuidString,
@@ -62,7 +69,8 @@ export const crfTotals = z
     net: cents,
     vat: cents,
     tip: cents.min(0),
-    rounding: z.number().int().min(-2).max(2),
+    /** cash rounding in minor units; the allowed range depends on the country's rounding step (`validateCrf`) */
+    rounding: z.number().int().min(-250).max(250),
   })
   .strict();
 
@@ -75,7 +83,8 @@ export const crfFiscal = z
     country: z.string().length(2),
     registerSerial: z.string().max(60).nullable(),
     documentNumber: z.string().max(60).nullable(),
-    extra: z.record(z.string(), z.string().max(80)).refine((o) => Object.keys(o).length <= 10),
+    /** what the country's fiscal system added (TSE signature, document number, QR payload, ...); the keys come from `@lr/fiscal` */
+    extra: z.record(z.string(), z.string().max(200)).refine((o) => Object.keys(o).length <= 12),
   })
   .strict();
 
@@ -87,9 +96,9 @@ export const crf = z
     state: receiptState,
     merchant: crfMerchant,
     createdAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/),
-    currency: z.literal('EUR'),
+    currency: currencyCode,
     lines: z.array(crfLine).max(500),
-    vatSummary: z.array(crfVatRow).max(3),
+    vatSummary: z.array(crfVatRow).max(8),
     totals: crfTotals,
     payments: z.array(crfPayment).max(10),
     fiscal: crfFiscal,

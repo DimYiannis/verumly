@@ -155,7 +155,8 @@ export const balanceRow = z.object({
   /** cents I still owe this friend */
   iOwe: z.number().int(),
 });
-export const balances = z.object({ friends: z.array(balanceRow), totalOwedToMe: z.number().int(), totalIOwe: z.number().int() });
+/** `currency`: only splits in this currency are counted (the person's main currency) */
+export const balances = z.object({ currency: z.string(), friends: z.array(balanceRow), totalOwedToMe: z.number().int(), totalIOwe: z.number().int() });
 export type Balances = z.infer<typeof balances>;
 
 // ---------------------------------------------------------------- home summary and activity feed
@@ -166,6 +167,7 @@ export const homeSummary = z.object({
   month: z.string(),
   dayOfMonth: z.number().int(),
   daysInMonth: z.number().int(),
+  /** the currency of `total`, `previousToDate` and `daily`: the person's main currency */
   currency: z.string(),
   total: z.number().int(),
   receipts: z.number().int(),
@@ -180,6 +182,7 @@ export const homeSummary = z.object({
       total: z.number().int(),
       createdAt: z.string(),
       state: z.string(),
+      currency: z.string(),
       /** people on a split of this receipt, besides me */
       splitWith: z.array(z.string()),
       itemCount: z.number().int(),

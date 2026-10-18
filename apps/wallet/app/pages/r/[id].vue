@@ -248,6 +248,7 @@ onBeforeUnmount(() => clearTimeout(pollTimer));
         v-if="sheetOpen"
         :merchant="view.preview.merchantName"
         :total="view.preview.total"
+        :currency="view.preview.currency"
         :time="view.preview.createdAt"
         :busy="busy"
         :error="claimError"
