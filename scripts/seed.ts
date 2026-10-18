@@ -30,7 +30,7 @@ import { runningApps } from './lib/running-apps.ts';
  */
 
 export const SEED = {
-  orgName: 'Café Het Plein',
+  orgName: 'Café Het Plein B.V.',
   kvk: '12345678',
   vat: 'NL123456789B01',
   postcode: '1011AB',
@@ -169,7 +169,7 @@ export async function runSeed(opts: SeedOptions): Promise<SeedResult> {
   const planned: PlannedReceipt[] = [];
   try {
     const db = admin.db;
-    const org = await ensureOrg(db, { legalName: 'Café Het Plein B.V.', kvk: SEED.kvk, vat: SEED.vat });
+    const org = await ensureOrg(db, { legalName: SEED.orgName, kvk: SEED.kvk, vat: SEED.vat });
     const location = await ensureLocation(db, org.id, SEED.orgName, SEED.postcode);
 
     // terminals: the API key is shown once, so keep what we created in a git-ignored file for later runs

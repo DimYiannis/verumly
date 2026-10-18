@@ -72,6 +72,6 @@ export const receipts2En: Record<keyof typeof receipts2Nl, string> = {
 
   // invite
   'rcpt.invite.joinTitle': 'Join with a code',
-  'rcpt.invite.joinHint': 'Scan a QR code or read an NFC tag from a friend',
+  'rcpt.invite.joinHint': 'Scan the QR code at the till or from a friend',
   'rcpt.invite.scan': 'Scan',
 };
