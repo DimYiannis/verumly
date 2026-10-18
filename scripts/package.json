@@ -1,0 +1,30 @@
+{
+  "name": "@lr/scripts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@lr/billing": "workspace:*",
+    "@lr/compliance": "workspace:*",
+    "@lr/config": "workspace:*",
+    "@lr/crypto": "workspace:*",
+    "@lr/dashboard-core": "workspace:*",
+    "@lr/db": "workspace:*",
+    "@lr/fiscal": "workspace:*",
+    "@lr/receipt-nl": "workspace:*",
+    "@lr/schema": "workspace:*",
+    "@lr/storage": "workspace:*",
+    "@lr/terminal-sdk": "workspace:*",
+    "@playwright/test": "1.63.0",
+    "drizzle-orm": "^0.45.4",
+    "fastify": "^5.0.0",
+    "pg": "^8.13.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.0"
+  }
+}
