@@ -22,6 +22,8 @@ const busy = ref(false);
 const matchDeclined = ref(false);
 const photoUrl = ref<string | null>(null);
 const photoFailed = ref(false);
+/** a PDF upload is offered as a link: phones do not show a PDF inside a page */
+const photoIsPdf = ref(false);
 const confirmingDelete = ref(false);
 let photoRequested = false;
 let stopped = false;
@@ -53,7 +55,9 @@ function fillForm(u: UploadStatus) {
 
 async function loadPhoto() {
   try {
-    photoUrl.value = URL.createObjectURL(await wallet.api.uploadPhoto(id));
+    const blob = await wallet.api.uploadPhoto(id);
+    photoIsPdf.value = blob.type === 'application/pdf';
+    photoUrl.value = URL.createObjectURL(blob);
   } catch {
     photoFailed.value = true;
   }
@@ -433,7 +437,8 @@ onBeforeUnmount(() => {
 
     <section v-if="upload && upload.status !== 'pending_upload'" class="space-y-2" data-testid="upload-photo-section">
       <h2 class="text-label text-text-secondary">{{ t('uploadPage.photo') }}</h2>
-      <img v-if="photoUrl" :src="photoUrl" :alt="t('uploadPage.photoAlt')" class="max-h-[32rem] w-full rounded-xl border border-border bg-card object-contain" data-testid="upload-photo" />
+      <a v-if="photoUrl && photoIsPdf" :href="photoUrl" target="_blank" rel="noopener" class="flex min-h-11 items-center justify-center rounded-xl border border-border bg-card p-4 font-medium" data-testid="upload-pdf-link">{{ t('uploadPage.openPdf') }}</a>
+      <img v-else-if="photoUrl" :src="photoUrl" :alt="t('uploadPage.photoAlt')" class="max-h-[32rem] w-full rounded-xl border border-border bg-card object-contain" data-testid="upload-photo" />
       <p v-else-if="photoFailed" class="text-sm text-text-secondary" data-testid="upload-photo-failed">{{ t('uploadPage.photoFailed') }}</p>
       <Skeleton v-else class="h-48 w-full" />
     </section>

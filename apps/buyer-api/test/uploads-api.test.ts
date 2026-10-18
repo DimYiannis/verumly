@@ -46,9 +46,11 @@ describe('upload endpoints: validation and guards', () => {
     expect((await post({ contentType: 'image/jpeg', size: 5 })).status).toBe(201);
   });
 
-  it('PDF and HEIC are refused: only JPEG, PNG and WEBP are accepted, and no upload row is created', async () => {
+  it('PDF is accepted; HEIC and other types are refused, and no upload row is created for them', async () => {
     const u = await loginUser(w);
-    for (const contentType of ['application/pdf', 'image/heic', 'image/heif', 'image/gif', 'text/html']) {
+    expect((await buyerCall(w, 'POST', '/v1/me/uploads', { token: u.token, body: { contentType: 'application/pdf', size: 5 } })).status).toBe(201);
+    await sql(w, 'delete from buyer.uploads where user_id = $1', [u.userId]);
+    for (const contentType of ['image/heic', 'image/heif', 'image/gif', 'text/html']) {
       const res = await buyerCall(w, 'POST', '/v1/me/uploads', { token: u.token, body: { contentType, size: 5 } });
       expect(res.status, contentType).toBe(400);
     }

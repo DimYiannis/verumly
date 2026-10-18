@@ -20,13 +20,16 @@
     "@lr/receipt-nl": "workspace:*",
     "@lr/schema": "workspace:*",
     "@lr/storage": "workspace:*",
+    "@napi-rs/canvas": "1.0.10",
     "drizzle-orm": "^0.45.4",
+    "unpdf": "1.8.1",
     "web-push": "^3.6.7",
     "zod": "^4.0.0"
   },
   "devDependencies": {
     "@lr/buyer-api": "workspace:*",
     "@lr/merchant-api": "workspace:*",
+    "@lr/receipt-pdf": "workspace:*",
     "@lr/terminal-sdk": "workspace:*",
     "@types/web-push": "^3.6.4"
   }

@@ -11,6 +11,8 @@
     "@lr/crypto": "workspace:*",
     "@lr/dashboard-core": "workspace:*",
     "@lr/db": "workspace:*",
+    "@lr/receipt-pdf": "workspace:*",
+    "@lr/schema": "workspace:*",
     "@lr/storage": "workspace:*",
     "@lr/terminal-sdk": "workspace:*",
     "@playwright/test": "1.63.0",

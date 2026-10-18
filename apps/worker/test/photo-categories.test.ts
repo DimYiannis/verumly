@@ -164,9 +164,9 @@ describe('photo receipts: stored categories, VAT per rate, user edits, delete', 
     expect(await sql(ww.w, 'select 1 from buyer.uploads where id = $1', [uploadId])).toHaveLength(1);
   });
 
-  it('PDF and HEIC uploads are refused before anything is stored', async () => {
+  it('HEIC uploads are refused before anything is stored (PDF is accepted)', async () => {
     const who = await loginUser(ww.w);
-    for (const contentType of ['application/pdf', 'image/heic']) {
+    for (const contentType of ['image/heic']) {
       expect((await buyerCall(ww.w, 'POST', '/v1/me/uploads', { token: who.token, body: { contentType, size: 1000 } })).status, contentType).toBe(400);
     }
     expect(await sql(ww.w, 'select 1 from buyer.uploads where user_id = $1', [who.userId])).toHaveLength(0);

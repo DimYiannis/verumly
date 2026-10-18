@@ -10,3 +10,4 @@ export * from './time.ts';
 export * from './qianfan.ts';
 export * from './parse.ts';
 export * from './corpus.ts';
+export * from './pdf-text.ts';
