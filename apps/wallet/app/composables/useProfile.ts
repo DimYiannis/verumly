@@ -10,13 +10,21 @@ export function useProfile() {
     if (!wallet.session.value) return;
     if (asked.value && !force) return;
     asked.value = true;
-    const key = `profile:${wallet.session.value.userId}`;
+    const key = profileCacheKey(wallet.session.value);
+    let fresh: Profile;
     try {
-      profile.value = await wallet.api.getProfile();
-      await wallet.kv.set(key, profile.value);
+      fresh = await wallet.api.getProfile();
     } catch {
       asked.value = false; // offline or failed: try again next time
       profile.value ??= (await wallet.kv.get(key, profileSchema)) ?? null;
+      return;
+    }
+    profile.value = fresh;
+    // cache the plain parsed object: `profile.value` is a reactive Proxy, which IndexedDB cannot structured-clone
+    try {
+      await wallet.kv.set(key, fresh);
+    } catch {
+      // the cache is best effort; the profile itself is already showing
     }
   }
 
@@ -29,5 +37,11 @@ export function useProfile() {
     return email.split('@')[0] ?? '';
   });
 
-  return { profile, name, load };
+  /** Forget the in-memory profile (after logout/delete) so the header drops the old name at once. */
+  function reset() {
+    profile.value = null;
+    asked.value = false;
+  }
+
+  return { profile, name, load, reset };
 }
