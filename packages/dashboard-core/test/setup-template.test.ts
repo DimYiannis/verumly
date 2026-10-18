@@ -14,7 +14,8 @@ beforeAll(async () => {
 });
 afterAll(() => f.close());
 
-const base = { legalName: 'Café Test GmbH', retentionYears: 8, vatNumber: 'DE123456789' };
+// VAT ids are unique per organisation: this must differ from the ids the helper orgs are seeded with (helpers.ts).
+const base = { legalName: 'Café Test GmbH', retentionYears: 8, vatNumber: 'DE987654321' };
 
 describe('business setup per country', () => {
   it('stores the declared country, registry number and its legal settings', async () => {
@@ -37,7 +38,7 @@ describe('business setup per country', () => {
 
   it('rejects an unknown country and a VAT id of another country', async () => {
     await expect(updateOrganization(f.dash.db, owner, { ...base, country: 'XX', kvkNumber: '1' })).rejects.toMatchObject({ code: 'validation' });
-    await expect(updateOrganization(f.dash.db, owner, { ...base, country: 'NL', kvkNumber: '12345678', vatNumber: 'DE123456789' })).rejects.toMatchObject({ code: 'validation' });
+    await expect(updateOrganization(f.dash.db, owner, { ...base, country: 'NL', kvkNumber: '12345678', vatNumber: 'DE987654321' })).rejects.toMatchObject({ code: 'validation' });
   });
 
   it('drops values that are not settings of the country', async () => {
