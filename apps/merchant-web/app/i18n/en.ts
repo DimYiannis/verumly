@@ -248,7 +248,7 @@ export const en = {
   'fiscal.waiting': 'Once the sale is issued, the receipt goes through this system and its fiscal data shows here.',
   'fiscal.sandbox': 'Sandbox: nothing is sent to the authority',
   'fiscal.mode': 'Mode',
-  'sim.qrPlaceholder': 'Add items, then present or pay. The QR code appears here.',
+  'sim.qrPlaceholder': 'Add items, then issue the receipt. The QR code appears here.',
   'sim.errLogin': 'Log in to the dashboard first, then set up the demo terminal.',
   'sim.errLocation': 'Create a location first.',
   'sim.errFailed': 'failed',

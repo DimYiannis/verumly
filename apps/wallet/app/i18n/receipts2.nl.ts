@@ -7,7 +7,7 @@ export const receipts2Nl = {
   'rcpt.list.chipAll': 'Alles',
   'rcpt.list.chipPaid': 'Betaald',
   'rcpt.list.chipShared': 'Gedeeld',
-  'rcpt.list.chipCancelled': 'Vervallen',
+  'rcpt.list.chipCancelled': 'Geannuleerd',
   'rcpt.list.sharedWith': 'gedeeld met {names}',
   'rcpt.list.from': 'van {name}',
   'rcpt.list.noShared': 'Geen gedeelde bonnen gevonden.',
@@ -70,6 +70,6 @@ export const receipts2Nl = {
 
   // invite
   'rcpt.invite.joinTitle': 'Aansluiten met een code',
-  'rcpt.invite.joinHint': 'Scan de QR of lees de NFC-tag van een vriend',
+  'rcpt.invite.joinHint': 'Scan de QR-code bij de kassa of van een vriend',
   'rcpt.invite.scan': 'Scan',
 } as const satisfies Record<string, string>;
