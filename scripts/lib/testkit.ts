@@ -3,9 +3,11 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { FastifyInstance } from 'fastify';
 import pg from 'pg';
 import { adminDbUrl } from '@lr/config';
+import { getFormat } from '@lr/compliance/formats';
 import { generateSecret, hashSecret, newReceiptId, signBytes, signPayload } from '@lr/crypto';
 import { connect, tables, type Db, type DbHandle, type PgBoss } from '@lr/db';
 import { createTestDb, type TestDb } from '@lr/db/testing';
+import { requiredFiscalKeys } from '@lr/fiscal/specs';
 import { createLocation, createOrg, createTerminal, revokeTerminal, type ProvisionedTerminal } from '@lr/db/provision';
 import { deriveVatSummary, lineTotal } from '@lr/receipt-nl';
 import type { Crf, CrfLine } from '@lr/schema';
@@ -94,9 +96,16 @@ export async function createWorld(opts: WorldOptions = {}): Promise<World> {
 
   const addOrg: World['addOrg'] = async (o = {}) => {
     const n = ++orgCounter * 7919 + Math.floor(Math.random() * 1000) * 100_003;
-    const kvk = String(10_000_000 + (n % 80_000_000)).padStart(8, '0');
-    const vat = `NL${String(100_000_000 + (n % 800_000_000))}B01`;
     const country = o.country ?? 'NL';
+    // ids in the format of the country (NL, DE, FR, GB); other countries get NL-like numbers, which their patterns (or the lack of one) accept
+    const eight = String(10_000_000 + (n % 80_000_000));
+    const nine = String(100_000_000 + (n % 800_000_000));
+    const ids: Record<string, { kvk: string; vat: string }> = {
+      DE: { kvk: String(1_000_000_000 + (n % 8_000_000_000)), vat: `DE${nine}` },
+      FR: { kvk: String(10_000_000_000_000 + (n % 80_000_000_000_000)), vat: `FR12${nine}` },
+      GB: { kvk: `AB${String(100_000 + (n % 800_000))}`, vat: `GB${nine}` },
+    };
+    const { kvk, vat } = ids[country] ?? { kvk: eight, vat: `NL${nine}B01` };
     const org = await createOrg(adminDb, { legalName: `Org ${kvk}`, kvkNumber: kvk, vatNumber: vat, country });
     const loc = await createLocation(adminDb, org.id, `Location ${kvk}`);
     const terminal = await createTerminal(adminDb, { orgId: org.id, locationId: loc.id, label: `T ${kvk}` });
@@ -164,7 +173,7 @@ export interface LineSpec {
   description?: string;
   qty?: string;
   unitPrice: number;
-  vatRate: 21 | 9 | 0 | null;
+  vatRate: number | null;
   kind?: CrfLine['kind'];
   discount?: number;
 }
@@ -184,7 +193,10 @@ export interface CrfSpec {
 
 /** A valid CRF built by hand (not through the SDK) so tests can produce transitions the SDK refuses to sign. */
 export function buildCrf(spec: CrfSpec): Crf {
-  const lines: CrfLine[] = (spec.lines ?? [COFFEE_LINE]).map((l, i) => {
+  const format = getFormat(spec.org.country) ?? getFormat('NL')!;
+  // the default line is a coffee at the country's reduced rate (9% in NL)
+  const coffee: LineSpec = { ...COFFEE_LINE, vatRate: format.vatRates[1] ?? format.vatRates[0]! };
+  const lines: CrfLine[] = (spec.lines ?? [coffee]).map((l, i) => {
     const qty = l.qty ?? '1';
     const discount = l.discount ?? 0;
     return {
@@ -216,12 +228,18 @@ export function buildCrf(spec: CrfSpec): Crf {
       terminalId: spec.org.terminal.terminalId,
     },
     createdAt: spec.createdAt ?? new Date().toISOString(),
-    currency: 'EUR',
+    currency: format.currency,
     lines,
     vatSummary,
     totals: { gross, net: vatSummary.reduce((s, v) => s + v.net, 0), vat: vatSummary.reduce((s, v) => s + v.vat, 0), tip: 0, rounding: 0 },
     payments: spec.payments ?? (settled ? [{ method: 'card', amount: gross }] : []),
-    fiscal: { country: spec.org.country, registerSerial: null, documentNumber: null, extra: {} },
+    fiscal: {
+      country: spec.org.country,
+      registerSerial: null,
+      documentNumber: null,
+      // a fiscalised receipt carries the fields of its country's fiscal system
+      extra: spec.state === 'fiscalised' ? Object.fromEntries(requiredFiscalKeys(spec.org.country).map((k) => [k, '1'])) : {},
+    },
     voidOf: spec.voidOf ?? null,
   };
 }

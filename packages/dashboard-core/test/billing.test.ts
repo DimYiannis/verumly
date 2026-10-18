@@ -48,7 +48,7 @@ async function freshOwner(): Promise<Actor> {
   const kvk = String(++kvkSeq);
   const org = await createOrg(f.admin, { legalName: `Billing ${kvk} B.V.`, kvkNumber: kvk });
   const loc = await provisionLocation(f.admin, org.id, 'Hoofdvestiging');
-  f.orgs.push({ id: org.id, locationId: loc.id, kvk });
+  f.orgs.push({ id: org.id, locationId: loc.id, kvk, country: 'NL' });
   return (await userWithRole(f, f.orgs.length - 1, 'owner')).actor;
 }
 

@@ -3,7 +3,7 @@ import { Check, ChevronLeft, Plus, X } from '@lucide/vue';
 import type { MessageKey } from '~/i18n';
 import type { Profile } from '~/utils/api-schemas';
 import { MAX_SPLIT_PARTICIPANTS, type PublicUser, type ReceiptDetail } from '~/utils/api-schemas';
-import { formatEuro } from '~/utils/format';
+import { formatMoney } from '~/utils/format';
 import { errorKey, isOffline, userName } from '~/utils/social';
 import { parseEuroInput, previewShares, type SplitMode } from '~/utils/split';
 import { ApiError } from '~/utils/api';
@@ -186,7 +186,7 @@ const modes: { value: SplitMode; label: MessageKey }[] = [
             <p class="text-xs text-text-secondary">{{ t('split.payable') }}</p>
           </div>
         </div>
-        <p class="font-mono text-xl font-semibold tabular-nums" data-testid="split-payable">{{ formatEuro(payable, locale) }}</p>
+        <p class="font-mono text-xl font-semibold tabular-nums" data-testid="split-payable">{{ formatMoney(payable, locale, detail.receipt.currency) }}</p>
       </section>
 
       <!-- participants -->
@@ -259,7 +259,7 @@ const modes: { value: SplitMode; label: MessageKey }[] = [
             <li v-for="line in detail.receipt.lines" :key="line.lineNo" class="space-y-2 border-t border-border pt-3 first:border-t-0 first:pt-0" :data-testid="`split-line-${line.lineNo}`">
               <div class="flex justify-between gap-3 text-sm">
                 <span class="min-w-0 break-words font-medium">{{ line.description }}</span>
-                <span class="font-mono tabular-nums">{{ formatEuro(line.total, locale) }}</span>
+                <span class="font-mono tabular-nums">{{ formatMoney(line.total, locale, detail.receipt.currency) }}</span>
               </div>
               <div class="flex flex-wrap gap-1.5">
                 <button
@@ -292,7 +292,7 @@ const modes: { value: SplitMode; label: MessageKey }[] = [
             role="status"
             class="text-sm text-warning"
             data-testid="split-custom-diff"
-          >{{ preview.customDiff > 0 ? t('split.customOver', { amount: formatEuro(preview.customDiff, locale) }) : t('split.customUnder', { amount: formatEuro(-preview.customDiff, locale) }) }}</p>
+          >{{ preview.customDiff > 0 ? t('split.customOver', { amount: formatMoney(preview.customDiff, locale, detail.receipt.currency) }) : t('split.customUnder', { amount: formatMoney(-preview.customDiff, locale, detail.receipt.currency) }) }}</p>
         </div>
       </section>
 
@@ -304,11 +304,11 @@ const modes: { value: SplitMode; label: MessageKey }[] = [
           <div v-for="p in people" :key="p.who" class="flex items-center gap-3" :data-testid="`split-preview-${p.who}`">
             <PersonAvatar :user="p.who === 'me' ? myProfile : null" :name="p.label" :me="p.who === 'me'" size="sm" />
             <span class="flex-1 text-[15px]">{{ p.label }}</span>
-            <span class="font-mono text-[15px] font-semibold tabular-nums">{{ formatEuro(preview.shares[p.who] ?? 0, locale) }}</span>
+            <span class="font-mono text-[15px] font-semibold tabular-nums">{{ formatMoney(preview.shares[p.who] ?? 0, locale, detail.receipt.currency) }}</span>
           </div>
           <div class="flex justify-between border-t border-border pt-3 text-[13px] text-text-secondary">
             <span>{{ t('split.detail.total') }}</span>
-            <span class="font-mono tabular-nums">{{ formatEuro(payable, locale) }}</span>
+            <span class="font-mono tabular-nums">{{ formatMoney(payable, locale, detail.receipt.currency) }}</span>
           </div>
         </template>
         <p class="text-xs text-text-secondary">{{ t('split.tipNote') }}</p>

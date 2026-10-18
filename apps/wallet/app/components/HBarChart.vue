@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { formatEuro } from '~/utils/format';
+import { formatMoney } from '~/utils/format';
 
 const { locale } = useLocale();
 
-/** Ranked rows: merchant logo, name, a thin bar and the amount. Values are euro cents. */
-const props = defineProps<{ title: string; items: { label: string; value: number; note?: string }[]; testid?: string }>();
+/** Ranked rows: merchant logo, name, a thin bar and the amount. Values are minor units (cents) of `currency`. */
+const props = defineProps<{ title: string; items: { label: string; value: number; note?: string }[]; currency?: string; testid?: string }>();
 
 const max = computed(() => Math.max(1, ...props.items.map((i) => i.value)));
 const rows = computed(() => props.items.map((item) => ({ ...item, pct: Math.max(2, Math.round((100 * Math.max(0, item.value)) / max.value)) })));
@@ -20,7 +20,7 @@ const rows = computed(() => props.items.map((item) => ({ ...item, pct: Math.max(
           <span class="block truncate font-medium">{{ r.label }}</span>
           <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><i class="block h-full rounded-full bg-primary" :style="{ width: `${r.pct}%` }" data-testid="bar" /></div>
         </div>
-        <span class="font-mono text-sm">{{ formatEuro(r.value, locale) }}</span>
+        <span class="font-mono text-sm">{{ formatMoney(r.value, locale, currency) }}</span>
       </li>
     </ul>
   </figure>

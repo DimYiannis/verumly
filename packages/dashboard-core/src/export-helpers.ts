@@ -52,16 +52,16 @@ export async function receiptsForExport(db: Db, orgId: string, from: string, to:
              (v.payload->'totals'->>'vat')::bigint as vat,
              (v.payload->'totals'->>'tip')::bigint as tip,
              (v.payload->'totals'->>'rounding')::bigint as rounding,
-             coalesce((select sum((e->>'gross')::bigint) from jsonb_array_elements(v.payload->'vatSummary') e where (e->>'rate')::int = 21), 0) as gross_21,
-             coalesce((select sum((e->>'vat')::bigint) from jsonb_array_elements(v.payload->'vatSummary') e where (e->>'rate')::int = 21), 0) as vat_21,
-             coalesce((select sum((e->>'gross')::bigint) from jsonb_array_elements(v.payload->'vatSummary') e where (e->>'rate')::int = 9), 0) as gross_9,
-             coalesce((select sum((e->>'vat')::bigint) from jsonb_array_elements(v.payload->'vatSummary') e where (e->>'rate')::int = 9), 0) as vat_9,
-             coalesce((select sum((e->>'gross')::bigint) from jsonb_array_elements(v.payload->'vatSummary') e where (e->>'rate')::int = 0), 0) as gross_0,
+             coalesce((select sum((e->>'gross')::bigint) from jsonb_array_elements(v.payload->'vatSummary') e where (e->>'rate')::numeric = 21), 0) as gross_21,
+             coalesce((select sum((e->>'vat')::bigint) from jsonb_array_elements(v.payload->'vatSummary') e where (e->>'rate')::numeric = 21), 0) as vat_21,
+             coalesce((select sum((e->>'gross')::bigint) from jsonb_array_elements(v.payload->'vatSummary') e where (e->>'rate')::numeric = 9), 0) as gross_9,
+             coalesce((select sum((e->>'vat')::bigint) from jsonb_array_elements(v.payload->'vatSummary') e where (e->>'rate')::numeric = 9), 0) as vat_9,
+             coalesce((select sum((e->>'gross')::bigint) from jsonb_array_elements(v.payload->'vatSummary') e where (e->>'rate')::numeric = 0), 0) as gross_0,
              coalesce((select string_agg(distinct p->>'method', '+') from jsonb_array_elements(v.payload->'payments') p), '') as payment
       from merchant.receipts r
       join merchant.receipt_versions v on v.receipt_id = r.id and v.version = r.current_version
       join merchant.locations l on l.id = r.location_id
-      where r.state in ('paid', 'void')
+      where r.state in ('paid', 'fiscalised', 'void')
         and (v.created_on_terminal_at at time zone 'Europe/Amsterdam')::date between ${from}::date and ${to}::date
       order by v.created_on_terminal_at, r.id
     `);
@@ -96,12 +96,13 @@ export function salesCsv(rows: ExportReceiptRow[]): string {
 
 /**
  * Accountant CSV: VAT per day and per rate (`scope=day`), then the period total per rate (`scope=period`).
- * `net_cents` is the turnover excluding VAT that goes in VAT return box 1a (21%), 1b (9%) or 1e (0% / out of scope);
- * `vat_cents` is the VAT due on it. Amounts in euro cents.
+ * `net_cents` is the turnover excluding VAT that goes in VAT return box 1a (21%), 1b (9%) or 1e (0% / out of scope) of the
+ * Dutch return; the box is empty for other countries and rates. `vat_cents` is the VAT due on it. Amounts in minor units of the
+ * organisation's currency.
  */
 export function btwAccountantCsv(rows: VatDayRow[], from: string, to: string): string {
   const out = ['scope,period,vat_return_box,rate,gross_cents,net_cents,vat_cents,receipts'];
-  for (const r of rows) out.push(csvLine(['day', r.day, RUBRIEK[r.rate], r.rate, r.gross, r.net, r.vat, r.receipts]));
+  for (const r of rows) out.push(csvLine(['day', r.day, RUBRIEK[r.rate] ?? '', r.rate, r.gross, r.net, r.vat, r.receipts]));
   const totals: Record<number, VatDayRow> = {};
   for (const r of rows) {
     const t = (totals[r.rate] ??= { day: '', rate: r.rate, gross: 0, net: 0, vat: 0, receipts: 0 });
@@ -110,9 +111,8 @@ export function btwAccountantCsv(rows: VatDayRow[], from: string, to: string): s
     t.vat += r.vat;
     t.receipts += r.receipts;
   }
-  for (const rate of [21, 9, 0] as const) {
-    const t = totals[rate];
-    if (t) out.push(csvLine(['period', `${from}..${to}`, RUBRIEK[rate], rate, t.gross, t.net, t.vat, t.receipts]));
+  for (const t of Object.values(totals).sort((a, b) => b.rate - a.rate)) {
+    out.push(csvLine(['period', `${from}..${to}`, RUBRIEK[t.rate] ?? '', t.rate, t.gross, t.net, t.vat, t.receipts]));
   }
   return `${out.join('\n')}\n`;
 }

@@ -14,7 +14,9 @@
     "smoke": "node scripts/smoke.ts"
   },
   "dependencies": {
+    "@lr/compliance": "workspace:*",
     "@lr/config": "workspace:*",
+    "@lr/fiscal": "workspace:*",
     "@lr/schema": "workspace:*",
     "@lr/ui": "workspace:*",
     "@lucide/vue": "^1.57.0",

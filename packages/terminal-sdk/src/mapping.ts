@@ -1,13 +1,15 @@
+import { getFormat } from '@lr/compliance';
 import { MAX_DESCRIPTION } from '@lr/schema';
 
-export type VatRate = 21 | 9 | 0 | null;
+/** A VAT rate of the till's country (21, 9, 0 in NL; 19, 7, 0 in DE; 5.5 in FR; ...) or null for a deposit. `validateCrf` checks it against the country. */
+export type VatRate = number | null;
 
 export interface DraftLine {
   sku?: string | null;
   description: string;
   /** decimal; at most 3 decimals (weighed items). Negative for returns. */
   qty?: string | number;
-  /** euro cents, VAT included */
+  /** minor units (cents), VAT included */
   unitPrice: number;
   vatRate: VatRate;
   discount?: number;
@@ -70,13 +72,14 @@ const num = (v: unknown, name: string): number => {
  * Map an arbitrary POS sale object to a Draft. Whitelist only: unknown fields (customerName, loyaltyCard,
  * pan, email…) are never copied, so they can never reach a signed payload.
  */
-export function mapPosSale(sale: Record<string, unknown>): Draft {
+export function mapPosSale(sale: Record<string, unknown>, country = 'NL'): Draft {
+  const rates = getFormat(country)?.vatRates ?? [];
   const state = sale.state === 'open' || sale.state === 'paid' ? sale.state : 'presented';
   const rawLines = Array.isArray(sale.lines) ? sale.lines : [];
   const lines: DraftLine[] = rawLines.map((raw: unknown) => {
     const l = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
     const rate = l.vatRate;
-    if (rate !== 21 && rate !== 9 && rate !== 0 && rate !== null) throw new Error('vatRate must be 21, 9, 0 or null');
+    if (rate !== null && (typeof rate !== 'number' || !rates.includes(rate))) throw new Error(`vatRate must be ${rates.join(', ')} or null`);
     const kind = l.kind === 'discount' || l.kind === 'deposit' ? l.kind : 'item';
     return {
       sku: typeof l.sku === 'string' ? l.sku.slice(0, 40) : null,

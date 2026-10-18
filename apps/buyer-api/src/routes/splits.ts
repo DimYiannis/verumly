@@ -6,6 +6,7 @@ import { generateToken } from '@lr/crypto';
 import { tables, type Db } from '@lr/db';
 import { settleBody, splitCreateBody, uuidString } from '@lr/schema';
 import type { AppDeps } from '../context.ts';
+import { mainCurrency } from '../currency.ts';
 import { loadReceipt } from '../receipts.ts';
 import { areFriends, hasClaimed, publicUsers, userOrGhost } from '../social.ts';
 import { computeShares, payable, SplitError } from '../split-math.ts';
@@ -196,6 +197,7 @@ export function splitRoutes(deps: AppDeps) {
 
 /** Net open amounts between me and every other person, from unsettled shares of the splits we have in common. */
 export async function balances(db: Db, me: string) {
+  const currency = await mainCurrency(db, me);
   const owed = new Map<string, number>();
   const owe = new Map<string, number>();
   // others owe me: unsettled shares in splits I created
@@ -203,19 +205,20 @@ export async function balances(db: Db, me: string) {
     .select({ userId: tables.splitShares.userId, amount: tables.splitShares.amountMinor })
     .from(tables.splitShares)
     .innerJoin(tables.splits, eq(tables.splits.id, tables.splitShares.splitId))
-    .where(and(eq(tables.splits.creatorId, me), isNull(tables.splitShares.settledAt)));
+    .where(and(eq(tables.splits.creatorId, me), eq(tables.splits.currency, currency), isNull(tables.splitShares.settledAt)));
   for (const x of toMe) if (x.userId && x.userId !== me) owed.set(x.userId, (owed.get(x.userId) ?? 0) + x.amount);
   // I owe others: my unsettled shares in splits somebody else created
   const fromMe = await db
     .select({ creator: tables.splits.creatorId, amount: tables.splitShares.amountMinor })
     .from(tables.splitShares)
     .innerJoin(tables.splits, eq(tables.splits.id, tables.splitShares.splitId))
-    .where(and(eq(tables.splitShares.userId, me), isNull(tables.splitShares.settledAt)));
+    .where(and(eq(tables.splitShares.userId, me), eq(tables.splits.currency, currency), isNull(tables.splitShares.settledAt)));
   for (const x of fromMe) if (x.creator !== me) owe.set(x.creator, (owe.get(x.creator) ?? 0) + x.amount);
   const ids = [...new Set([...owed.keys(), ...owe.keys()])];
   const users = await publicUsers(db, ids);
   const friends = ids.map((id) => ({ user: userOrGhost(users, id), owesMe: owed.get(id) ?? 0, iOwe: owe.get(id) ?? 0 }));
   return {
+    currency,
     friends,
     totalOwedToMe: friends.reduce((a, f) => a + f.owesMe, 0),
     totalIOwe: friends.reduce((a, f) => a + f.iOwe, 0),

@@ -55,7 +55,7 @@ function toValues(a: Agg): ReportValues {
 /** The receipts of the period (latest version), already filtered. `local_ts` is the Amsterdam wall-clock time. */
 function baseCte(from: string, to: string, spec: Pick<ReportSpec, 'locationId' | 'terminalId' | 'payment' | 'weekday'>): SQL {
   const parts: SQL[] = [
-    sql`r.state in ('paid', 'void')`,
+    sql`r.state in ('paid', 'fiscalised', 'void')`,
     sql`(v.created_on_terminal_at at time zone ${TZ})::date between ${from}::date and ${to}::date`,
   ];
   if (spec.locationId) parts.push(sql`r.location_id = ${spec.locationId}::uuid`);
@@ -74,15 +74,15 @@ const itemsOf = sql`(select coalesce(sum((l->>'qty')::numeric), 0) from jsonb_ar
 
 /** Aggregates whose source is the receipt itself (totals of the signed receipt). */
 const receiptAggs = sql`
-  count(*) filter (where b.state = 'paid') as receipts,
-  coalesce(sum((b.payload->'totals'->>'gross')::bigint) filter (where b.state = 'paid'), 0) as gross,
-  coalesce(sum((b.payload->'totals'->>'net')::bigint) filter (where b.state = 'paid'), 0) as net,
-  coalesce(sum((b.payload->'totals'->>'vat')::bigint) filter (where b.state = 'paid'), 0) as vat,
-  coalesce(sum((b.payload->'totals'->>'tip')::bigint) filter (where b.state = 'paid'), 0) as tip,
-  coalesce(sum((b.payload->'totals'->>'rounding')::bigint) filter (where b.state = 'paid'), 0) as rounding,
+  count(*) filter (where b.state in ('paid', 'fiscalised')) as receipts,
+  coalesce(sum((b.payload->'totals'->>'gross')::bigint) filter (where b.state in ('paid', 'fiscalised')), 0) as gross,
+  coalesce(sum((b.payload->'totals'->>'net')::bigint) filter (where b.state in ('paid', 'fiscalised')), 0) as net,
+  coalesce(sum((b.payload->'totals'->>'vat')::bigint) filter (where b.state in ('paid', 'fiscalised')), 0) as vat,
+  coalesce(sum((b.payload->'totals'->>'tip')::bigint) filter (where b.state in ('paid', 'fiscalised')), 0) as tip,
+  coalesce(sum((b.payload->'totals'->>'rounding')::bigint) filter (where b.state in ('paid', 'fiscalised')), 0) as rounding,
   count(*) filter (where b.state = 'void') as cancelled,
   coalesce(sum((b.payload->'totals'->>'gross')::bigint) filter (where b.state = 'void'), 0) as cancelled_gross,
-  coalesce(sum(${itemsOf}) filter (where b.state = 'paid'), 0) as items`;
+  coalesce(sum(${itemsOf}) filter (where b.state in ('paid', 'fiscalised')), 0) as items`;
 
 async function totalsFor(tx: Pick<Db, 'execute'>, from: string, to: string, spec: ReportSpec): Promise<ReportValues> {
   const res = await tx.execute<Agg>(sql`
@@ -118,14 +118,14 @@ function groupQuery(spec: ReportSpec): SQL {
       select p->>'method' as key, null as label, count(distinct b.id) as receipts,
              coalesce(sum((p->>'amount')::bigint), 0) as gross, ${zero} as net, ${zero} as vat, ${zero} as tip, ${zero} as rounding,
              ${zero} as cancelled, ${zero} as cancelled_gross, ${zero} as items
-      from b cross join lateral jsonb_array_elements(b.payload->'payments') p where b.state = 'paid' group by 1`;
+      from b cross join lateral jsonb_array_elements(b.payload->'payments') p where b.state in ('paid', 'fiscalised') group by 1`;
   }
   if (g === 'vat_rate') {
     return sql`with b as (${base})
       select (row->>'rate') as key, null as label, count(distinct b.id) as receipts,
              coalesce(sum((row->>'gross')::bigint), 0) as gross, coalesce(sum((row->>'net')::bigint), 0) as net, coalesce(sum((row->>'vat')::bigint), 0) as vat,
              ${zero} as tip, ${zero} as rounding, ${zero} as cancelled, ${zero} as cancelled_gross, ${zero} as items
-      from b cross join lateral jsonb_array_elements(b.payload->'vatSummary') row where b.state = 'paid' group by 1`;
+      from b cross join lateral jsonb_array_elements(b.payload->'vatSummary') row where b.state in ('paid', 'fiscalised') group by 1`;
   }
   if (g === 'item') {
     return sql`with b as (${base})
@@ -133,14 +133,14 @@ function groupQuery(spec: ReportSpec): SQL {
              coalesce(sum((l->>'total')::bigint), 0) as gross, ${zero} as net, ${zero} as vat, ${zero} as tip, ${zero} as rounding,
              ${zero} as cancelled, ${zero} as cancelled_gross,
              coalesce(sum((l->>'qty')::numeric) filter (where l->>'kind' = 'item'), 0) as items
-      from b cross join lateral jsonb_array_elements(b.payload->'lines') l where b.state = 'paid' and l->>'kind' = 'item' group by 1`;
+      from b cross join lateral jsonb_array_elements(b.payload->'lines') l where b.state in ('paid', 'fiscalised') and l->>'kind' = 'item' group by 1`;
   }
   return sql`with b as (${base})
     select coalesce(l->>'category', 'uncategorised') as key, null as label, count(distinct b.id) as receipts,
            coalesce(sum((l->>'total')::bigint), 0) as gross, ${zero} as net, ${zero} as vat, ${zero} as tip, ${zero} as rounding,
            ${zero} as cancelled, ${zero} as cancelled_gross,
            coalesce(sum((l->>'qty')::numeric) filter (where l->>'kind' = 'item'), 0) as items
-    from b cross join lateral jsonb_array_elements(b.payload->'lines') l where b.state = 'paid' group by 1`;
+    from b cross join lateral jsonb_array_elements(b.payload->'lines') l where b.state in ('paid', 'fiscalised') group by 1`;
 }
 
 /** The period just before `from..to`, the same number of days long. */

@@ -3,7 +3,7 @@ import { ChevronRight, X } from '@lucide/vue';
 import type { MessageKey } from '~/i18n';
 import type { ActivityItem, Balances, FriendsResponse, Profile } from '~/utils/api-schemas';
 import { ACTIVITY_SENTENCE, activityTarget, sentenceParts } from '~/utils/activity';
-import { formatEuro } from '~/utils/format';
+import { formatMoney } from '~/utils/format';
 import { formatRelative } from '~/utils/relative-time';
 import { AVATARS, errorKey, handleHint, inviteLink, isOffline, userName } from '~/utils/social';
 
@@ -18,7 +18,7 @@ useHead({ title: () => t('social.title') });
 const status = ref<'loading' | 'ready' | 'offline' | 'error'>('loading');
 const profile = ref<Profile | null>(null);
 const friends = ref<FriendsResponse>({ friends: [], incoming: [], outgoing: [] });
-const balances = ref<Balances>({ friends: [], totalOwedToMe: 0, totalIOwe: 0 });
+const balances = ref<Balances>({ currency: 'EUR', friends: [], totalOwedToMe: 0, totalIOwe: 0 });
 const activity = ref<ActivityItem[]>([]);
 
 async function load() {
@@ -151,7 +151,7 @@ function toggleSelected(userId: string) {
   confirmRemove.value = null;
 }
 function signed(cents: number): string {
-  return `${cents > 0 ? '+' : '−'}${formatEuro(Math.abs(cents), locale.value)}`;
+  return `${cents > 0 ? '+' : '−'}${formatMoney(Math.abs(cents), locale.value, balances.value.currency)}`;
 }
 
 // ---- feed
@@ -162,16 +162,16 @@ function sentence(i: ActivityItem): ReturnType<typeof sentenceParts> {
   return sentenceParts(t(key), {
     name: who,
     merchant: i.merchantName ?? '',
-    amount: formatEuro(i.amountMinor ?? 0, locale.value),
+    amount: formatMoney(i.amountMinor ?? 0, locale.value, balances.value.currency),
     emoji: i.emoji ?? '',
   });
 }
 function detail(i: ActivityItem): string {
   const bits: string[] = [];
   if (i.merchantName && i.kind !== 'split_with_me' && i.kind !== 'split_created') bits.push(i.merchantName);
-  if (i.kind === 'share_received' && i.amountMinor !== null) bits.push(formatEuro(i.amountMinor, locale.value));
-  if (i.kind === 'split_created' && i.amountMinor !== null) bits.push(i.amountMinor > 0 ? t('rcpt.act.stillOpen', { amount: formatEuro(i.amountMinor, locale.value) }) : t('social.splits.settled'));
-  if (i.kind === 'split_with_me' && i.amountMinor !== null) bits.push(t('rcpt.act.yourShare', { amount: formatEuro(i.amountMinor, locale.value) }));
+  if (i.kind === 'share_received' && i.amountMinor !== null) bits.push(formatMoney(i.amountMinor, locale.value, balances.value.currency));
+  if (i.kind === 'split_created' && i.amountMinor !== null) bits.push(i.amountMinor > 0 ? t('rcpt.act.stillOpen', { amount: formatMoney(i.amountMinor, locale.value, balances.value.currency) }) : t('social.splits.settled'));
+  if (i.kind === 'split_with_me' && i.amountMinor !== null) bits.push(t('rcpt.act.yourShare', { amount: formatMoney(i.amountMinor, locale.value, balances.value.currency) }));
   bits.push(formatRelative(i.at, locale.value));
   return bits.join(' · ');
 }
@@ -267,7 +267,7 @@ function detail(i: ActivityItem): string {
                   class="font-mono text-xs tabular-nums"
                   :class="net(f.userId) > 0 ? 'text-success' : net(f.userId) < 0 ? 'text-danger' : 'text-text-secondary'"
                   data-testid="friend-balance"
-                >{{ net(f.userId) === 0 ? formatEuro(0, locale) : signed(net(f.userId)) }}</span>
+                >{{ net(f.userId) === 0 ? formatMoney(0, locale, balances.currency) : signed(net(f.userId)) }}</span>
               </button>
             </li>
           </ul>
@@ -279,8 +279,8 @@ function detail(i: ActivityItem): string {
                 <p v-if="selected.handle" class="truncate font-mono text-xs text-text-secondary">@{{ selected.handle }}</p>
               </div>
               <p class="text-right text-sm font-medium tabular-nums" :class="net(selected.userId) > 0 ? 'text-success' : net(selected.userId) < 0 ? 'text-danger' : 'text-text-secondary'">
-                <template v-if="net(selected.userId) > 0">{{ t('social.friends.owesYou', { amount: formatEuro(net(selected.userId), locale) }) }}</template>
-                <template v-else-if="net(selected.userId) < 0">{{ t('social.friends.youOwe', { amount: formatEuro(-net(selected.userId), locale) }) }}</template>
+                <template v-if="net(selected.userId) > 0">{{ t('social.friends.owesYou', { amount: formatMoney(net(selected.userId), locale, balances.currency) }) }}</template>
+                <template v-else-if="net(selected.userId) < 0">{{ t('social.friends.youOwe', { amount: formatMoney(-net(selected.userId), locale, balances.currency) }) }}</template>
                 <template v-else>{{ t('social.friends.even') }}</template>
               </p>
             </div>
@@ -298,11 +298,11 @@ function detail(i: ActivityItem): string {
           <div class="grid grid-cols-2 gap-2" :aria-label="t('social.balances.title')" role="group">
             <div class="rounded-[14px] border border-border bg-card p-3">
               <p class="text-xs text-text-secondary">{{ t('social.balances.owedToMe') }}</p>
-              <p data-testid="balance-total-owed" class="font-mono text-lg font-medium tabular-nums text-success">{{ formatEuro(balances.totalOwedToMe, locale) }}</p>
+              <p data-testid="balance-total-owed" class="font-mono text-lg font-medium tabular-nums text-success">{{ formatMoney(balances.totalOwedToMe, locale, balances.currency) }}</p>
             </div>
             <div class="rounded-[14px] border border-border bg-card p-3">
               <p class="text-xs text-text-secondary">{{ t('social.balances.iOwe') }}</p>
-              <p data-testid="balance-total-owe" class="font-mono text-lg font-medium tabular-nums" :class="balances.totalIOwe > 0 ? 'text-danger' : ''">{{ formatEuro(balances.totalIOwe, locale) }}</p>
+              <p data-testid="balance-total-owe" class="font-mono text-lg font-medium tabular-nums" :class="balances.totalIOwe > 0 ? 'text-danger' : ''">{{ formatMoney(balances.totalIOwe, locale, balances.currency) }}</p>
             </div>
           </div>
         </section>

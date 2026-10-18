@@ -50,6 +50,7 @@ export const en = {
 
   // statuses and roles
   'status.paid': 'issued',
+  'status.fiscalised': 'issued (fiscalised)',
   'status.active': 'active',
   'status.done': 'done',
   'status.ready': 'ready',
@@ -114,7 +115,7 @@ export const en = {
   'archive.description': 'Every receipt your terminals have signed, with all of its versions.',
   'archive.refresh': 'Refresh',
   'archive.searchPlaceholder': 'item or receipt id',
-  'archive.amount': 'Amount (€)',
+  'archive.amount': 'Amount',
   'archive.version': 'Version',
   'archive.empty': 'No receipts found.',
   'archive.previous': 'Previous',
@@ -236,6 +237,10 @@ export const en = {
   'sim.terminal': 'Terminal',
   'sim.forget': 'Forget terminal',
   'sim.scan': 'Scan to get your receipt',
+  'fiscal.title': 'State integration',
+  'fiscal.waiting': 'Once the sale is issued, the receipt goes through this system and its fiscal data shows here.',
+  'fiscal.sandbox': 'Sandbox: nothing is sent to the authority',
+  'fiscal.mode': 'Mode',
   'sim.qrPlaceholder': 'Add items, then present or pay. The QR code appears here.',
   'sim.errLogin': 'Log in to the dashboard first, then set up the demo terminal.',
   'sim.errLocation': 'Create a location first.',

@@ -12,6 +12,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@lr/compliance": "workspace:*",
+    "@lr/fiscal": "workspace:*",
     "@lr/schema": "workspace:*",
     "zod": "^4.0.0"
   }

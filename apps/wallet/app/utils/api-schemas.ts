@@ -48,6 +48,7 @@ export const vapidResponse = z.object({ publicKey: z.string().nullable() });
 export const pushSubscriptionResult = z.object({ id: z.string() });
 
 export const insights = z.object({
+  currency: z.string().default('EUR'),
   perMonth: z.array(z.object({ month: z.string(), total: z.number() })),
   perCategory: z.array(z.object({ category: z.string(), total: z.number() })),
   vatPerRate: z.array(z.object({ rate: z.number(), vat: z.number() })),

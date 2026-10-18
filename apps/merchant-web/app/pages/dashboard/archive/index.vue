@@ -91,7 +91,7 @@ function page(delta: number) {
               <TableCell>{{ r.locationName }}</TableCell>
               <TableCell><div class="flex items-center gap-2"><AppStatusBadge :status="r.state" data-testid="archive-state-cell" /><Badge v-if="isLate(r)" variant="warning" data-testid="archive-late">{{ t('ov.arch.late') }}</Badge></div></TableCell>
               <TableCell class="tabular-nums">v{{ r.currentVersion }}</TableCell>
-              <TableCell class="px-4 text-right tabular-nums" data-testid="archive-total">{{ euro(r.totalMinor) }}</TableCell>
+              <TableCell class="px-4 text-right tabular-nums" data-testid="archive-total">{{ money(r.totalMinor) }}</TableCell>
             </TableRow>
             <TableRow v-if="!rows.length && !loading" class="hover:bg-transparent"><TableCell colspan="5" class="h-[52px] text-center text-muted-foreground" data-testid="archive-empty">{{ t('archive.empty') }}</TableCell></TableRow>
           </TableBody>

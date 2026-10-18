@@ -16,11 +16,14 @@ function monthLabel(month: string): string {
   return (m && t('insights.months').split(',')[Number(m[1]) - 1]) || month;
 }
 
-/** Always the three Dutch rates, in this order, also when a rate has no VAT yet. */
-const VAT_RATES = [21, 9, 0] as const;
-const vatItems = computed(() =>
-  VAT_RATES.map((rate) => ({ label: t('insights.vatRate', { rate }), value: data.value?.vatPerRate.find((v) => v.rate === rate)?.vat ?? 0 })),
-);
+/** The three Dutch rates (also at zero), unless some VAT is at another rate: then the rates that have VAT, highest first. */
+const NL_RATES = [21, 9, 0];
+const vatItems = computed(() => {
+  const found = data.value?.vatPerRate ?? [];
+  const dutch = found.every((v) => NL_RATES.includes(v.rate));
+  const rates = dutch ? NL_RATES : found.map((v) => v.rate).sort((a, b) => b - a);
+  return rates.map((rate) => ({ label: t('insights.vatRate', { rate }), value: found.find((v) => v.rate === rate)?.vat ?? 0 }));
+});
 
 onMounted(async () => {
   try {
@@ -45,11 +48,11 @@ onMounted(async () => {
     <template v-else>
       <p v-if="data.perMonth.length === 0" class="rounded-xl border border-border bg-card p-4 text-text-secondary" data-testid="no-insights">{{ t('insights.empty') }}</p>
       <template v-else>
-        <DonutChart testid="chart-categories" :title="t('insights.perCategory')" :items="data.perCategory.map((c) => ({ label: tOr('category', c.category), value: c.total }))" />
-        <BarChart testid="chart-months" :title="t('insights.perMonth')" :items="data.perMonth.map((m) => ({ label: monthLabel(m.month), value: m.total }))" />
-        <HBarChart testid="chart-vat" :title="t('insights.vatPerRate')" :items="vatItems" />
+        <DonutChart :currency="data.currency" testid="chart-categories" :title="t('insights.perCategory')" :items="data.perCategory.map((c) => ({ label: tOr('category', c.category), value: c.total }))" />
+        <BarChart :currency="data.currency" testid="chart-months" :title="t('insights.perMonth')" :items="data.perMonth.map((m) => ({ label: monthLabel(m.month), value: m.total }))" />
+        <HBarChart :currency="data.currency" testid="chart-vat" :title="t('insights.vatPerRate')" :items="vatItems" />
         <p class="-mt-2 text-xs text-text-secondary">{{ t('insights.vatNote') }}</p>
-        <HBarChart testid="chart-merchants" :title="t('insights.topMerchants')" :items="data.topMerchants.map((m) => ({ label: m.merchantName, value: m.total }))" />
+        <HBarChart :currency="data.currency" testid="chart-merchants" :title="t('insights.topMerchants')" :items="data.topMerchants.map((m) => ({ label: m.merchantName, value: m.total }))" />
       </template>
     </template>
   </div>

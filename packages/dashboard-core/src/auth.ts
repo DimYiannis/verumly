@@ -184,9 +184,9 @@ export async function sessionStatus(deps: AuthDeps, token: string): Promise<Sess
 export async function currentUser(db: Db, actor: Actor) {
   return withOrg(db, actor.orgId, async (tx) => {
     const [u] = await tx.select({ id: tables.merchantUsers.id, email: tables.merchantUsers.email, role: tables.merchantUsers.role }).from(tables.merchantUsers).where(eq(tables.merchantUsers.id, actor.userId));
-    const [o] = await tx.select({ legalName: tables.organizations.legalName }).from(tables.organizations);
+    const [o] = await tx.select({ legalName: tables.organizations.legalName, country: tables.organizations.country }).from(tables.organizations);
     if (!u || !o) throw new DashboardError('not_found', 'user not found');
-    return { ...u, orgName: o.legalName };
+    return { ...u, orgName: o.legalName, country: o.country };
   });
 }
 

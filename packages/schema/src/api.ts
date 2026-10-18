@@ -41,7 +41,7 @@ export const receiptPreview = z.object({
   merchantName: z.string(),
   locationName: z.string(),
   total: z.number().int(),
-  currency: z.literal('EUR'),
+  currency: z.string().regex(/^[A-Z]{3}$/),
   createdAt: z.string(),
   state: z.string(),
   claimed: z.boolean(),

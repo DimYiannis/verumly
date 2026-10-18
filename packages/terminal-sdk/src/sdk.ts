@@ -1,5 +1,7 @@
 import QRCode from 'qrcode';
 import { generateSecret, hashSecret, newReceiptId, signBytes, signPayload } from '@lr/crypto';
+import { getFormat } from '@lr/compliance';
+import { MemoryFiscalState, sandboxIntegration, type FiscalSettings, type FiscalStateStore, type StateIntegration } from '@lr/fiscal';
 import { cashRounding, checkTransition, deriveVatSummary, lineTotal, validateCrf, type Issue } from '@lr/receipt-nl';
 import type { Crf, CrfLine } from '@lr/schema';
 import { scrubCode, scrubDescription, toQty, type Draft, type DraftLine } from './mapping.ts';
@@ -15,7 +17,22 @@ export interface SdkConfig {
   apiKey: string;
   /** base64url Ed25519 seed; the matching public key is registered with the dashboard */
   privateKey: string;
+  /** `kvkNumber` is the company registry number of `country` (KvK, SIRET, Steuernummer, ...) */
   merchant: { kvkNumber: string; vatNumber: string | null; name: string; locationId: string };
+  /** the organisation's country, ISO 3166-1 alpha-2 (default NL): decides currency, VAT rates, cash rounding and the fiscal step */
+  country?: string;
+  /**
+   * The state integration for countries where a receipt is final only after a fiscal step (DE, IT, PL, ...). Defaults to
+   * the sandbox (made-up data, `extra.mode = "sandbox"`); pass `gatewayIntegration(...)` or your own to go live.
+   * `settings` are the business's country settings from the setup screen; `state` keeps counters and hash chains.
+   */
+  fiscal?: {
+    integration?: StateIntegration;
+    settings?: FiscalSettings;
+    state?: FiscalStateStore;
+    /** fiscalise right after a receipt is paid (default true) */
+    auto?: boolean;
+  };
   store: OutboxStore;
   fetch?: typeof fetch;
   now?: () => Date;
@@ -29,6 +46,17 @@ export class SdkValidationError extends Error {
   constructor(issues: Issue[]) {
     super(`receipt failed validation: ${issues.map((i) => i.code).join(', ')}`);
     this.issues = issues;
+  }
+}
+
+/** The state integration refused or could not be reached. A retryable failure leaves the receipt `paid`: call `fiscalise` again. */
+export class FiscalError extends Error {
+  readonly code: string;
+  readonly retryable: boolean;
+  constructor(code: string, retryable: boolean) {
+    super(`fiscalisation failed: ${code}`);
+    this.code = code;
+    this.retryable = retryable;
   }
 }
 
@@ -61,9 +89,23 @@ export class TerminalSdk {
   private running = false;
   private attempt = 0;
   private flushing: Promise<FlushResult> | undefined;
+  private readonly country: string;
+  private readonly integration: StateIntegration;
+  private readonly fiscalState: FiscalStateStore;
+  /** fiscal submissions run one after the other: counters and hash chains must not interleave */
+  private fiscalQueue: Promise<unknown> = Promise.resolve();
 
   constructor(cfg: SdkConfig) {
     this.cfg = cfg;
+    this.country = (cfg.country ?? 'NL').toUpperCase();
+    if (!getFormat(this.country)) throw new Error(`unsupported country ${this.country}`);
+    this.integration = cfg.fiscal?.integration ?? sandboxIntegration(this.country);
+    this.fiscalState = cfg.fiscal?.state ?? new MemoryFiscalState();
+  }
+
+  /** Does a paid receipt of this till still need the fiscal step before it is final? */
+  get needsFiscalStep(): boolean {
+    return getFormat(this.country)?.fiscal === 'required';
   }
 
   qrUrl(receiptId: string, secret: string): string {
@@ -91,6 +133,7 @@ export class TerminalSdk {
         body: { version: crf, signature, claimSecretHash: hashSecret(secret) },
       },
     );
+    await this.fiscaliseIfDue(receiptId, crf.state);
     return { receiptId, secret, qrUrl: this.qrUrl(receiptId, secret) };
   }
 
@@ -101,7 +144,48 @@ export class TerminalSdk {
     const draft = this.draftFrom(prev.crf, patch);
     const crf = this.buildCrf(receiptId, prev.crf.version + 1, draft, prev.crf.voidOf);
     this.assertValid(crf, prev.crf.state);
+    const done = await this.commitVersion(prev, crf);
+    return (await this.fiscaliseIfDue(receiptId, crf.state)) ?? done;
+  }
+
+  /**
+   * Run the country's fiscal step for a `paid` receipt and queue the `fiscalised` version with what it returns. Throws
+   * `FiscalError` when the integration fails (a retryable failure leaves the receipt paid: call this again later).
+   */
+  fiscalise(receiptId: string): Promise<{ version: number; state: Crf['state'] }> {
+    const run = this.fiscalQueue.then(() => this.fiscaliseNow(receiptId));
+    this.fiscalQueue = run.catch(() => undefined);
+    return run;
+  }
+
+  private async fiscaliseNow(receiptId: string) {
+    const prev = await this.cfg.store.getReceipt(receiptId);
+    if (!prev) throw new Error(`unknown receipt ${receiptId}`);
+    if (prev.crf.state === 'fiscalised') return { version: prev.crf.version, state: prev.crf.state };
+    if (prev.crf.state !== 'paid') throw new Error(`only a paid receipt can be fiscalised (it is ${prev.crf.state})`);
+    if (getFormat(this.country)?.fiscal === 'none') throw new FiscalError('no_fiscal_step', false);
+    const res = await this.integration.submit({ receipt: prev.crf, settings: this.cfg.fiscal?.settings ?? {}, state: this.fiscalState, terminalId: this.cfg.terminalId });
+    if (!res.ok) throw new FiscalError(res.code, res.retryable);
+    const crf: Crf = {
+      ...prev.crf,
+      version: prev.crf.version + 1,
+      state: 'fiscalised',
+      createdAt: this.now(),
+      fiscal: { country: this.country, registerSerial: res.registerSerial, documentNumber: res.documentNumber, extra: res.extra },
+    };
+    this.assertValid(crf, prev.crf.state);
     return this.commitVersion(prev, crf);
+  }
+
+  /** After a version was committed as `paid`: fiscalise it when the country needs that and `auto` is not off. A retryable failure is left for a later `fiscalise`. */
+  private async fiscaliseIfDue(receiptId: string, state: Crf['state']) {
+    if (state !== 'paid' || !this.needsFiscalStep || this.cfg.fiscal?.auto === false) return undefined;
+    try {
+      return await this.fiscalise(receiptId);
+    } catch (e) {
+      if (e instanceof FiscalError && e.retryable) return undefined;
+      throw e;
+    }
   }
 
   async voidReceipt(receiptId: string): Promise<{ version: number; state: Crf['state'] }> {
@@ -126,8 +210,8 @@ export class TerminalSdk {
   }
 
   private assertValid(crf: Crf, from: Crf['state'] | null) {
-    const issues = validateCrf(crf, { country: 'NL' });
-    const t = checkTransition(from, crf.state);
+    const issues = validateCrf(crf, { country: this.country });
+    const t = checkTransition(from, crf.state, this.country);
     if (!t.ok) issues.push({ path: 'state', code: t.reason, message: `cannot go ${from ?? 'start'} → ${crf.state}` });
     if (issues.length) throw new SdkValidationError(issues);
   }
@@ -176,13 +260,14 @@ export class TerminalSdk {
     const gross = lines.reduce((s, l) => s + l.total, 0);
     const vatSummary = deriveVatSummary(lines);
     const tip = draft.tip ?? 0;
+    const format = getFormat(this.country)!;
 
     let payments: Crf['payments'] = [];
     let rounding = 0;
     if (draft.state === 'paid') {
       const given = draft.payments ?? [{ method: 'card' as const }];
       const onlyCash = given.length === 1 && given[0]!.method === 'cash' && given[0]!.amount === undefined;
-      rounding = draft.rounding ?? (onlyCash ? cashRounding(gross + tip) : 0);
+      rounding = draft.rounding ?? (onlyCash && format.cashRoundingStep ? cashRounding(gross + tip, format.cashRoundingStep) : 0);
       const due = gross + tip + rounding;
       payments = given.map((p) => ({ method: p.method, amount: p.amount ?? due }));
     }
@@ -200,7 +285,7 @@ export class TerminalSdk {
         terminalId: this.cfg.terminalId,
       },
       createdAt: this.now(),
-      currency: 'EUR',
+      currency: format.currency,
       lines,
       vatSummary,
       totals: {
@@ -211,7 +296,7 @@ export class TerminalSdk {
         rounding,
       },
       payments,
-      fiscal: { country: 'NL', registerSerial: null, documentNumber: draft.documentNumber ?? null, extra: {} },
+      fiscal: { country: this.country, registerSerial: null, documentNumber: draft.documentNumber ?? null, extra: {} },
       voidOf,
     };
   }

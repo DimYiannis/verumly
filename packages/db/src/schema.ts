@@ -7,6 +7,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgSchema,
   primaryKey,
   smallint,
@@ -122,7 +123,8 @@ export const receiptLines = merchant.table(
     description: text('description').notNull(),
     qty: text('qty').notNull(),
     unitPriceMinor: integer('unit_price_minor').notNull(),
-    vatRate: smallint('vat_rate'),
+    /** percent with up to two decimals (5.5, 8.1): a smallint would round it */
+    vatRate: numeric('vat_rate', { precision: 5, scale: 2, mode: 'number' }),
     totalMinor: integer('total_minor').notNull(),
     /** from the terminal if it sent one, else filled by the worker's `categorise` job */
     category: text('category'),

@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { ActivityItem, HomeSummary } from '@lr/schema';
 import type { AppDeps } from '../context.ts';
+import { mainCurrency } from '../currency.ts';
 import { publicUsers, userOrGhost } from '../social.ts';
 import { requireSession } from './auth.ts';
 
@@ -16,6 +17,7 @@ export function homeRoutes(deps: AppDeps) {
 
     app.get('/v1/me/home', async (req): Promise<HomeSummary> => {
       const me = req.session!.userId;
+      const currency = await mainCurrency(db, me);
       const clock = await db.execute<{ month: string; dom: number; dim: number }>(sql`
         select to_char(now() at time zone ${TZ}, 'YYYY-MM') as month,
                extract(day from now() at time zone ${TZ})::int as dom,
@@ -25,7 +27,7 @@ export function homeRoutes(deps: AppDeps) {
       const perDay = await db.execute<{ d: number; total: string; n: string }>(sql`
         select extract(day from r.created_on_terminal_at at time zone ${TZ})::int as d, sum(r.total_minor)::bigint as total, count(*) as n
         from buyer.claims c join merchant.receipts r on r.id = c.receipt_id
-        where c.user_id = ${me}::uuid and r.state in ${FINAL}
+        where c.user_id = ${me}::uuid and r.state in ${FINAL} and r.currency = ${currency}
           and to_char(r.created_on_terminal_at at time zone ${TZ}, 'YYYY-MM') = ${month}
         group by 1`);
       const daily = Array.from({ length: dom }, () => 0);
@@ -40,12 +42,12 @@ export function homeRoutes(deps: AppDeps) {
       const prev = await db.execute<{ total: string | null }>(sql`
         select sum(r.total_minor)::bigint as total
         from buyer.claims c join merchant.receipts r on r.id = c.receipt_id
-        where c.user_id = ${me}::uuid and r.state in ${FINAL}
+        where c.user_id = ${me}::uuid and r.state in ${FINAL} and r.currency = ${currency}
           and to_char(r.created_on_terminal_at at time zone ${TZ}, 'YYYY-MM') = to_char((now() at time zone ${TZ}) - interval '1 month', 'YYYY-MM')
           and extract(day from r.created_on_terminal_at at time zone ${TZ}) <= ${dom}`);
 
-      const recent = await db.execute<{ id: string; name: string; total: number; at: Date; state: string; items: string; with: string[] | null }>(sql`
-        select r.id, v.payload->'merchant'->>'name' as name, r.total_minor as total, r.created_on_terminal_at as at, r.state,
+      const recent = await db.execute<{ id: string; name: string; total: number; at: Date; state: string; currency: string; items: string; with: string[] | null }>(sql`
+        select r.id, v.payload->'merchant'->>'name' as name, r.total_minor as total, r.created_on_terminal_at as at, r.state, r.currency,
                (select coalesce(sum((l->>'qty')::numeric), 0) from jsonb_array_elements(v.payload->'lines') l where l->>'kind' = 'item')::text as items,
                (select array_agg(distinct coalesce(u.display_name, u.handle, '?'))
                   from buyer.splits s join buyer.split_shares ss on ss.split_id = s.id
@@ -62,7 +64,7 @@ export function homeRoutes(deps: AppDeps) {
         month,
         dayOfMonth: dom,
         daysInMonth: dim,
-        currency: 'EUR',
+        currency,
         total,
         receipts,
         previousToDate: Number(prev.rows[0]?.total ?? 0),
@@ -73,6 +75,7 @@ export function homeRoutes(deps: AppDeps) {
           total: Number(x.total),
           createdAt: new Date(x.at).toISOString(),
           state: x.state,
+          currency: x.currency,
           splitWith: x.with ?? [],
           itemCount: Math.round(Number(x.items)),
         })),

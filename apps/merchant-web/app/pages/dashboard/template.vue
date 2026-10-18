@@ -19,6 +19,9 @@ import {
   type TemplateBlockType,
 } from '@lr/schema';
 import { DISCLAIMER, getCountry } from '@lr/compliance';
+import { getFormat } from '@lr/compliance/formats';
+import { getFiscalSpec } from '@lr/fiscal/specs';
+import { vatFromGross } from '@lr/receipt-nl';
 import ReceiptTemplateView from '@lr/ui/src/ReceiptTemplate.vue';
 import type { ReceiptLike } from '@lr/ui/src/ReceiptTemplate.vue';
 
@@ -274,28 +277,45 @@ function removeLogo() {
 
 // ---- sample receipt ------------------------------------------------------------------------------------------
 const sampleTime = ref('2026-01-01T12:00:00.000Z');
-const sample = computed<ReceiptLike>(() => ({
-  merchant: { name: org.value?.legalName || org.value?.name || session.value.user?.orgName || 'Your business', kvkNumber: org.value?.kvkNumber ?? '12345678', vatNumber: org.value?.vatNumber ?? null },
-  createdAt: sampleTime.value,
-  lines: [
-    { description: t('design.sampleCoffee'), qty: '2', unitPrice: 340, total: 680, kind: 'sale' },
-    { description: t('design.samplePie'), qty: '1', unitPrice: 395, total: 395, kind: 'sale' },
-    { description: t('design.sampleBeer'), qty: '1', unitPrice: 389, total: 389, kind: 'sale' },
-  ],
-  vatSummary: [
-    { rate: 9, net: 986, vat: 89, gross: 1075 },
-    { rate: 21, net: 321, vat: 68, gross: 389 },
-  ],
-  totals: { gross: 1464, net: 1307, vat: 157, tip: 0, rounding: 0 },
-  payments: [{ method: 'card', amount: 1464 }],
-  fiscal: { country: org.value?.country ?? 'NL', registerSerial: 'TSE-0001', documentNumber: '0001234', extra: {} },
-  currency: 'EUR',
-}));
-const money = (cents: number) => new Intl.NumberFormat(intlLocale.value, { style: 'currency', currency: 'EUR' }).format(cents / 100);
+const sampleFormat = computed(() => getFormat(org.value?.country ?? 'NL') ?? getFormat('NL')!);
+const sampleSpec = computed(() => getFiscalSpec(sampleFormat.value.code));
+/** a sample receipt in the country of the business: its currency, its VAT rates, its fiscal fields */
+const sample = computed<ReceiptLike>(() => {
+  const country = sampleFormat.value.code;
+  const [coffee, pie, beer] = productsFor(country);
+  const lines = [
+    { description: t('design.sampleCoffee'), qty: '2', unitPrice: coffee!.unitPrice, total: 2 * coffee!.unitPrice, kind: 'sale', vatRate: coffee!.vatRate },
+    { description: t('design.samplePie'), qty: '1', unitPrice: pie!.unitPrice, total: pie!.unitPrice, kind: 'sale', vatRate: pie!.vatRate },
+    { description: t('design.sampleBeer'), qty: '1', unitPrice: beer!.unitPrice, total: beer!.unitPrice, kind: 'sale', vatRate: beer!.vatRate },
+  ];
+  const byRate = new Map<number, number>();
+  for (const l of lines) byRate.set(l.vatRate, (byRate.get(l.vatRate) ?? 0) + l.total);
+  const vatSummary = [...byRate.entries()].sort((a, b) => a[0] - b[0]).map(([rate, gross]) => ({ rate, gross, ...vatFromGross(gross, rate) }));
+  const gross = lines.reduce((s, l) => s + l.total, 0);
+  return {
+    merchant: { name: org.value?.legalName || org.value?.name || session.value.user?.orgName || 'Your business', kvkNumber: org.value?.kvkNumber ?? '12345678', vatNumber: org.value?.vatNumber ?? null },
+    createdAt: sampleTime.value,
+    lines,
+    vatSummary,
+    totals: { gross, net: vatSummary.reduce((s, v) => s + v.net, 0), vat: vatSummary.reduce((s, v) => s + v.vat, 0), tip: 0, rounding: 0 },
+    payments: [{ method: 'card', amount: gross }],
+    fiscal: {
+      country,
+      registerSerial: 'SAMPLE-0001',
+      documentNumber: '0001234',
+      extra: Object.fromEntries((sampleSpec.value?.fields ?? []).filter((f) => f.key !== 'qr').map((f) => [f.key, 'SAMPLE-0001'])),
+    },
+    currency: sampleFormat.value.currency,
+  };
+});
+const fiscalNames = computed(() => Object.fromEntries((sampleSpec.value?.fields ?? []).map((f) => [f.key, f.label])));
+const money = (cents: number) => new Intl.NumberFormat(intlLocale.value, { style: 'currency', currency: sampleFormat.value.currency }).format(cents / 100);
 const dateTime = (iso: string) => amsterdam(iso);
 const labels = computed(() => {
   const out: Record<string, string> = {};
   for (const k of ['company', 'vat', 'total', 'net', 'gross', 'rounding', 'tip', 'rate', 'card', 'cash', 'other', 'document', 'register', 'logo'] as const) out[k] = t(`design.label.${k}`);
+  out.company = sampleFormat.value.idLabels.company;
+  out.vat = sampleFormat.value.idLabels.vat;
   return out;
 });
 
@@ -418,7 +438,7 @@ const hexOk = (v: string) => HEX_COLOR_RE.test(v);
         <CardContent class="mt-3">
           <div class="overflow-x-auto rounded-md border border-border bg-muted p-4 sm:p-8" style="background-image: radial-gradient(rgba(0, 0, 0, 0.07) 1px, transparent 1px); background-size: 16px 16px">
             <div class="mx-auto w-full rounded-xl shadow-[0_12px_32px_-12px_rgba(20,21,43,0.25)]" :style="{ maxWidth: frameWidth }" data-testid="design-canvas">
-              <ReceiptTemplateView :template="tpl" :receipt="sample" :money="money" :date-time="dateTime" :labels="labels" designer :selected-id="selectedId" @select="selectedId = $event" />
+              <ReceiptTemplateView :template="tpl" :receipt="sample" :money="money" :date-time="dateTime" :labels="labels" :fiscal-labels="fiscalNames" designer :selected-id="selectedId" @select="selectedId = $event" />
             </div>
           </div>
         </CardContent>

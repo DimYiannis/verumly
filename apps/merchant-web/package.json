@@ -18,6 +18,7 @@
     "@lr/crypto": "workspace:*",
     "@lr/dashboard-core": "workspace:*",
     "@lr/db": "workspace:*",
+    "@lr/fiscal": "workspace:*",
     "@lr/receipt-nl": "workspace:*",
     "@lr/schema": "workspace:*",
     "@lr/terminal-sdk": "workspace:*",

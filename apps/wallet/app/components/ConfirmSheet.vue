@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { MessageKey } from '~/i18n';
-import { formatDateTime, formatEuro } from '~/utils/format';
+import { formatDateTime, formatMoney } from '~/utils/format';
 
-defineProps<{ merchant: string; total: number; time: string; busy: boolean; error: MessageKey | null }>();
+defineProps<{ merchant: string; total: number; currency?: string; time: string; busy: boolean; error: MessageKey | null }>();
 const { t, locale } = useLocale();
 const emit = defineEmits<{ save: []; reject: [] }>();
 </script>
@@ -31,7 +31,7 @@ const emit = defineEmits<{ save: []; reject: [] }>();
         </div>
         <div class="flex justify-between gap-3">
           <dt class="text-text-secondary">{{ t('common.total') }}</dt>
-          <dd class="font-mono font-medium tabular-nums" data-testid="sheet-total">{{ formatEuro(total, locale) }}</dd>
+          <dd class="font-mono font-medium tabular-nums" data-testid="sheet-total">{{ formatMoney(total, locale, currency) }}</dd>
         </div>
         <div class="flex justify-between gap-3">
           <dt class="text-text-secondary">{{ t('sheet.time') }}</dt>

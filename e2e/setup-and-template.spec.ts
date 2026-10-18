@@ -5,7 +5,7 @@ import { URLS } from './support/env.ts';
 import { qrUrlOf } from './support/simulator.ts';
 import { createWorld } from './support/world.ts';
 
-test('business setup asks for the legal settings of the declared country, and the designed receipt shows in the wallet', async ({ browser, page }) => {
+test('a German business: setup asks for the German legal settings, the till issues a German receipt with the TSE data, and the wallet draws it with the merchant design', async ({ browser, page }) => {
   const world = await createWorld();
   // unique per run: registry and VAT numbers are unique across organisations
   const digits = (n: number) => Array.from({ length: n }, () => Math.floor(Math.random() * 10)).join('');
@@ -44,23 +44,26 @@ test('business setup asks for the legal settings of the declared country, and th
   await page.getByTestId('design-save').click();
   await expect(page.getByTestId('design-save')).toBeDisabled(); // saved: nothing left to save
 
-  // --- the till only issues Dutch receipts for now (CRF is NL-only): go back to the Netherlands, then issue ---
+  // --- the setup shows the receipt format and the state integration of Germany ---
   await page.goto(`${URLS.merchantWeb}/dashboard/organisation`);
-  await expect(page.getByTestId('org-nl-only')).toBeVisible();
-  await page.getByTestId('org-country').selectOption('NL');
-  await page.getByTestId('org-kvk').fill(world.kvkNumber);
-  await page.getByTestId('org-vat').fill('');
-  await page.getByTestId('org-confirm-legal').click();
-  await page.getByTestId('org-save').click();
-  await expect(page.getByTestId('org-saved')).toBeVisible();
+  await expect(page.getByTestId('org-format')).toContainText('EUR');
+  await expect(page.getByTestId('org-format')).toContainText('19%');
+  await expect(page.getByTestId('org-fiscal')).toContainText('TSE');
+  await expect(page.getByTestId('org-fiscal')).toContainText('Transaktionsnummer');
+  await shot(page, 'state-integration-germany');
 
-  // --- the till issues a receipt, the wallet draws it with the merchant's template ---
+  // --- the till issues a German receipt: paid, then fiscalised by the (sandbox) TSE ---
   await page.goto(`${URLS.merchantWeb}/simulator`);
   await page.getByTestId('sim-setup').click();
   await expect(page.getByTestId('sim-terminal-id')).toBeVisible();
+  await expect(page.getByTestId('sim-fiscal')).toContainText('TSE');
   await page.getByTestId('sim-add-koffie').click();
   await page.getByTestId('sim-issue').click();
   await expect(page.getByTestId('sim-qr').locator('svg')).toBeVisible();
+  await expect(page.getByTestId('sim-version')).toHaveText('2'); // v1 paid, v2 fiscalised
+  await expect(page.getByTestId('sim-fiscal-data')).toContainText('AB12CD34'); // the TSE serial of the setup
+  await expect(page.getByTestId('sim-fiscal-data')).toContainText('Transaktionsnummer');
+  await shot(page, 'till-germany-fiscal-data');
   const qr = await qrUrlOf(page);
 
   const phone = await newPhone(browser);
@@ -70,6 +73,11 @@ test('business setup asks for the legal settings of the declared country, and th
     await expect(m.getByTestId('receipt-template')).toBeVisible();
     await expect(m.getByTestId('receipt-template')).toContainText('Dankjewel, tot snel!');
     await expect(m.getByTestId('receipt-line')).toHaveCount(1);
+    // German identity label and the TSE data, with the names of the country
+    await expect(m.getByTestId('receipt-template')).toContainText('Steuernr.');
+    await expect(m.getByTestId('receipt-template')).toContainText('TSE-Seriennummer');
+    await expect(m.getByTestId('receipt-template')).toContainText('AB12CD34');
+    await expect(m.getByTestId('receipt-template')).toContainText('€');
     await shot(m, 'receipt-with-merchant-template');
   } finally {
     await phone.close();

@@ -1,3 +1,4 @@
+import { getFormat } from '@lr/compliance/formats';
 import { formatEuro } from '@lr/receipt-nl';
 
 /** Human-readable message from a failed `$fetch` (Nitro puts the reason in `statusMessage`). */
@@ -16,6 +17,8 @@ export interface SessionUser {
   email: string;
   role: Role;
   orgName: string;
+  /** ISO country of the organisation: decides the currency and time zone shown */
+  country?: string;
 }
 
 export interface SessionState {
@@ -42,17 +45,31 @@ export async function attempt<T>(error: Ref<string>, fn: () => Promise<T>): Prom
   }
 }
 
+/** Euro, for what Less Receipts charges (plans, invoices): always EUR, whatever the country of the business. */
 export function euro(cents: number): string {
   return formatEuro(cents);
 }
 
-export function amsterdam(iso: string | Date): string {
-  return new Intl.DateTimeFormat(useLocale().intlLocale.value, { dateStyle: 'short', timeStyle: 'medium', timeZone: 'Europe/Amsterdam' }).format(new Date(iso));
+/** The business's own format: currency and time zone of its country (Dutch euro, Amsterdam, until the session says otherwise). */
+export function orgFormat() {
+  return getFormat(sessionState().value.user?.country ?? 'NL') ?? getFormat('NL')!;
 }
 
-/** A date (no time) on the Amsterdam calendar, in the chosen language. */
+/** Receipt amounts of the business (minor units) in the currency of its country. */
+export function money(minor: number): string {
+  const f = orgFormat();
+  if (f.code === 'NL') return formatEuro(minor);
+  return new Intl.NumberFormat(f.locale, { style: 'currency', currency: f.currency }).format(minor / 100);
+}
+
+/** Date and time in the time zone of the business's country. (Named after the Dutch default it started as.) */
+export function amsterdam(iso: string | Date): string {
+  return new Intl.DateTimeFormat(useLocale().intlLocale.value, { dateStyle: 'short', timeStyle: 'medium', timeZone: orgFormat().timezone }).format(new Date(iso));
+}
+
+/** A date (no time) on the calendar of the business's time zone, in the chosen language. */
 export function amsterdamDay(iso: string | Date): string {
-  return new Intl.DateTimeFormat(useLocale().intlLocale.value, { dateStyle: 'medium', timeZone: 'Europe/Amsterdam' }).format(new Date(iso));
+  return new Intl.DateTimeFormat(useLocale().intlLocale.value, { dateStyle: 'medium', timeZone: orgFormat().timezone }).format(new Date(iso));
 }
 
 export type PlanRefusal = 'plan_limit' | 'plan_inactive';

@@ -175,6 +175,9 @@ importers:
       '@lr/buyer-api':
         specifier: workspace:*
         version: link:apps/buyer-api
+      '@lr/compliance':
+        specifier: workspace:*
+        version: link:packages/compliance
       '@lr/config':
         specifier: workspace:*
         version: link:packages/config
@@ -187,6 +190,9 @@ importers:
       '@lr/db':
         specifier: workspace:*
         version: link:packages/db
+      '@lr/fiscal':
+        specifier: workspace:*
+        version: link:packages/fiscal
       '@lr/merchant-api':
         specifier: workspace:*
         version: link:apps/merchant-api
@@ -344,6 +350,9 @@ importers:
       '@lr/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@lr/fiscal':
+        specifier: workspace:*
+        version: link:../../packages/fiscal
       '@lr/receipt-nl':
         specifier: workspace:*
         version: link:../../packages/receipt-nl
@@ -439,9 +448,15 @@ importers:
 
   apps/wallet:
     dependencies:
+      '@lr/compliance':
+        specifier: workspace:*
+        version: link:../../packages/compliance
       '@lr/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@lr/fiscal':
+        specifier: workspace:*
+        version: link:../../packages/fiscal
       '@lr/schema':
         specifier: workspace:*
         version: link:../../packages/schema
@@ -732,8 +747,29 @@ importers:
         specifier: ^0.31.11
         version: 0.31.11
 
+  packages/fiscal:
+    dependencies:
+      '@lr/compliance':
+        specifier: workspace:*
+        version: link:../compliance
+      '@lr/crypto':
+        specifier: workspace:*
+        version: link:../crypto
+      '@lr/schema':
+        specifier: workspace:*
+        version: link:../schema
+      zod:
+        specifier: ^4.0.0
+        version: 4.6.7
+
   packages/receipt-nl:
     dependencies:
+      '@lr/compliance':
+        specifier: workspace:*
+        version: link:../compliance
+      '@lr/fiscal':
+        specifier: workspace:*
+        version: link:../fiscal
       '@lr/schema':
         specifier: workspace:*
         version: link:../schema
@@ -743,6 +779,12 @@ importers:
 
   packages/receipt-pdf:
     dependencies:
+      '@lr/compliance':
+        specifier: workspace:*
+        version: link:../compliance
+      '@lr/fiscal':
+        specifier: workspace:*
+        version: link:../fiscal
       '@lr/receipt-nl':
         specifier: workspace:*
         version: link:../receipt-nl
@@ -783,9 +825,15 @@ importers:
 
   packages/terminal-sdk:
     dependencies:
+      '@lr/compliance':
+        specifier: workspace:*
+        version: link:../compliance
       '@lr/crypto':
         specifier: workspace:*
         version: link:../crypto
+      '@lr/fiscal':
+        specifier: workspace:*
+        version: link:../fiscal
       '@lr/receipt-nl':
         specifier: workspace:*
         version: link:../receipt-nl
