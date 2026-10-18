@@ -13,7 +13,7 @@ export const socialNl = {
   'social.scan.stop': 'Stoppen',
   'social.scan.denied': 'Geen toegang tot de camera of NFC.',
   'social.scan.unreadable': 'Dit is geen uitnodiging van bonnen.',
-  'login.demoNote': 'Ontwikkelmodus: vul een demo-account in en log in. Geen code nodig.',
+  'login.demoNote': 'Ontwikkelmodus: deze demo-accounts loggen in zonder code: {emails}. Elk ander adres krijgt een code per e-mail.',
   'login.fillDemoFriend': 'Demo-vriend invullen ({name})',
   'social.title': 'Vrienden',
   'social.offline': 'Je bent offline. Vrienden en splits werken alleen met internet.',

@@ -15,7 +15,7 @@ export const socialEn: Record<keyof typeof socialNl, string> = {
   'social.scan.stop': 'Stop',
   'social.scan.denied': 'No access to the camera or NFC.',
   'social.scan.unreadable': 'This is not a bonnen invite.',
-  'login.demoNote': 'Development mode: fill in a demo account and sign in. No code needed.',
+  'login.demoNote': 'Development mode: these demo accounts sign in without a code: {emails}. Any other address gets an e-mail code.',
   'login.fillDemoFriend': 'Fill in the demo friend ({name})',
   'social.title': 'Friends',
   'social.offline': 'You are offline. Friends and splits need an internet connection.',
