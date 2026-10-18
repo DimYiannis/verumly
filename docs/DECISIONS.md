@@ -273,7 +273,7 @@ Archive: `archive-q`, `archive-state`, `archive-from`, `archive-to`, `archive-am
 Reports: `report-from`, `report-to`, `report-granularity`, `report-location`, `report-run`, `report-sales-row` (`data-period`), `report-vat-row` (`data-period`, `data-rate`), `report-total`, `report-empty`.
 Exports: `export-kind`, `export-from`, `export-to`, `export-request`, `export-row` (`data-status`), `export-status`, `export-link`.
 Users: `user-row`, `user-email`, `user-role`, `user-reset-totp`, `user-delete`, `user-new-email`, `user-new-password`, `user-new-role`, `user-create`.
-Simulator: `sim-setup-panel`, `sim-setup`, `sim-error`, `sim-add-koffie|appeltaart|bier|wijn`, `sim-cart`, `sim-cart-line`, `sim-rounding`, `sim-total`, `sim-state`, `sim-version`, `sim-present`, `sim-void`, `sim-pay-card`, `sim-pay-cash`, `sim-new-sale`, `sim-offline-toggle` (checkbox), `sim-pending` (polled every 400 ms, so it can lag a click), `sim-rejected`, `sim-network`, `sim-terminal-id`, `sim-reset`, `sim-qr` (the SVG container), `sim-qr-url`, `sim-qr-placeholder`, `sim-dashboard-link`.
+Simulator: `sim-setup-panel`, `sim-setup`, `sim-error`, `sim-add-koffie|appeltaart|bier|wijn`, `sim-cart`, `sim-cart-line`, `sim-rounding`, `sim-total`, `sim-state`, `sim-version`, `sim-present`, `sim-void` (opens the confirmation), `sim-void-dialog`, `sim-void-confirm`, `sim-void-keep`, `sim-cancelled` (the overlay on the QR once cancelled), `sim-cancelled-title`, `sim-pay-card`, `sim-pay-cash`, `sim-new-sale`, `sim-offline-toggle` (checkbox), `sim-pending` (polled every 400 ms, so it can lag a click), `sim-rejected`, `sim-network`, `sim-terminal-id`, `sim-reset`, `sim-qr` (the SVG container), `sim-qr-url`, `sim-qr-placeholder`, `sim-dashboard-link`.
 
 ## Deferred (from this slice)
 

@@ -81,9 +81,15 @@ test('buyer journey on a phone: issued receipt, save, void, exactly one encrypte
 
     // --- the till voids the receipt: version 2 ---
     await page.getByTestId('sim-void').click();
+    await page.getByTestId('sim-void-confirm').click();
     await expect(page.getByTestId('sim-state')).toHaveText('cancelled');
     await expect(page.getByTestId('sim-version')).toHaveText('2');
     await expectServerHas(page, qr.receiptId, 2, 'void');
+    await expect(page.getByTestId('sim-cancelled')).toBeVisible();
+
+    // the open page picks the void up by itself (no reload)
+    await expect(m.getByTestId('void-banner')).toBeVisible({ timeout: 20_000 });
+    await expect(m.getByTestId('receipt-view')).toHaveAttribute('data-version', '2');
 
     await m.reload();
     await expect(m.getByTestId('void-banner')).toBeVisible();
