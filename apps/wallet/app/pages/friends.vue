@@ -80,6 +80,10 @@ async function saveProfile() {
 const addHandle = ref('');
 const addBusy = ref(false);
 const addMsg = ref<{ kind: 'ok' | 'err'; key: MessageKey } | null>(null);
+// an old error (that is you, no such username) is about the text that was typed: editing or clearing it ends it
+watch(addHandle, () => {
+  if (addMsg.value?.kind === 'err') addMsg.value = null;
+});
 async function addFriend() {
   const h = addHandle.value.trim().replace(/^@/, '').toLowerCase();
   if (!h) return;

@@ -22,6 +22,10 @@ export const socialEn: Record<keyof typeof socialNl, string> = {
   'social.cancel': 'Cancel',
   'social.copy': 'Copy link',
   'social.copied': 'Copied',
+  'social.copyFailed': 'Could not copy the link. Select it and copy it by hand.',
+  'login.invited': 'You were invited to a split. Log in to see your share.',
+  'split.detail.copied': 'Link copied. Send it to your guest.',
+  'split.detail.copyFailed': 'Could not copy the link. Select it below and copy it by hand.',
 
   'social.err.generic': 'That did not work. Please try again later.',
   'social.err.handleTaken': 'This username is taken.',
@@ -133,6 +137,7 @@ export const socialEn: Record<keyof typeof socialNl, string> = {
   'split.itemsHint': 'Tap who shares each item. Several people split an item equally.',
   'split.everyone': 'Everyone',
   'split.unassigned': '{n} items still have nobody.',
+  'split.unassignedPreview': '{n} items ({amount}) are not assigned yet. Shares show up once everything has someone.',
   'split.customHint': 'Enter an amount per person. Together they must equal the total.',
   'split.customOver': 'You are {amount} over.',
   'split.customUnder': '{amount} is still missing.',

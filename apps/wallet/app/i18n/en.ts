@@ -299,6 +299,10 @@ export const en: Record<MessageKey, string> = {
   // upload page (/uploads/[id])
   'uploadPage.pageTitle': 'Reading receipt',
   'uploadPage.title': 'Reading receipt',
+  'uploadPage.titleRead': 'Receipt read',
+  'uploadPage.titleReview': 'Needs a check',
+  'uploadPage.titleFailed': 'Could not read',
+  'uploadPage.titleDeleted': 'Deleted',
   'uploadPage.loading': 'Loading receipt…',
   'uploadPage.processing': 'We are reading your receipt. This usually takes a few seconds…',
   'uploadPage.slow': 'This is taking longer than expected. You can come back later; we keep working.',

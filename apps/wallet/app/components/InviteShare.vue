@@ -11,7 +11,7 @@ const props = defineProps<{ link: string; shareTitle?: string; shareText?: strin
 const { t } = useLocale();
 
 const qr = ref('');
-const copied = ref(false);
+const copied = ref<'idle' | 'ok' | 'failed'>('idle');
 const nfc = ref<'idle' | 'waiting' | 'done' | 'error'>('idle');
 const canShare = ref(false);
 const canNfc = ref(false);
@@ -30,8 +30,8 @@ watch(
 );
 
 async function copy() {
-  copied.value = await copyText(props.link);
-  setTimeout(() => (copied.value = false), 2500);
+  copied.value = (await copyText(props.link)) ? 'ok' : 'failed';
+  setTimeout(() => (copied.value = 'idle'), 2500);
 }
 
 async function share() {
@@ -72,14 +72,15 @@ async function writeTag() {
         {{ t('social.invite.share') }}
       </Button>
       <Button type="button" :variant="canShare ? 'secondary' : 'default'" size="lg" class="min-w-0 flex-1" data-testid="friends-invite-copy" @click="copy">
-        <component :is="copied ? Check : Copy" aria-hidden="true" />
-        {{ copied ? t('social.copied') : t('social.copy') }}
+        <component :is="copied === 'ok' ? Check : Copy" aria-hidden="true" />
+        {{ copied === 'ok' ? t('social.copied') : t('social.copy') }}
       </Button>
       <Button v-if="canNfc" type="button" variant="secondary" size="lg" class="min-w-0 flex-1" :disabled="nfc === 'waiting'" data-testid="invite-nfc-write" @click="writeTag">
         <Nfc aria-hidden="true" />
         {{ nfc === 'waiting' ? t('social.invite.nfcWaiting') : nfc === 'done' ? t('social.invite.nfcDone') : t('social.invite.nfcWrite') }}
       </Button>
     </div>
+    <p v-if="copied === 'failed'" role="alert" class="text-sm text-danger" data-testid="invite-copy-failed">{{ t('social.copyFailed') }}</p>
     <p v-if="nfc === 'error'" role="alert" class="text-sm text-danger">{{ t('social.invite.nfcError') }}</p>
     <p class="text-center text-xs text-text-secondary">{{ t('social.invite.expires') }}</p>
   </div>

@@ -10,7 +10,6 @@ import { uploadFailureText } from '~/utils/upload-failures';
 
 definePageMeta({ middleware: 'auth' });
 const { t, tOr, locale } = useLocale();
-useHead({ title: () => t('uploadPage.pageTitle') });
 
 const route = useRoute();
 const wallet = useWallet();
@@ -22,6 +21,23 @@ const error = ref<MessageKey | null>(null);
 const busy = ref(false);
 const matchDeclined = ref(false);
 const photoUrl = ref<string | null>(null);
+
+/** The heading follows the upload: reading, read, needs a check, could not read, deleted. */
+const pageTitle = computed<MessageKey>(() => {
+  if (error.value === 'uploadPage.err.notFound') return 'uploadPage.titleDeleted';
+  switch (upload.value?.status) {
+    case 'done':
+    case 'replaced':
+      return 'uploadPage.titleRead';
+    case 'needs_review':
+      return 'uploadPage.titleReview';
+    case 'failed':
+      return 'uploadPage.titleFailed';
+    default:
+      return 'uploadPage.title';
+  }
+});
+useHead({ title: () => t(pageTitle.value) });
 const photoFailed = ref(false);
 /** a PDF upload is offered as a link: phones do not show a PDF inside a page */
 const photoIsPdf = ref(false);
@@ -220,7 +236,7 @@ onBeforeUnmount(() => {
       <ChevronLeft class="size-4" aria-hidden="true" />
       {{ t('common.allReceipts') }}
     </NuxtLink>
-    <h1 class="text-h2 font-semibold">{{ t('uploadPage.title') }}</h1>
+    <h1 class="text-h2 font-semibold" data-testid="upload-title">{{ t(pageTitle) }}</h1>
 
     <p v-if="error" role="alert" data-testid="upload-error" class="rounded-lg border border-danger-border bg-danger-soft p-3 text-sm text-danger">{{ t(error) }}</p>
 

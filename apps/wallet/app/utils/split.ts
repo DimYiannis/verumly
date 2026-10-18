@@ -19,6 +19,8 @@ export interface Preview {
   shares: Record<string, number>;
   /** items mode: lines nobody has taken yet */
   unassigned: number[];
+  /** items mode: sum of the line totals nobody has taken yet, in cents */
+  unassignedMinor: number;
   /** custom mode: entered amounts minus payable */
   customDiff: number;
   /** false while the form cannot be submitted */
@@ -49,8 +51,9 @@ export function previewShares(input: PreviewInput): Preview {
   const { people, payable } = input;
   const shares: Record<string, number> = Object.fromEntries(people.map((p) => [p, 0]));
   const unassigned: number[] = [];
+  let unassignedMinor = 0;
   let customDiff = 0;
-  if (people.length === 0) return { shares, unassigned, customDiff, valid: false };
+  if (people.length === 0) return { shares, unassigned, unassignedMinor, customDiff, valid: false };
 
   if (input.mode === 'equal') {
     spread(payable, people.map(() => 1)).forEach((v, i) => (shares[people[i]!] = v));
@@ -60,6 +63,7 @@ export function previewShares(input: PreviewInput): Preview {
       const who = (input.assignments[line.lineNo] ?? []).filter((w) => w in base);
       if (who.length === 0) {
         unassigned.push(line.lineNo);
+        unassignedMinor += line.total;
         continue;
       }
       spread(line.total, who.map(() => 1)).forEach((v, i) => (base[who[i]!] = (base[who[i]!] ?? 0) + v));
@@ -75,7 +79,7 @@ export function previewShares(input: PreviewInput): Preview {
     customDiff = total - payable;
   }
   const valid = input.mode === 'items' ? unassigned.length === 0 : input.mode === 'custom' ? customDiff === 0 : true;
-  return { shares, unassigned, customDiff, valid };
+  return { shares, unassigned, unassignedMinor, customDiff, valid };
 }
 
 /** "12,50" or "12.5" to cents; null when not a valid non-negative amount. */

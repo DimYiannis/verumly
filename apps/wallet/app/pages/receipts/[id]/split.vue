@@ -300,6 +300,9 @@ const modes: { value: SplitMode; label: MessageKey }[] = [
       <section class="space-y-3 rounded-[14px] border border-border bg-card p-4" :aria-label="t('split.preview')" data-testid="split-preview">
         <h2 class="text-xs font-medium tracking-wide text-text-secondary uppercase">{{ t('rcpt.split.eachPays') }}</h2>
         <p v-if="people.length === 0" class="text-sm text-text-secondary">{{ t('split.previewEmpty') }}</p>
+        <p v-else-if="mode === 'items' && preview.unassigned.length" role="status" class="text-sm text-warning" data-testid="split-preview-unassigned">
+          {{ t('split.unassignedPreview', { n: preview.unassigned.length, amount: formatMoney(preview.unassignedMinor, locale, detail.receipt.currency) }) }}
+        </p>
         <template v-else>
           <div v-for="p in people" :key="p.who" class="flex items-center gap-3" :data-testid="`split-preview-${p.who}`">
             <PersonAvatar :user="p.who === 'me' ? myProfile : null" :name="p.label" :me="p.who === 'me'" size="sm" />

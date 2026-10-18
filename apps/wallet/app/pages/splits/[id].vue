@@ -75,13 +75,36 @@ async function toggle(s: SplitDetail['shares'][number]) {
   }
 }
 
-/** Guest slots: the server keeps only a hash of the invite, so a link is created on demand (the earlier one stops working). */
+/**
+ * Guest slots: the server keeps only a hash of the invite, so the plain code exists only when it is created. One
+ * link per guest share: it is kept in sessionStorage and reused while the tab lives; only when it is gone (new
+ * session) does the next press create a new one (the earlier one then stops working).
+ */
 const guestLinks = ref<Record<string, string>>({});
+const inviteFeedback = ref<Record<string, 'copied' | 'failed'>>({});
+const inviteKey = (shareId: string) => `lr-invite-${shareId}`;
+watch(split, (value) => {
+  for (const s of value?.shares ?? []) {
+    const stored = sessionStorage.getItem(inviteKey(s.id));
+    if (stored && !guestLinks.value[s.id]) guestLinks.value = { ...guestLinks.value, [s.id]: stored };
+  }
+});
 async function copyInvite(shareId: string, code: string | null) {
   error.value = null;
   try {
-    const made = code ?? (split.value ? (await wallet.api.createGuestInvite(split.value.id, shareId)).code : null);
-    if (made) guestLinks.value = { ...guestLinks.value, [shareId]: inviteLink(receiptHost, made) };
+    let link = guestLinks.value[shareId];
+    if (!link) {
+      const made = code ?? (split.value ? (await wallet.api.createGuestInvite(split.value.id, shareId)).code : null);
+      if (!made) return;
+      link = inviteLink(receiptHost, made);
+      sessionStorage.setItem(inviteKey(shareId), link);
+      guestLinks.value = { ...guestLinks.value, [shareId]: link };
+    }
+    inviteFeedback.value = { ...inviteFeedback.value, [shareId]: (await copyText(link)) ? 'copied' : 'failed' };
+    setTimeout(() => {
+      const { [shareId]: _gone, ...rest } = inviteFeedback.value;
+      inviteFeedback.value = rest;
+    }, 4000);
   } catch (e) {
     error.value = errorKey(e);
   }
@@ -172,9 +195,11 @@ async function remove() {
               </Button>
               <Button v-if="split.creatorIsMe && s.who === null && !s.settled" type="button" variant="secondary" size="sm" data-testid="split-guest-invite" @click="copyInvite(s.id, s.inviteCode)">
                 <Link2 aria-hidden="true" />
-                {{ t('split.detail.copyInvite') }}
+                {{ inviteFeedback[s.id] === 'copied' ? t('social.copied') : t('split.detail.copyInvite') }}
               </Button>
             </div>
+            <p v-if="inviteFeedback[s.id] === 'failed'" role="alert" class="text-sm text-danger" data-testid="split-invite-copy-failed">{{ t('split.detail.copyFailed') }}</p>
+            <p v-else-if="inviteFeedback[s.id] === 'copied'" role="status" class="text-sm text-success">{{ t('split.detail.copied') }}</p>
             <InviteShare v-if="guestLinks[s.id]" :link="guestLinks[s.id]!" class="pt-2" />
             <p v-if="split.creatorIsMe && s.who === null && !s.settled" class="text-xs text-text-secondary">{{ t('split.detail.inviteHint', { name: shareName(s) }) }}</p>
           </li>

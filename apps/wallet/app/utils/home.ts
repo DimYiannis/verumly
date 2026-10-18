@@ -53,6 +53,11 @@ export function parseBudgetInput(value: string): number | null {
   return cents > 0 ? cents : null;
 }
 
+/** The stored budget as the editor shows it: two decimals, the decimal separator of the language (25050 -> "250,50"). */
+export function budgetInputText(cents: number, decimal: ',' | '.'): string {
+  return `${Math.floor(cents / 100)}${decimal}${String(cents % 100).padStart(2, '0')}`;
+}
+
 /** Cumulative series of the daily spend, as SVG polyline points in a `w` x `h` box. Needs at least one day. */
 export function sparkPoints(daily: number[], w: number, h: number, pad = 4): { line: string; area: string } | null {
   if (daily.length === 0) return null;

@@ -42,15 +42,6 @@ watch(
     <a href="#main" class="sr-only focus:not-sr-only focus:m-2 focus:rounded-md focus:border focus:border-border focus:bg-card focus:p-2">{{ t('layout.skip') }}</a>
     <header class="flex min-h-14 items-center justify-between gap-3 px-4 pt-[env(safe-area-inset-top)]">
       <NuxtLink v-if="!bare" to="/" class="font-sans text-xl font-semibold tracking-[-0.035em] text-foreground no-underline hover:text-foreground">{{ t('layout.brand') }}</NuxtLink>
-      <p
-        v-if="!wallet.online.value"
-        role="status"
-        data-testid="offline-badge"
-        class="inline-flex items-center gap-1.5 rounded-sm border border-warning-border bg-warning-soft px-2 py-1 text-xs font-medium text-warning"
-      >
-        <WifiOff class="size-3.5" aria-hidden="true" />
-        {{ t('layout.offline') }}
-      </p>
       <div class="ml-auto flex shrink-0 items-center gap-3">
         <LocaleSwitch />
         <NuxtLink
@@ -64,6 +55,15 @@ watch(
         </NuxtLink>
       </div>
     </header>
+    <p
+      v-if="!wallet.online.value"
+      role="status"
+      data-testid="offline-badge"
+      class="mx-4 mb-1 flex items-center gap-1.5 rounded-sm border border-warning-border bg-warning-soft px-2 py-1 text-xs font-medium text-warning"
+    >
+      <WifiOff class="size-3.5" aria-hidden="true" />
+      {{ t('layout.offline') }}
+    </p>
     <main id="main" class="flex-1 px-4 pt-2 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
       <slot />
     </main>

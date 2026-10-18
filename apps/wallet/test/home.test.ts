@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { avatarColour, budgetProgress, dayPart, initials, logoColour, parseBudgetInput, percentChange, sparkPoints } from '../app/utils/home.ts';
+import { avatarColour, budgetProgress, dayPart, initials, budgetInputText, logoColour, parseBudgetInput, percentChange, sparkPoints } from '../app/utils/home.ts';
 
 describe('home helpers', () => {
   it('derives initials', () => {
@@ -21,6 +21,11 @@ describe('home helpers', () => {
     expect(budgetProgress(42800, 60000)).toEqual({ pct: 71, over: false });
     expect(budgetProgress(70000, 60000)).toEqual({ pct: 100, over: true });
     expect(budgetProgress(1, 0)).toEqual({ pct: 0, over: false });
+  });
+  it('pre-fills the budget editor with two decimals', () => {
+    expect(budgetInputText(25050, ',')).toBe('250,50');
+    expect(budgetInputText(60000, '.')).toBe('600.00');
+    expect(parseBudgetInput(budgetInputText(25050, ','))).toBe(25050);
   });
   it('parses the budget input', () => {
     expect(parseBudgetInput('600')).toBe(60000);
