@@ -412,13 +412,24 @@ function parseInner(input: { markdown: string; kie: string }, failures: string[]
   return { ...parsed, status: 'done', failures: [] };
 }
 
+/** A printed date this far past the caller's clock is a misread (or a future-dated slip), not a receipt: clock skew and time zones stay inside it. */
+export const FUTURE_TOLERANCE_MS = 24 * 3_600_000;
+
+export interface ParseOptions {
+  /**
+   * The caller's clock. When given, a receipt printed more than {@link FUTURE_TOLERANCE_MS} after it fails the
+   * `date_future` check. The parser itself never reads the clock, so without `now` the date is not checked.
+   */
+  now?: Date;
+}
+
 /**
  * Deterministic extraction parser (no LLM): Qianfan's markdown + KIE JSON → a checked receipt.
  * `done` only when the schema and §5 arithmetic checks pass (2-cent tolerance on line arithmetic) AND the printed
  * total and the printed BTW per rate agree exactly with the line sum; otherwise `needs_review` with the names of
- * the failed checks. Never throws.
+ * the failed checks (`date_future`: printed after `opts.now` plus a day). Never throws.
  */
-export function parseExtraction(input: { markdown: string; kie: string }): ParsedReceipt {
+export function parseExtraction(input: { markdown: string; kie: string }, opts: ParseOptions = {}): ParsedReceipt {
   const failures: string[] = [];
   let parsed: ParsedReceipt;
   try {
@@ -438,6 +449,7 @@ export function parseExtraction(input: { markdown: string; kie: string }): Parse
       paymentMethod: null,
     };
   }
+  if (opts.now && parsed.printedAtUtc !== null && Date.parse(parsed.printedAtUtc) > opts.now.getTime() + FUTURE_TOLERANCE_MS) failures.push('date_future');
   const unique = [...new Set(failures)];
   return { ...parsed, status: unique.length === 0 ? 'done' : 'needs_review', failures: unique };
 }

@@ -24,9 +24,16 @@ async function receipt(who: BuyerSession, o: { merchant: string; state: 'paid' |
   return receiptId;
 }
 
+/** A user who switched Insights on in Settings (`analytics` consent). */
+async function insightsUser(): Promise<BuyerSession> {
+  const u = await loginUser(w);
+  expect((await buyerCall(w, 'PUT', '/v1/me/consents', { token: u.token, body: { analytics: true } })).status).toBe(200);
+  return u;
+}
+
 describe('GET /v1/me/insights', () => {
   it('spend per month, per category and top merchants; pre-bills, voids, other users and health categories are handled; uploads count', async () => {
-    const me = await loginUser(w);
+    const me = await insightsUser();
     const other = await loginUser(w);
     const dining = { category: 'dining' };
 
@@ -78,14 +85,15 @@ describe('GET /v1/me/insights', () => {
         { merchantName: 'Supermarkt X', total: 1500, count: 1 },
         { merchantName: 'Apotheek Het Plein', total: 450, count: 1 },
       ],
+      refunds: { total: 0, count: 0 },
     });
     // nothing else is exposed
-    expect(Object.keys(res.body as object).sort()).toEqual(['currency', 'perCategory', 'perMonth', 'topMerchants', 'vatPerRate']);
+    expect(Object.keys(res.body as object).sort()).toEqual(['currency', 'perCategory', 'perMonth', 'refunds', 'topMerchants', 'vatPerRate']);
     expect(res.text).not.toContain('gezondheid');
   });
 
   it('upload lines count under their STORED category (a buyer’s choice included), never recomputed; health shows as overig; legacy lines without one are overig', async () => {
-    const me = await loginUser(w);
+    const me = await insightsUser();
     const lines = [
       // the keywords say boodschappen, the buyer said vervoer
       { description: 'Halfvolle melk', qty: '1', unitPrice: 100, total: 100, vatRate: 9, kind: 'item', category: 'vervoer', sensitive: false, userCategory: 'vervoer' },
@@ -109,18 +117,83 @@ describe('GET /v1/me/insights', () => {
   });
 
   it('a user with no data gets empty lists; a session is required', async () => {
-    const empty = await loginUser(w);
-    expect((await buyerCall(w, 'GET', '/v1/me/insights', { token: empty.token })).body).toEqual({ currency: 'EUR', perMonth: [], perCategory: [], vatPerRate: [], topMerchants: [] });
+    const empty = await insightsUser();
+    expect((await buyerCall(w, 'GET', '/v1/me/insights', { token: empty.token })).body).toEqual({ currency: 'EUR', perMonth: [], perCategory: [], vatPerRate: [], topMerchants: [], refunds: { total: 0, count: 0 } });
     expect((await buyerCall(w, 'GET', '/v1/me/insights')).status).toBe(401);
   });
 
   it('top merchants are limited to 10', async () => {
-    const me = await loginUser(w);
+    const me = await insightsUser();
     for (let i = 0; i < 12; i++) {
       await receipt(me, { merchant: `Zaak ${String(i).padStart(2, '0')}`, state: 'paid', createdAt: '2026-07-01T10:00:00Z', lines: [{ description: 'Ding', unitPrice: 100 + i, vatRate: 9 }] });
     }
     const body = (await buyerCall(w, 'GET', '/v1/me/insights', { token: me.token })).body as { topMerchants: Array<{ merchantName: string; total: number }> };
     expect(body.topMerchants).toHaveLength(10);
     expect(body.topMerchants[0]).toEqual({ merchantName: 'Zaak 11', total: 111, count: 1 });
+  });
+
+  it('refunds are reported on their own: months, categories, VAT and merchants count purchases only, nothing is negative', async () => {
+    const me = await insightsUser();
+    const shop = { category: 'elektronica' };
+    await receipt(me, { merchant: 'Elektro Mulder', state: 'paid', createdAt: '2026-10-05T10:00:00Z', lines: [{ description: 'Koptelefoon', unitPrice: 12000, vatRate: 21 }], categories: { Koptelefoon: shop } });
+    // a bigger refund than the month's purchases: the old signed sum made October negative
+    await receipt(me, { merchant: 'Elektro Mulder', state: 'paid', createdAt: '2026-10-26T10:00:00Z', lines: [{ description: 'Retour speaker', qty: '-1', unitPrice: 20000, vatRate: 21 }], categories: { 'Retour speaker': shop } });
+    // a refund photo, and a purchase photo
+    const photo = (name: string, gross: number, i: number) => {
+      const lines = [{ description: 'Ding', qty: '1', unitPrice: Math.abs(gross), total: gross, vatRate: 21, kind: 'item', category: 'overig', sensitive: false }];
+      const parsed = { status: 'done', failures: [], merchant: { name, kvkNumber: null, vatNumber: null, postcode: null }, merchantKey: `name:${name}|`, printedAtUtc: '2026-10-12T12:00:00.000Z', lines, gross, rounding: 0, vatBreakdown: [{ rate: 21, base: Math.round(gross / 1.21), vat: gross - Math.round(gross / 1.21) }], paymentMethod: 'card' };
+      return sql(w, "insert into buyer.uploads (user_id, s3_key, content_type, status, extracted) values ($1, $2, 'image/png', 'done', $3)", [me.userId, `uploads/refund${i}`, JSON.stringify({ parsed, failures: [], modelRevision: 'mock', corrected: false })]);
+    };
+    await photo('Winkel Z', -5000, 1);
+    await photo('Winkel Q', 1210, 2);
+
+    const res = await buyerCall(w, 'GET', '/v1/me/insights', { token: me.token });
+    expect(res.status).toBe(200);
+    const body = res.body as { perMonth: Array<{ total: number }>; perCategory: Array<{ total: number }>; vatPerRate: Array<{ vat: number }>; topMerchants: Array<{ total: number }>; refunds: unknown };
+    expect(body).toMatchObject({
+      perMonth: [{ month: '2026-10', total: 12000 + 1210 }],
+      perCategory: [{ category: 'elektronica', total: 12000 }, { category: 'overig', total: 1210 }],
+      vatPerRate: [{ rate: 21, vat: 2083 + 210 }],
+      topMerchants: [{ merchantName: 'Elektro Mulder', total: 12000, count: 1 }, { merchantName: 'Winkel Q', total: 1210, count: 1 }],
+      refunds: { total: 20000 + 5000, count: 2 },
+    });
+    for (const v of [...body.perMonth.map((x) => x.total), ...body.perCategory.map((x) => x.total), ...body.vatPerRate.map((x) => x.vat), ...body.topMerchants.map((x) => x.total)]) expect(v).toBeGreaterThanOrEqual(0);
+  });
+
+  it('a category whose lines net out to zero or less is left out, so no share is negative', async () => {
+    const me = await insightsUser();
+    await receipt(me, {
+      merchant: 'Supermarkt Netto',
+      state: 'paid',
+      createdAt: '2026-10-02T10:00:00Z',
+      lines: [{ description: 'Brood', unitPrice: 300, vatRate: 9 }, { description: 'Bon korting', unitPrice: -500, vatRate: 9, kind: 'discount' }, { description: 'Kaas', unitPrice: 800, vatRate: 9 }],
+      categories: { Brood: { category: 'boodschappen' }, Kaas: { category: 'boodschappen' }, 'Bon korting': { category: 'overig' } },
+    });
+    const body = (await buyerCall(w, 'GET', '/v1/me/insights', { token: me.token })).body as { perCategory: unknown };
+    expect(body.perCategory).toEqual([{ category: 'boodschappen', total: 1100 }]);
+  });
+});
+
+describe('GET /v1/me/insights: consent', () => {
+  it('is 403 consent_required until the Insights (analytics) consent is on, and computes nothing; off again stops it', async () => {
+    const me = await loginUser(w);
+    await receipt(me, { merchant: 'Café Het Plein', state: 'paid', createdAt: '2026-10-03T10:00:00Z', lines: [{ description: 'Koffie', unitPrice: 340, vatRate: 9 }] });
+
+    const off = await buyerCall(w, 'GET', '/v1/me/insights', { token: me.token });
+    expect(off.status).toBe(403);
+    expect(off.body).toEqual({ error: 'consent_required', purpose: 'analytics' });
+    expect(off.text).not.toContain('Café');
+
+    // other purposes do not unlock it
+    await buyerCall(w, 'PUT', '/v1/me/consents', { token: me.token, body: { marketing: true, push: true } });
+    expect((await buyerCall(w, 'GET', '/v1/me/insights', { token: me.token })).status).toBe(403);
+
+    await buyerCall(w, 'PUT', '/v1/me/consents', { token: me.token, body: { analytics: true } });
+    const on = await buyerCall(w, 'GET', '/v1/me/insights', { token: me.token });
+    expect(on.status).toBe(200);
+    expect(on.body).toMatchObject({ perMonth: [{ month: '2026-10', total: 340 }] });
+
+    await buyerCall(w, 'PUT', '/v1/me/consents', { token: me.token, body: { analytics: false } });
+    expect((await buyerCall(w, 'GET', '/v1/me/insights', { token: me.token })).status).toBe(403);
   });
 });

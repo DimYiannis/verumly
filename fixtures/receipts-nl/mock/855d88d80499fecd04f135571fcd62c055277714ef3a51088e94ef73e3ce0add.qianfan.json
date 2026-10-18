@@ -1,0 +1,5 @@
+{
+  "modelRevision": "mock",
+  "markdown": "# ELEKTRO MULDER\n\nIndustrieweg 14\n5611 AB Eindhoven\nKvK 63456712\nBTW-id NL456789123B01\n\nDatum 13-10-2026 Tijd 15:20\nBon 009943 Kassa 02\n\n| Omschrijving | Aantal | Prijs | Bedrag | BTW |\n|---|---|---|---|---|\n| Retour Koptelefoon ANC | -1 | 1.249,00 | -1.249,00 | 21% |\n\nTOTAAL EUR -1.249,00\nTeruggave PIN -1.249,00\n\n| BTW % | Over | BTW |\n|---|---|---|\n| 21% | -1.032,23 | -216,77 |\n\nBedankt voor uw bezoek!",
+  "kie": "{\n  \"merchant_name\": \"Elektro Mulder\",\n  \"kvk_number\": \"63456712\",\n  \"btw_number\": \"NL456789123B01\",\n  \"postcode\": \"5611 AB\",\n  \"date\": \"13-10-2026\",\n  \"time\": \"15:20\",\n  \"lines\": [\n    {\n      \"description\": \"Retour Koptelefoon ANC\",\n      \"qty\": \"-1\",\n      \"unit_price\": \"1.249,00\",\n      \"total\": \"-1.249,00\",\n      \"btw_rate\": \"21%\"\n    }\n  ],\n  \"btw_breakdown\": [\n    {\n      \"rate\": \"21%\",\n      \"base\": \"-1.032,23\",\n      \"btw\": \"-216,77\"\n    }\n  ],\n  \"total\": \"-1.249,00\",\n  \"rounding\": null,\n  \"payment_method\": \"PIN\"\n}"
+}

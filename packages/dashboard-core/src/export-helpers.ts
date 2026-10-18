@@ -61,7 +61,8 @@ export async function receiptsForExport(db: Db, orgId: string, from: string, to:
       from merchant.receipts r
       join merchant.receipt_versions v on v.receipt_id = r.id and v.version = r.current_version
       join merchant.locations l on l.id = r.location_id
-      where r.state in ('paid', 'fiscalised', 'void')
+      where r.org_id = ${orgId}::uuid -- explicit: the worker role's read policy spans every organisation
+        and r.state in ('paid', 'fiscalised', 'void')
         and (v.created_on_terminal_at at time zone 'Europe/Amsterdam')::date between ${from}::date and ${to}::date
       order by v.created_on_terminal_at, r.id
     `);

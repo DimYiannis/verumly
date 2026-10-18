@@ -126,6 +126,10 @@ export const nl = {
   'insights.vatRate': '{rate}% btw',
   'insights.err.offline': 'Inzichten zijn alleen online beschikbaar.',
   'insights.err.failed': 'Inzichten laden is niet gelukt.',
+  'insights.refunds': 'Terugbetaald: {amount}. Terugbetalingen tellen niet mee in de grafieken.',
+  'insights.consentOff.title': 'Inzichten staan uit',
+  'insights.consentOff.body': 'Je hebt geen toestemming gegeven om je uitgaven te berekenen, dus er wordt niets berekend. Zet Inzichten aan in Instellingen om je uitgaven per maand, categorie en winkel te zien.',
+  'insights.consentOff.link': 'Naar Instellingen',
 
   // login
   'login.title': 'Inloggen',
@@ -356,6 +360,7 @@ export const nl = {
   'uploadFailure.no_recorded_extraction': 'Deze foto staat niet in de demoset en kan in demomodus niet gelezen worden.',
   'uploadFailure.extractor_unavailable': 'De uitleesdienst is nu niet beschikbaar. Probeer het later opnieuw.',
   'uploadFailure.extractor_rejected': 'De uitleesdienst kon deze foto niet gebruiken.',
+  'uploadFailure.date_future': 'De datum op deze bon ligt in de toekomst. Controleer de datum.',
   'uploadFailure.parser_error': 'De tekst op deze bon kon niet begrepen worden.',
   'uploadPage.shop': 'Winkel',
   'uploadPage.date': 'Datum en tijd',

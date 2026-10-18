@@ -53,6 +53,8 @@ export const insights = z.object({
   perCategory: z.array(z.object({ category: z.string(), total: z.number() })),
   vatPerRate: z.array(z.object({ rate: z.number(), vat: z.number() })),
   topMerchants: z.array(z.object({ merchantName: z.string(), total: z.number(), count: z.number() })),
+  /** refunded amount (positive minor units) and number of refunds; never part of the other figures */
+  refunds: z.object({ total: z.number(), count: z.number() }).default({ total: 0, count: 0 }),
 });
 export type Insights = z.infer<typeof insights>;
 

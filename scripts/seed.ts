@@ -12,6 +12,7 @@ import { createLocation, createOrg, createTerminal } from '@lr/db/provision';
 import { parseExtraction, truthPrintedAtUtc } from '@lr/receipt-nl';
 import { createObjectStore } from '@lr/storage';
 import { buildApp as buildMerchantApi } from '../apps/merchant-api/src/app.ts';
+import { DEFAULT_POLICY_VERSION } from '../apps/buyer-api/src/routes/consents.ts';
 import { allocateEqual } from '../apps/buyer-api/src/split-math.ts';
 import { workerEnvSchema, type WorkerEnv } from '../apps/worker/src/env.ts';
 import { createExtractor } from '../apps/worker/src/extractor-factory.ts';
@@ -277,6 +278,9 @@ export async function runSeed(opts: SeedOptions): Promise<SeedResult> {
 
     // a second person, so friends, shares and splits have something to show: Sam (the demo buyer) and Anna
     await db.update(tables.users).set({ displayName: 'Sam', handle: 'sam', avatar: '🙂' }).where(and(eq(tables.users.id, buyerId), isNull(tables.users.handle)));
+    // Sam has switched Insights on (consents default off), so the demo shows charts; the Settings switch turns them off again
+    const [hasConsent] = await db.select({ n: count() }).from(tables.consents).where(and(eq(tables.consents.userId, buyerId), eq(tables.consents.purpose, 'analytics')));
+    if ((hasConsent?.n ?? 0) === 0) await db.insert(tables.consents).values({ userId: buyerId, purpose: 'analytics', granted: true, policyVersion: DEFAULT_POLICY_VERSION });
     let [anna] = await db.select({ id: tables.users.id }).from(tables.users).where(eq(tables.users.email, SEED.friendEmail));
     if (!anna) [anna] = await db.insert(tables.users).values({ email: SEED.friendEmail, displayName: 'Anna', handle: 'anna', avatar: '🦊' }).returning({ id: tables.users.id });
     const annaId = anna!.id;
@@ -321,7 +325,7 @@ export async function runSeed(opts: SeedOptions): Promise<SeedResult> {
       const corpus = loadSeedCorpus({ fixturesDir: opts.env.FIXTURES_DIR });
       const statusOf = (e: CorpusEntry) => {
         const rec = readRecorded(e);
-        return rec ? parseExtraction({ markdown: rec.markdown, kie: rec.kie }) : null;
+        return rec ? parseExtraction({ markdown: rec.markdown, kie: rec.kie }, { now }) : null;
       };
       const withRecording = corpus.entries.filter((e) => statusOf(e) !== null);
       const matchEntry = withRecording.find((e) => e.truth.gross > 0 && (e.truth.merchant.kvk || e.truth.merchant.vatNumber) && statusOf(e)?.status === 'done' && truthPrintedAtUtc(e.truth));

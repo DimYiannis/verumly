@@ -110,6 +110,7 @@ describe('photo receipts: stored categories, VAT per rate, user edits, delete', 
 
   it('insights count a done upload under its stored categories, follow the buyer’s edit, and report VAT per rate', async () => {
     const who = await loginUser(ww.w);
+    await buyerCall(ww.w, 'PUT', '/v1/me/consents', { token: who.token, body: { analytics: true } });
     const { uploadId } = await uploadAndExtract(ww, who, corpusEntry(ww, GOOD));
     const insights = async () => (await buyerCall(ww.w, 'GET', '/v1/me/insights', { token: who.token })).body as { perCategory: Array<{ category: string; total: number }>; vatPerRate: Array<{ rate: number; vat: number }> };
 

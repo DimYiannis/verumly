@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { tables, type Db } from '@lr/db';
-import { categoriseLines, lineTotal, vatFromGross } from '@lr/receipt-nl';
+import { categoriseLines, FUTURE_TOLERANCE_MS, lineTotal, vatFromGross } from '@lr/receipt-nl';
 import { uploadExtracted, type ParsedLineDto, type ParsedReceiptDto, type UploadCategoriesBody, type UploadExtracted, type UploadPatchBody } from '@lr/schema';
 import { claimedBy, loadReceipt } from './receipts.ts';
 
@@ -102,8 +102,8 @@ export function applyCategories(parsed: ParsedReceiptDto, body: UploadCategories
 const LINE_TOLERANCE = 2;
 
 /**
- * Apply a buyer's corrections to an extracted draft and re-check it. The corrected draft is `done` when it is complete
- * and its arithmetic holds: the lines sum exactly to the printed total, each line is qty × unit price within 2 cents,
+ * Apply a buyer's corrections to an extracted draft and re-check it. The corrected draft is `done` when it is complete,
+ * its date is not in the future, and its arithmetic holds: the lines sum exactly to the printed total, each line is qty × unit price within 2 cents,
  * and every non-deposit line has a BTW rate. BTW per rate is then derived from the (buyer-confirmed) lines.
  */
 export function applyCorrections(parsed: ParsedReceiptDto, patch: UploadPatchBody): ParsedReceiptDto {
@@ -121,6 +121,7 @@ export function applyCorrections(parsed: ParsedReceiptDto, patch: UploadPatchBod
   const failures: string[] = [];
   if (!next.merchant.name) failures.push('merchant_missing');
   if (!next.printedAtUtc) failures.push('date_missing');
+  else if (Date.parse(next.printedAtUtc) > Date.now() + FUTURE_TOLERANCE_MS) failures.push('date_future');
   if (next.gross === null) failures.push('gross_missing');
   if (lines.length === 0) failures.push('no_lines');
   if (next.gross !== null && lines.reduce((s, l) => s + l.total, 0) !== next.gross) failures.push('gross_sum');
