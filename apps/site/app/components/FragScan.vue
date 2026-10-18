@@ -1,3 +1,7 @@
+<script setup lang="ts">
+const { t } = useSiteLocale();
+</script>
+
 <template>
   <div class="grid gap-6 p-6 sm:grid-cols-2 sm:items-center">
     <div class="flex flex-col items-center gap-3">
@@ -8,15 +12,15 @@
           <i class="absolute bottom-0 left-0 size-11 border-[6px] border-[#14152B] bg-white" />
         </div>
       </div>
-      <p class="text-sm text-muted-foreground">On the till screen</p>
+      <p class="text-sm text-muted-foreground">{{ t('frag.scan.onTill') }}</p>
     </div>
     <div class="space-y-3 text-sm">
       <div class="rounded-xl border border-border bg-card p-3">
         <p class="text-xs text-muted-foreground">Café Het Plein</p>
         <p class="font-mono text-lg font-medium">€10,69</p>
-        <span class="rounded-md border border-[#B9D8BF] bg-[#E3F0E4] px-2 py-0.5 text-xs text-success">Paid by card</span>
+        <span class="rounded-md border border-[#B9D8BF] bg-[#E3F0E4] px-2 py-0.5 text-xs text-success">{{ t('frag.scan.paidCard') }}</span>
       </div>
-      <p class="text-muted-foreground">Point your camera at the code. The receipt opens in the browser: no account, no download.</p>
+      <p class="text-muted-foreground">{{ t('frag.scan.point') }}</p>
     </div>
   </div>
 </template>

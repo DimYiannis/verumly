@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 
-// The public website: a static page that explains why and how. No API, no database, nothing to configure to build it.
+// The public website: a static page that explains why and how, in English (`/`, `/privacy`) and Dutch (`/nl`, `/nl/privacy`).
+// No API, no database, nothing to configure to build it.
 // Deploys to Vercel as a Nuxt app (see apps/site/README.md); every route is prerendered.
 // Absolute site address for share previews (og:image must be absolute): NUXT_PUBLIC_SITE_URL wins, then Vercel's production
 // domain from the build environment; empty (relative image) when neither is set.
@@ -20,10 +21,10 @@ export default defineNuxtConfig({
       siteUrl,
     },
   },
-  nitro: { prerender: { routes: ['/', '/privacy'], crawlLinks: true } },
+  nitro: { prerender: { routes: ['/', '/privacy', '/nl', '/nl/privacy'], crawlLinks: true } },
   app: {
     head: {
-      htmlAttrs: { lang: 'en' },
+      // <html lang> is set per page (en / nl) by useLocaleHead and error.vue
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'theme-color', content: '#3338B8' },
