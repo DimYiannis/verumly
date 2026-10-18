@@ -40,6 +40,7 @@ describe('the wallet and receipts in other currencies', () => {
 
   it('home, insights and balances count one currency: the one of the latest final receipt', async () => {
     const me = await loginUser(w);
+    await buyerCall(w, 'PUT', '/v1/me/consents', { token: me.token, body: { analytics: true } });
     // an older receipt in euros (Germany would need the fiscal step, so use the Dutch org), then a newer one in pounds
     const euros = await createReceipt(w, w.orgA, { state: 'paid', createdAt: at(1), lines: [{ unitPrice: 1000, vatRate: 21 }] });
     const pounds = await createReceipt(w, gb, { state: 'paid', createdAt: at(0), lines: [{ unitPrice: 2500, vatRate: 20 }] });
@@ -62,6 +63,7 @@ describe('the wallet and receipts in other currencies', () => {
 
   it('insights keep decimal VAT rates (5.5 is not turned into 6)', async () => {
     const me = await loginUser(w);
+    await buyerCall(w, 'PUT', '/v1/me/consents', { token: me.token, body: { analytics: true } });
     const fr = await w.addOrg({ country: 'FR' });
     const receipt = await createReceipt(w, fr, { state: 'paid', createdAt: at(0), lines: [{ unitPrice: 1055, vatRate: 5.5 }] });
     expect((await claimRequest(w, me, receipt)).status).toBe(201);

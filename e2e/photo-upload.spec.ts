@@ -104,6 +104,14 @@ test('photo receipt: upload from the wallet to S3, read, categories and VAT per 
 
   // --- insights follow the stored categories; VAT per rate ---
   await page.goto(`${URLS.wallet}/insights`);
+  // consents default off: nothing is calculated until Insights is switched on in Settings
+  await expect(page.getByTestId('insights-consent-off')).toBeVisible();
+  await expect(page.getByTestId('chart-categories')).toHaveCount(0);
+  await page.getByTestId('insights-consent-link').click();
+  await page.waitForURL(`${URLS.wallet}/settings`);
+  await page.getByTestId('consent-analytics').click();
+  await expect(page.getByTestId('consent-analytics')).toHaveAttribute('data-state', 'checked');
+  await page.goto(`${URLS.wallet}/insights`);
   // main's donut shows the total in the centre and each category's share: 9.75 + 4.49 + 4.99 + 0.50 = 19.73
   const categories = page.getByTestId('chart-categories');
   await expect(categories).toContainText('€19.73');

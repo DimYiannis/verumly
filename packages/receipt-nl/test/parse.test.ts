@@ -98,6 +98,28 @@ describe('parseExtraction: exactness of the done gate', () => {
   });
 });
 
+describe('parseExtraction: a printed date in the future', () => {
+  // clean() is printed 10-10-2026 20:47 Amsterdam = 18:47 UTC
+  const parse = (iso: string) => parseExtraction({ markdown: '', kie: JSON.stringify(clean()) }, { now: new Date(iso) });
+
+  it('is needs_review with date_future when more than a day after the caller clock', () => {
+    const p = parse('2026-10-09T12:00:00Z');
+    expect(p.status).toBe('needs_review');
+    expect(p.failures).toEqual(['date_future']);
+    expect(p.printedAtUtc).toBe('2026-10-10T18:47:00Z');
+  });
+
+  it('allows a day of clock skew, and any past date', () => {
+    expect(parse('2026-10-09T18:47:00Z').status).toBe('done'); // exactly one day ahead
+    expect(parse('2026-10-09T18:46:59Z').failures).toEqual(['date_future']);
+    expect(parse('2027-01-01T00:00:00Z').status).toBe('done');
+  });
+
+  it('is not checked without a clock (the parser never reads one)', () => {
+    expect(parseExtraction({ markdown: '', kie: JSON.stringify(clean()) }).status).toBe('done');
+  });
+});
+
 describe('parseExtraction: line kinds', () => {
   it('statiegeld is a deposit outside the BTW rows; a bonus line takes the rate of the item above it', () => {
     const k = {

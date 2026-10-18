@@ -1,7 +1,7 @@
 {
   "id": "mock-supermarkt-statiegeld-bonus",
   "image": "mock-supermarkt-statiegeld-bonus.png",
-  "sha256": "2fd11035326fac32bb2a3cb59813e79cfda6da4a6eafb85db50a0e8e711fdb51",
+  "sha256": "859fb551d87efee2c73f8c50b7c73e07a4dc4be79a99a9023681556015582740",
   "mock": true,
   "merchant": {
     "name": "Supermarkt De Hoek",
@@ -9,7 +9,7 @@
     "vatNumber": "NL987654329B01",
     "postcode": "3511 KP"
   },
-  "printedAt": "2026-10-24T11:03",
+  "printedAt": "2026-10-16T11:03",
   "gross": 1973,
   "rounding": 0,
   "vat": [

@@ -69,7 +69,7 @@ export async function extractUpload(ctx: WorkerCtx, job: ExtractUploadJob, opts:
     throw e;
   }
 
-  const read = parseExtraction({ markdown: extraction.markdown, kie: extraction.kie });
+  const read = parseExtraction({ markdown: extraction.markdown, kie: extraction.kie }, { now: ctx.now() });
   // store the category (and health flag) of every line now, so lists and insights never re-derive them
   const parsed = { ...read, lines: categoriseLines(read.lines, read.merchant.name) };
 

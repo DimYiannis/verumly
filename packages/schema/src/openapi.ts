@@ -45,7 +45,7 @@ export function buyerOpenApi() {
       r.registerPath({ method: 'get', path: '/v1/me/receipts', security: bearer, responses: { 200: json('cursor-paginated wallet list') } });
       r.registerPath({ method: 'get', path: '/v1/me/receipts/{id}', security: bearer, request: { params: idParam }, responses: { 200: json('latest CRF and versions'), 404: json('not yours') } });
       r.registerPath({ method: 'get', path: '/v1/me/receipts/{id}/pdf', security: bearer, request: { params: idParam }, responses: { 200: json('application/pdf') } });
-      r.registerPath({ method: 'get', path: '/v1/me/insights', security: bearer, responses: { 200: json('spend per month, per category, top merchants') } });
+      r.registerPath({ method: 'get', path: '/v1/me/insights', security: bearer, responses: { 200: json('spend per month, per category, top merchants; refunds apart'), 403: json('consent_required: the analytics consent is off') } });
     },
   );
 }

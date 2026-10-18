@@ -102,10 +102,13 @@ export async function uploadBytes(ww: WorkerWorld, who: BuyerSession, bytes: Uin
 
 export const imageBytes = (e: CorpusEntry): Uint8Array => new Uint8Array(readFileSync(e.imagePath));
 
-/** Upload a corpus image and run the extract job on it, like the worker loop would. */
+/** After every date printed on the mock corpus (the latest is 25 Oct 2026), so no corpus photo reads as future-dated whatever the wall clock. */
+export const AFTER_CORPUS = new Date('2026-11-01T12:00:00Z');
+
+/** Upload a corpus image and run the extract job on it, like the worker loop would (clock: {@link AFTER_CORPUS}). */
 export async function uploadAndExtract(ww: WorkerWorld, who: BuyerSession, e: CorpusEntry): Promise<UploadResult & { outcome: ExtractOutcome }> {
   const up = await uploadBytes(ww, who, imageBytes(e));
-  return { ...up, outcome: await extractUpload(ww.ctx, { uploadId: up.uploadId }) };
+  return { ...up, outcome: await extractUpload({ ...ww.ctx, now: () => AFTER_CORPUS }, { uploadId: up.uploadId }) };
 }
 
 export { loginUser, buyerCall };

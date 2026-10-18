@@ -29,7 +29,8 @@ export async function vatByDay(db: Db, orgId: string, from: string, to: string):
       from merchant.receipts r
       join merchant.receipt_versions v on v.receipt_id = r.id and v.version = r.current_version
       cross join lateral jsonb_array_elements(v.payload->'vatSummary') as row
-      where r.state in ('paid', 'fiscalised')
+      where r.org_id = ${orgId}::uuid -- explicit: the worker role's read policy spans every organisation
+        and r.state in ('paid', 'fiscalised')
         and (v.created_on_terminal_at at time zone 'Europe/Amsterdam')::date between ${from}::date and ${to}::date
       group by 1, 2
       order by 1, 2 desc

@@ -46,7 +46,7 @@ Authenticated (`Authorization: Bearer <session token>`; email code via Mailpit l
 | GET | `/v1/me/uploads/:id/photo` | The photo bytes (bearer auth, owner only, `cache-control: private, no-store`). |
 | DELETE | `/v1/me/uploads/:id` | Removes the S3 object, then the row. 204; 404 unless it is yours. |
 | POST | `/v1/me/uploads/:id/accept-match` | Replace the photo with the matched official receipt (claim source `photo_match`). |
-| GET | `/v1/me/insights` | Spend per month, per category (stored line categories, health as `overig`), top merchants, and `vatPerRate` (VAT per rate over claimed final receipts and done uploads). |
+| GET | `/v1/me/insights` | Needs the `analytics` consent, else `403 {error: 'consent_required', purpose: 'analytics'}`. Spend per month, per category (stored line categories, health as `overig`), top merchants, and `vatPerRate` (VAT per rate over claimed final receipts and done uploads), all over purchases; refunds (negative totals) are `refunds: {total, count}`, `total` positive. |
 | GET / PUT | `/v1/me/consents` | Append-only; all off by default. |
 | POST / DELETE | `/v1/me/push-subscriptions`, `/v1/me/push-subscriptions/:id` | Web Push. |
 | GET | `/v1/me/export` | JSON export of everything about the user. |

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseExtraction, truthPrintedAtUtc } from '@lr/receipt-nl';
 import { readRecorded } from '../../../scripts/lib/corpus.ts';
 import { buyerCall, createReceipt, loginUser, sql } from '../../../scripts/lib/testkit.ts';
-import { corpusEntry, createWorkerWorld, orgForCorpusEntry, uploadAndExtract, uploadBytes, type WorkerWorld } from './helpers.ts';
+import { corpusEntry, createWorkerWorld, imageBytes, orgForCorpusEntry, uploadAndExtract, uploadBytes, type WorkerWorld } from './helpers.ts';
 
 let ww: WorkerWorld;
 beforeAll(async () => {
@@ -101,6 +101,40 @@ describe('upload → extraction', () => {
     const { extractUpload } = await import('../src/jobs/extract-upload.ts');
     expect((await extractUpload(ww.ctx, { uploadId: up.uploadId })).status).toBe('failed');
     expect((await buyerCall(ww.w, 'GET', `/v1/me/uploads/${up.uploadId}`, { token: who.token })).body).toMatchObject({ status: 'failed', failures: ['no_recorded_extraction'], draft: null });
+  });
+});
+
+describe('a photo with a date in the future', () => {
+  const FUTURE = 'mock-contant-afronding'; // printed 25 Oct 2026 08:10 Amsterdam = 07:10 UTC
+  const extractAt = async (now: string) => {
+    const who = await loginUser(ww.w);
+    const up = await uploadBytes(ww, who, imageBytes(corpusEntry(ww, FUTURE)));
+    const { extractUpload } = await import('../src/jobs/extract-upload.ts');
+    const outcome = await extractUpload({ ...ww.ctx, now: () => new Date(now) }, { uploadId: up.uploadId });
+    const view = await buyerCall(ww.w, 'GET', `/v1/me/uploads/${up.uploadId}`, { token: who.token });
+    return { outcome, view: view.body as { status: string; failures: string[] } };
+  };
+
+  it('is needs_review with date_future when printed more than a day after the worker clock', async () => {
+    const { outcome, view } = await extractAt('2026-10-18T12:00:00Z');
+    expect(outcome.status).toBe('needs_review');
+    expect(view).toMatchObject({ status: 'needs_review', failures: ['date_future'] });
+  });
+
+  it('is done within the one-day clock tolerance', async () => {
+    const { outcome, view } = await extractAt('2026-10-24T12:00:00Z');
+    expect(outcome.status).toBe('done');
+    expect(view).toMatchObject({ status: 'done', failures: [] });
+  });
+
+  it('a correction cannot move the date into the future either', async () => {
+    const e = corpusEntry(ww, PLANTED);
+    const who = await loginUser(ww.w);
+    const { uploadId } = await uploadAndExtract(ww, who, e);
+    const future = new Date(Date.now() + 30 * 86_400_000).toISOString();
+    const res = await buyerCall(ww.w, 'PATCH', `/v1/me/uploads/${uploadId}`, { token: who.token, body: { gross: e.truth.gross, printedAt: future } });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ status: 'needs_review', failures: ['date_future'] });
   });
 });
 

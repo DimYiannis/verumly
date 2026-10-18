@@ -73,7 +73,7 @@ export const MOCK_RECEIPTS: MockReceipt[] = [
   {
     id: 'mock-supermarkt-statiegeld-bonus',
     merchant: { name: 'Supermarkt De Hoek', street: 'Kerkstraat 45', postcode: '3511 KP', city: 'Utrecht', kvk: '27654321', vatNumber: 'NL987654329B01' },
-    printedAt: '2026-10-24T11:03',
+    printedAt: '2026-10-16T11:03',
     bonNumber: '118204',
     lines: [
       item('Halfvolle melk 1L', '1', 129, 9, 129),
@@ -146,7 +146,7 @@ export const MOCK_RECEIPTS: MockReceipt[] = [
   {
     id: 'mock-retour',
     merchant: { name: 'Elektro Mulder', street: 'Industrieweg 14', postcode: '5611 AB', city: 'Eindhoven', kvk: '63456712', vatNumber: 'NL456789123B01' },
-    printedAt: '2026-10-26T15:20',
+    printedAt: '2026-10-13T15:20',
     bonNumber: '009943',
     lines: [{ description: 'Retour Koptelefoon ANC', qty: '-1', unitPrice: 124900, vatRate: 21, total: -124900, kind: 'item' }],
     gross: -124900,

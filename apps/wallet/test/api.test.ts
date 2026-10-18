@@ -55,6 +55,16 @@ describe('createApi', () => {
     await expect(api.resolveView(ID, SECRET)).rejects.toMatchObject({ status: 0, isNetwork: true });
   });
 
+  it('insights: refunds are read from the response; the consent gate arrives as 403 consent_required', async () => {
+    const base = { currency: 'EUR', perMonth: [], perCategory: [], vatPerRate: [], topMerchants: [] };
+    const withRefunds = createApi({ baseUrl: 'http://api.test', getToken: () => 'tok', fetch: fakeFetch(() => json({ ...base, refunds: { total: 124900, count: 1 } })).impl });
+    expect((await withRefunds.insights()).refunds).toEqual({ total: 124900, count: 1 });
+    const without = createApi({ baseUrl: 'http://api.test', getToken: () => 'tok', fetch: fakeFetch(() => json(base)).impl });
+    expect((await without.insights()).refunds).toEqual({ total: 0, count: 0 });
+    const off = createApi({ baseUrl: 'http://api.test', getToken: () => 'tok', fetch: fakeFetch(() => json({ error: 'consent_required', purpose: 'analytics' }, 403)).impl });
+    await expect(off.insights()).rejects.toMatchObject({ status: 403, code: 'consent_required' });
+  });
+
   it('claim returns the HTTP status (201 claimed, 200 already_yours)', async () => {
     const f = fakeFetch(() => json({ receiptId: ID, status: 'claimed' }, 201));
     const api = createApi({ baseUrl: 'http://api.test', getToken: () => null, fetch: f.impl });

@@ -127,6 +127,10 @@ export const en: Record<MessageKey, string> = {
   'insights.vatRate': '{rate}% VAT',
   'insights.err.offline': 'Insights are only available online.',
   'insights.err.failed': 'Could not load insights.',
+  'insights.refunds': 'Refunded: {amount}. Refunds are not counted in the charts.',
+  'insights.consentOff.title': 'Insights are switched off',
+  'insights.consentOff.body': 'You have not given permission to calculate your spending, so nothing is calculated. Turn on Insights in Settings to see your spending per month, category and shop.',
+  'insights.consentOff.link': 'Go to Settings',
 
   // login
   'login.title': 'Log in',
@@ -357,6 +361,7 @@ export const en: Record<MessageKey, string> = {
   'uploadFailure.no_recorded_extraction': 'This photo is not in the demo set, so it cannot be read in demo mode.',
   'uploadFailure.extractor_unavailable': 'The reading service is not available right now. Try again later.',
   'uploadFailure.extractor_rejected': 'The reading service could not use this photo.',
+  'uploadFailure.date_future': 'The date on this receipt is in the future. Check the date.',
   'uploadFailure.parser_error': 'The text on this receipt could not be understood.',
   'uploadFailure.kie_unparseable': 'The receipt text could not be read reliably.',
   'uploadFailure.merchant_missing': 'The shop name is missing.',
