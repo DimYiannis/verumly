@@ -4,6 +4,8 @@ import { expect, test, type Page } from '@playwright/test';
 import pg from 'pg';
 import { PNG } from 'pngjs';
 import { adminDbUrl, loadEnv, s3EnvSchema } from '@lr/config';
+import { renderReceiptPdf } from '@lr/receipt-pdf';
+import { defaultReceiptTemplate, type Crf } from '@lr/schema';
 import { createObjectStore } from '@lr/storage';
 import { shot, walletLogin } from './support/browser.ts';
 import { dbEnv, URLS } from './support/env.ts';
@@ -41,7 +43,8 @@ const uploadIdOf = (page: Page): string => new URL(page.url()).pathname.split('/
 test('photo receipt: upload from the wallet to S3, read, categories and VAT per rate, edit a category, insights, delete', async ({ page }) => {
   await login(page);
   await page.goto(`${URLS.wallet}/add`);
-  await expect(page.getByTestId('upload-formats')).toContainText('PDF and HEIC');
+  await expect(page.getByTestId('upload-formats')).toContainText('PDF');
+  await expect(page.getByTestId('upload-formats')).toContainText('HEIC files are not supported');
 
   // --- upload: the bytes go from the browser straight to S3 (CORS between :3001 and :9090) ---
   const put = page.waitForResponse((r) => r.request().method() === 'PUT' && r.url().startsWith(S3_ENDPOINT));
@@ -144,7 +147,7 @@ test('photo receipt: upload from the wallet to S3, read, categories and VAT per 
   await expect(page.getByTestId('no-insights')).toBeVisible();
 });
 
-test('PDF and HEIC are refused in the wallet before anything is uploaded', async ({ page }) => {
+test('HEIC is refused in the wallet before anything is uploaded', async ({ page }) => {
   await login(page);
   await page.goto(`${URLS.wallet}/add`);
   const calls: string[] = [];
@@ -152,15 +155,60 @@ test('PDF and HEIC are refused in the wallet before anything is uploaded', async
     if (r.url().includes('/v1/me/uploads') || r.url().startsWith(S3_ENDPOINT)) calls.push(`${r.method()} ${r.url()}`);
   });
   for (const file of [
-    { name: 'receipt.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n') },
     { name: 'receipt.heic', mimeType: 'image/heic', buffer: Buffer.from('ftypheic') },
   ]) {
     await page.getByTestId('file-input-library').setInputFiles(file);
-    await expect(page.getByTestId('upload-error')).toContainText('PDF and HEIC');
+    await expect(page.getByTestId('upload-error')).toContainText('HEIC');
     await expect(page.getByTestId('upload-error')).toContainText('JPEG, PNG or WebP');
   }
   expect(page.url()).toMatch(/\/add$/);
   expect(calls, 'no request to the API or to S3').toEqual([]);
+});
+
+test('a PDF receipt: uploaded as it is, read from its text, shop, total, lines and VAT filled in, the PDF can be opened', async ({ page }) => {
+  await login(page);
+  await page.goto(`${URLS.wallet}/add`);
+  const crf = {
+    crf: '1',
+    receiptId: '0194c6e0-7b2a-7d1e-9c44-5e1f0a3b8c21',
+    version: 1,
+    state: 'paid',
+    merchant: { kvkNumber: '12345678', vatNumber: 'NL123456789B01', name: 'Bakkerij De Korenbloem', locationId: 'l', terminalId: 't' },
+    createdAt: '2026-10-17T10:04:00Z',
+    currency: 'EUR',
+    lines: [
+      { lineNo: 1, kind: 'item', sku: null, description: 'Volkorenbrood', qty: '2', unitPrice: 340, vatRate: 9, discount: 0, total: 680, category: null },
+      { lineNo: 2, kind: 'item', sku: null, description: 'Biertje', qty: '1', unitPrice: 389, vatRate: 21, discount: 0, total: 389, category: null },
+    ],
+    vatSummary: [
+      { rate: 21, gross: 389, net: 321, vat: 68 },
+      { rate: 9, gross: 680, net: 624, vat: 56 },
+    ],
+    totals: { gross: 1069, net: 945, vat: 124, tip: 0, rounding: 0 },
+    payments: [{ method: 'card', amount: 1069 }],
+    fiscal: { country: 'NL', registerSerial: null, documentNumber: null, extra: {} },
+    voidOf: null,
+  } as unknown as Crf;
+  const pdf = Buffer.from(await renderReceiptPdf(crf, defaultReceiptTemplate()));
+  const put = page.waitForResponse((r) => r.request().method() === 'PUT' && r.url().startsWith(S3_ENDPOINT));
+  await page.getByTestId('file-input-library').setInputFiles({ name: 'bon.pdf', mimeType: 'application/pdf', buffer: pdf });
+  expect((await put).status(), 'browser PUT of the PDF to the S3 mock').toBe(200);
+  await page.waitForURL(/\/uploads\/[0-9a-f-]{36}$/);
+  await expect(page.getByTestId('upload-status')).toHaveAttribute('data-status', 'done');
+  await expect(page.getByTestId('upload-merchant')).toHaveText('Bakkerij De Korenbloem');
+  await expect(page.getByTestId('upload-total')).toHaveText('€10.69');
+  await expect(page.getByTestId('upload-payment')).toHaveText('Card');
+  await expect(page.getByTestId('upload-line')).toHaveCount(2);
+  await expect(page.getByTestId('upload-line').nth(0)).toHaveAttribute('data-vat-rate', '9');
+  await expect(page.getByTestId('upload-line').nth(1)).toHaveAttribute('data-vat-rate', '21');
+  await expect(page.getByTestId('upload-pdf-link')).toBeVisible(); // a PDF is opened, not shown as an image
+  await shot(page, 'pdf-upload-detail');
+  // it can be removed like a photo
+  const uploadId = uploadIdOf(page);
+  await page.getByTestId('delete-upload').click();
+  await page.getByTestId('confirm-delete').click();
+  await page.waitForURL(`${URLS.wallet}/receipts`);
+  expect(await uploadRow(uploadId)).toBeUndefined();
 });
 
 test('a photo that cannot be read ends as failed, with the reason', async ({ page }) => {

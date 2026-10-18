@@ -95,7 +95,7 @@ describe('uploads', () => {
     expect(validateUploadFile({ type: 'image/jpeg', size: 1000 })).toBeNull();
     expect(validateUploadFile({ type: 'image/webp', size: 1000 })).toBeNull();
     // PDF and HEIC are not read by the extractor: refused before anything is uploaded
-    expect(validateUploadFile({ type: 'application/pdf', size: 1000 })).toBe('unsupported_type');
+    expect(validateUploadFile({ type: 'application/pdf', size: 1000 })).toBeNull();
     expect(validateUploadFile({ type: 'image/heic', size: 1000 })).toBe('unsupported_type');
     expect(validateUploadFile({ type: '', size: 1000 })).toBe('unsupported_type');
     expect(validateUploadFile({ type: 'text/plain', size: 1000 })).toBe('unsupported_type');
@@ -125,7 +125,7 @@ describe('uploads', () => {
     expect(storage.calls[0]?.headers).toEqual({ 'content-type': 'image/png' });
   });
 
-  it('never presigns a PDF or HEIC file', async () => {
+  it('never presigns a HEIC file', async () => {
     let presigned = false;
     const api = {
       async createUpload() {
@@ -134,7 +134,6 @@ describe('uploads', () => {
       },
       completeUpload: async (id: string) => ({ uploadId: id, status: 'processing' }),
     };
-    await expect(uploadFile(api, new Blob(['%PDF'], { type: 'application/pdf' }))).rejects.toMatchObject({ status: 400, code: 'unsupported_type' });
     await expect(uploadFile(api, new Blob(['x'], { type: 'image/heic' }))).rejects.toMatchObject({ code: 'unsupported_type' });
     expect(presigned).toBe(false);
   });

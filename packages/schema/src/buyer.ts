@@ -4,7 +4,7 @@ import { uuidString } from './crf.ts';
 /** Buyer API DTOs beyond auth/claims: uploads, consents, push subscriptions. */
 
 /** PDF and HEIC are not extracted (Qianfan reads raster images): refused at the API, and before upload in the wallet. */
-export const UPLOAD_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export const UPLOAD_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] as const;
 export const MAX_UPLOAD_BYTES = 10_000_000;
 
 export const createUploadBody = z

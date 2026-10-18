@@ -66,6 +66,12 @@ async function onFile(event: Event) {
   }
   busy.value = true;
   try {
+    // a PDF is uploaded as it is (the worker reads its text, or its first page when it is a scan)
+    if (file.type === 'application/pdf') {
+      uploading.value = true;
+      await navigateTo(`/uploads/${await uploadFile(wallet.api, file)}`);
+      return;
+    }
     // find the receipt, crop and shrink on the phone before any request; a photo that cannot be read stops here
     preparing.value = true;
     const prepared = await preparePhoto(file).catch((): PrepareResult => ({ ok: false, problems: ['unreadable'] }));
@@ -139,7 +145,7 @@ async function onFile(event: Event) {
           </span>
           <ChevronRight class="size-4 text-muted-foreground" aria-hidden="true" />
         </label>
-        <input id="receipt-file" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" data-testid="file-input-library" :disabled="busy" @change="onFile" />
+        <input id="receipt-file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" class="sr-only" data-testid="file-input-library" :disabled="busy" @change="onFile" />
       </li>
       <li class="space-y-2 px-4 py-3">
         <div class="flex items-center gap-3">

@@ -113,7 +113,8 @@ Big issues found in the code review (2026-10-16) and still open. Tick an item wh
 - [ ] **Never run against the real service:** a real Qianfan-OCR endpoint, real push to a phone, a real phone camera scanning the QR, and iOS/Safari (the tests run Chromium only).
 - [ ] **Wallet screens without end-to-end tests:** upload/photo, insights, settings, push opt-in, PWA install, and the notification click.
 - [ ] **Browser upload to S3:** needs a CORS rule. The local S3 mock doesn't enforce CORS, so this is unverified.
-- [ ] **PDF and HEIC uploads** are refused by the HTTP extractor.
+- [x] **PDF uploads** are read: a PDF with a text layer is parsed from its text (no OCR; `apps/worker/src/pdf-extractor.ts`, `pdfTextToMarkdown` in `packages/receipt-nl`), a scanned PDF has its first page drawn as a PNG and read like a photo. Not done: scanned PDFs beyond page 1, receipts in other languages than Dutch/English, password-protected PDFs (refused with `pdf_unreadable`), PDFs over 5 pages (`pdf_too_long`). The scanned path needs the Qianfan endpoint, which has never been run against a real PDF.
+- [ ] **HEIC uploads** are refused (the wallet and the API).
 - [ ] **Journey step 6** calls the dashboard code in-process instead of over HTTP.
 
 ## Hosting and operations
