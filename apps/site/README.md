@@ -15,10 +15,10 @@ pnpm --filter @lr/site generate   # static output in apps/site/.output/public
 3. Framework preset: Nuxt. `vercel.json` already sets the install and build commands (pnpm at the repo root).
 4. Optional environment variables, used for the buttons on the page (all are public):
    - `NUXT_PUBLIC_WALLET_URL`: where the wallet demo is hosted
-   - `NUXT_PUBLIC_DASHBOARD_URL`: where the dashboard demo is hosted
-   - `NUXT_PUBLIC_REPO_URL`: link to the source
+   - `NUXT_PUBLIC_DASHBOARD_URL`: where the dashboard demo is hosted (the till simulator link is this address's origin + `/simulator`)
+   - `NUXT_PUBLIC_REPO_URL`: link to the source (also linked from the demo section's README note)
    - `NUXT_PUBLIC_SITE_URL`: the site's own address (for share previews)
 
-Without the first two the page shows the demo buttons as anchors and a note that the links appear once the apps are hosted.
+Without the first two: in `pnpm dev` the buttons point at the local apps (`http://localhost:3001`, `http://localhost:3000/dashboard`, `http://localhost:3000/simulator`); in a production build (`generate`) the buttons are left out and the demo section says the demo is not linked yet.
 
 Content lives in `app/pages/index.vue` (copy) and `app/components/Frag*.vue` (the mini screens, drawn in markup: update them when the app's screens change).

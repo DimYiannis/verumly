@@ -7,8 +7,12 @@ import FragSplit from '~/components/FragSplit.vue';
 import FragTill from '~/components/FragTill.vue';
 
 const config = useRuntimeConfig().public;
-const walletUrl = computed(() => config.walletUrl || '#try');
-const dashboardUrl = computed(() => config.dashboardUrl || '#try');
+// Demo links: the env var wins; in `nuxt dev` an unset one falls back to the local apps; a production build without them
+// shows no demo buttons (the #try section says the demo is not linked yet).
+const walletUrl = config.walletUrl || (import.meta.dev ? 'http://localhost:3001' : '');
+const dashboardUrl = config.dashboardUrl || (import.meta.dev ? 'http://localhost:3000/dashboard' : '');
+const simulatorUrl = dashboardUrl ? `${new URL(dashboardUrl).origin}/simulator` : '';
+const repoUrl = config.repoUrl;
 
 useSeoMeta({
   title: 'bonnen: every receipt, saved the moment you pay',
@@ -202,7 +206,7 @@ const status = {
             <li>Bills split with friends, balances tracked, no payments in the middle</li>
             <li>No loyalty card, no tracking, delete everything whenever you like</li>
           </ul>
-          <a :href="walletUrl" class="mt-8 inline-block rounded-xl bg-primary px-7 py-3.5 font-medium text-white no-underline hover:bg-[#1C1F6E] hover:text-white">Open the wallet</a>
+          <a v-if="walletUrl" :href="walletUrl" class="mt-8 inline-block rounded-xl bg-primary px-7 py-3.5 font-medium text-white no-underline hover:bg-[#1C1F6E] hover:text-white">Open the wallet</a>
         </div>
         <div class="rounded-3xl bg-[#14152B] p-8 text-[#F8F7F4] md:p-10">
           <p class="font-medium text-[#8A8EE0]">For shops</p>
@@ -213,7 +217,7 @@ const status = {
             <li>Receipts in your own design, in the wallet and as PDF</li>
             <li>Setup that follows the rules of your country</li>
           </ul>
-          <a :href="dashboardUrl" class="mt-8 inline-block rounded-xl bg-white px-7 py-3.5 font-medium text-primary no-underline hover:bg-[#E6E7F8] hover:text-primary">Open the dashboard</a>
+          <a v-if="dashboardUrl" :href="dashboardUrl" class="mt-8 inline-block rounded-xl bg-white px-7 py-3.5 font-medium text-primary no-underline hover:bg-[#E6E7F8] hover:text-primary">Open the dashboard</a>
         </div>
       </div>
     </section>
@@ -271,10 +275,11 @@ const status = {
         <h2 class="text-4xl font-medium tracking-tight text-balance md:text-6xl">Try it with a demo shop.</h2>
         <p class="mx-auto mt-6 max-w-xl text-lg font-light text-[#E6E7F8] md:text-xl">Issue a receipt on the till simulator, scan it with your phone, split it with a demo friend, then look at the books from the shop side.</p>
         <div class="mt-10 flex flex-wrap justify-center gap-3">
-          <a :href="walletUrl" class="rounded-xl bg-white px-8 py-4 font-medium text-primary no-underline hover:bg-[#E6E7F8] hover:text-primary md:text-lg">Open the wallet</a>
-          <a :href="dashboardUrl" class="rounded-xl border border-white/45 px-8 py-4 font-medium text-white no-underline hover:bg-white/10 hover:text-white md:text-lg">Open the dashboard</a>
+          <a v-if="walletUrl" :href="walletUrl" class="rounded-xl bg-white px-8 py-4 font-medium text-primary no-underline hover:bg-[#E6E7F8] hover:text-primary md:text-lg">Open the wallet</a>
+          <a v-if="dashboardUrl" :href="dashboardUrl" class="rounded-xl border border-white/45 px-8 py-4 font-medium text-white no-underline hover:bg-white/10 hover:text-white md:text-lg">Open the dashboard</a>
+          <a v-if="simulatorUrl" :href="simulatorUrl" class="rounded-xl border border-white/45 px-8 py-4 font-medium text-white no-underline hover:bg-white/10 hover:text-white md:text-lg">Till simulator</a>
         </div>
-        <p v-if="!config.walletUrl" class="mt-6 text-sm text-[#B3B6EE]">The demo links appear here once the apps are hosted. To run it yourself, see the repository README.</p>
+        <p v-if="!walletUrl && !dashboardUrl" class="mt-6 text-sm text-[#B3B6EE]">The demo is not linked yet.<template v-if="repoUrl"> To run it yourself, see the <a :href="repoUrl" rel="noopener noreferrer" class="text-white underline">README in the repository</a>.</template></p>
       </div>
     </section>
 
