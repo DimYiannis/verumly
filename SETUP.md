@@ -59,7 +59,7 @@ More detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (components and flow
 | Apps | `pnpm dev` | boxd machine in Germany, one HTTPS proxy per public app |
 | Tests | yes, all of them | never: the test helpers refuse to run when the Supabase variables are set |
 
-Develop and test locally; use Supabase only for the hosted demo and deliberate checks against it. Running against Supabase from a laptop: [RUNNING.md, "Run against Supabase"](RUNNING.md#run-against-supabase-instead-of-the-local-docker-postgres). The full Supabase background, including the connection incident of 2026-10-17: [`docs/SUPABASE-CHANGES.md`](docs/SUPABASE-CHANGES.md).
+Develop and test locally; use Supabase only for the hosted demo and deliberate checks against it. Running against Supabase from a laptop: [RUNNING.md, "Run against Supabase"](RUNNING.md#run-against-supabase-instead-of-the-local-docker-postgres). The full Supabase background, including the connection incident of 2026-10-17: [`docs/SUPABASE-CHANGES.md`](docs/SUPABASE-CHANGES.md). Deploying on boxd (machine, public addresses, variables per app, first start): [`docs/DEPLOY-BOXD.md`](docs/DEPLOY-BOXD.md).
 
 ## 4. Configuration
 

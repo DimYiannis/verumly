@@ -1,12 +1,29 @@
 # Deploying to boxd: environment checklist
 
-Names and meaning only. **No values live in git.** Keep the real values in a root-only file on the server (mode 600) and in your own git-ignored env files. Nothing here was run on boxd yet.
+Names and meaning only. **No values live in git.** The filled-in values for our demo machine are in the git-ignored `.local/BOXD-ENV.md` on the maintainer's laptop (never commit or paste it); on the server keep them in a root-only file (mode 600). Nothing here was run on boxd yet.
+
+## 0. Machine and public addresses
+
+All five apps run on one boxd machine in Germany. The demo assumes the machine is called **`less-receipts`**; with another name, replace it in every address below and in the env values.
+
+| App | Port | Public address | Create the proxy (once, from your laptop) |
+| --- | --- | --- | --- |
+| wallet (receipt links, PWA) | 3001 | `https://wallet.less-receipts.boxd.sh` | `boxd machine proxy add wallet --vm less-receipts --port 3001` |
+| buyer-api (called by phones) | 4002 | `https://api.less-receipts.boxd.sh` | `boxd machine proxy add api --vm less-receipts --port 4002` |
+| merchant-web (dashboard + simulator) | 3000 | `https://dashboard.less-receipts.boxd.sh` | `boxd machine proxy add dashboard --vm less-receipts --port 3000` |
+| Mailpit UI (login codes, demo only; keep the address private) | 8025 | `https://mail.less-receipts.boxd.sh` | `boxd machine proxy add mail --vm less-receipts --port 8025` |
+| merchant-api | 4001 | not public | the simulator reaches it through merchant-web (`MERCHANT_API_URL=http://127.0.0.1:4001`); add a proxy only for real tills |
+
+- boxd terminates TLS and forwards to the port; the machine's default address (`less-receipts.boxd.sh`) picks the first listening port among 80, 443, 8080, 8000, 3000, so it would show the dashboard. Use the subdomains above.
+- **Turn off auto-hibernate** on this machine, or the worker stops when nobody visits: `boxd machine config set less-receipts auto-hibernate.timeout 0`.
+- Mailpit (and, if you do not use Supabase Storage, the S3 mock) run in Docker on the machine: `docker compose up -d mailpit`.
+- If you set an egress allowlist, allow the Supabase pooler host (ports 5432 and 6543), `<project-ref>.storage.supabase.co` (443), the push services (`fcm.googleapis.com`, `*.push.apple.com`, `updates.push.services.mozilla.com`) and the Qianfan host.
 
 ## How the apps get their settings
 
 - The apps **do not read `.env` files**. Put each service's variables in its process environment (for systemd: an `EnvironmentFile` that only root can read; it does not expand `$`).
-- Run each service on its own (for example `node apps/buyer-api/src/main.ts`). `--env-mode=loose` is only for `pnpm dev`.
-- The two Nuxt apps are built once (`pnpm build`) and run from `.output/server/index.mjs`.
+- Run each API service on its own (for example `node apps/buyer-api/src/main.ts`). `--env-mode=loose` is only for `pnpm dev`.
+- The two Nuxt apps are built once (`pnpm build`) and run from `.output/server/index.mjs` with `PORT` set. The wallet reads its `NUXT_PUBLIC_*` values and `RECEIPT_HOST` at build time, so set them **before `pnpm build` and again at start**.
 - Set **`NODE_ENV=production` on every service**. Without it the apps switch on development defaults (passwordless demo sign-in, the repo's public push keys, insecure cookies; ISSUES #7).
 
 ## Services
@@ -19,7 +36,7 @@ Names and meaning only. **No values live in git.** Keep the real values in a roo
 | merchant-web (dashboard + simulator) | 3000 | database, storage, encryption key |
 | wallet | 3001 | public addresses and push public key only |
 
-Behind a reverse proxy keep `HOST=127.0.0.1`; use `0.0.0.0` only if boxd reaches the service over the network.
+`HOST=127.0.0.1` keeps a service off the network. If the boxd proxy cannot reach a service bound to `127.0.0.1` (check with `curl https://api.less-receipts.boxd.sh/healthz`), use `HOST=0.0.0.0` for buyer-api.
 
 ## 1. Database (every service that connects)
 
@@ -49,22 +66,24 @@ The keys bypass all row-level security: server only, never in the browser.
 - **buyer-api:**
   - `PORT`, `HOST`.
   - `RECEIPT_HOST`: the public wallet address, and the only browser origin the API accepts.
-  - `DEMO_MODE=false`, `PUSH_ALLOW_LOOPBACK=false`, `POLICY_VERSION`.
-  - `SMTP_HOST`, `SMTP_PORT`, `MAIL_FROM`: a real email service for login codes.
+  - `DEMO_MODE`: `false` for anything public. `true` gives one-click demo sign-in, but then anyone with the address is signed in as the demo owner or buyer.
+  - `PUSH_ALLOW_LOOPBACK=false`, `POLICY_VERSION`.
+  - `SMTP_HOST`, `SMTP_PORT`, `MAIL_FROM`: for the demo, Mailpit on the machine (`127.0.0.1`, `1025`) and codes are read in its UI; for real users, a real email service.
   - `VAPID_PUBLIC_KEY`.
 - **worker:**
-  - `EXTRACTOR=http`, `QIANFAN_URL` (base address, no path), `QIANFAN_API_KEY`, `QIANFAN_REVISION`, `QIANFAN_MODEL`.
+  - `EXTRACTOR=http` with `QIANFAN_URL` (base address, no path), `QIANFAN_API_KEY`, `QIANFAN_REVISION`, `QIANFAN_MODEL`. Without a reachable Qianfan server use `EXTRACTOR=recorded` (it only reads the recorded receipts).
   - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (a `mailto:` address).
   - `RECEIPT_HOST`, `LEAD_THRESHOLD`.
-  - `BILLING_PROVIDER` (only on the billing branch; `demo` means no money moves).
+  - `BILLING_PROVIDER=demo` (the only provider: no money moves).
 - **merchant-web:**
+  - `PORT=3000`.
   - `DASHBOARD_ENCRYPTION_KEY`: 32 random bytes, base64. Required in production.
-  - `MERCHANT_API_URL`, `RECEIPT_HOST`.
-  - `DEMO_MODE=false`, `DASHBOARD_COOKIE_SECURE=true`, `LOGIN_RATE_LIMIT`.
-  - `BILLING_PROVIDER` (billing branch only).
-- **wallet:** `NUXT_PUBLIC_BUYER_API` (public buyer-api address, called directly from the browser), `NUXT_PUBLIC_VAPID_PUBLIC_KEY`, `RECEIPT_HOST`.
+  - `MERCHANT_API_URL` (`http://127.0.0.1:4001` on the same machine), `RECEIPT_HOST`.
+  - `DEMO_MODE`, `DASHBOARD_COOKIE_SECURE=true`, `LOGIN_RATE_LIMIT`.
+  - `BILLING_PROVIDER=demo`; `BILLING_SIMULATE_RENEWAL=true` shows the "Simulate renewal now" button for demos (it defaults to the value of `DEMO_MODE`).
+- **wallet:** `NODE_ENV=production`, `PORT=3001`, `NUXT_PUBLIC_BUYER_API` (public buyer-api address, called directly from the browser), `NUXT_PUBLIC_VAPID_PUBLIC_KEY`, `RECEIPT_HOST`.
 
-The VAPID public key must be identical in buyer-api, the worker and the wallet.
+The VAPID public key must be identical in buyer-api, the worker and the wallet. `RECEIPT_HOST` must be identical in buyer-api, the worker, merchant-web and the wallet.
 
 ## Before the first start
 
@@ -76,7 +95,7 @@ The VAPID public key must be identical in buyer-api, the worker and the wallet.
    pnpm check:supabase           # expect all checks PASS
    ```
 2. Create the storage bucket and test a browser upload from the wallet's address (Supabase does not let you configure CORS on its S3 API; if the browser is blocked, uploads must go through buyer-api).
-3. Qianfan: Colab tunnels change on every run and cannot serve a permanent deployment. Use a GPU host with a stable address.
+3. Qianfan: Colab tunnels change on every run and cannot serve a permanent deployment. Use a GPU host with a stable address, or `EXTRACTOR=recorded` for a demo with recorded receipts.
 
 ## After the first start
 
