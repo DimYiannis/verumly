@@ -77,7 +77,10 @@ function had(s: SplitDetail['shares'][number]): string {
   const lines = crf.value.lines;
   const parts = s.lineNos.flatMap((n) => {
     const l = lines.find((x) => x.lineNo === n);
-    return l ? [`${l.description} ×${formatQty(l.qty, locale.value)}`] : [];
+    if (!l) return [];
+    // a line split by quantity: only the units this person took
+    const taken = s.lineUnits.find((u) => u.lineNo === n);
+    return [`${l.description} ×${taken ? taken.qty : formatQty(l.qty, locale.value)}`];
   });
   return describeShare(parts, t('rcpt.detail.equalShare'));
 }
@@ -123,7 +126,7 @@ const modeRows = computed(() => split.value?.mode === 'items');
           <h2 id="had-h" class="text-xs font-medium tracking-wide text-text-secondary uppercase">{{ t('rcpt.detail.whatEach') }}</h2>
           <NuxtLink :to="`/splits/${split.id}`" class="text-[13px] font-medium" data-testid="split-edit">{{ t('rcpt.detail.editSplit') }}</NuxtLink>
         </div>
-        <div class="overflow-hidden rounded-[14px] border border-border bg-card">
+        <div class="overflow-hidden rounded-[14px] border border-border bg-card" data-testid="split-had">
           <div v-for="s in split.shares" :key="s.id" class="flex items-center gap-3 border-b border-border px-4 py-3">
             <PersonAvatar :user="s.who" :name="name(s)" :me="s.isMe" :guest="!s.who && !s.isMe" size="sm" />
             <span class="min-w-0 flex-1 text-sm">{{ modeRows ? had(s) : name(s) }}</span>

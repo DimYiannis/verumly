@@ -5,7 +5,7 @@ import type { Profile } from '~/utils/api-schemas';
 import { MAX_SPLIT_PARTICIPANTS, type PublicUser, type ReceiptDetail } from '~/utils/api-schemas';
 import { formatMoney } from '~/utils/format';
 import { errorKey, isOffline, userName } from '~/utils/social';
-import { parseEuroInput, previewShares, type SplitMode } from '~/utils/split';
+import { canSplitByQuantity, parseEuroInput, previewShares, type SplitMode } from '~/utils/split';
 import { ApiError } from '~/utils/api';
 
 definePageMeta({ middleware: 'auth' });
@@ -32,6 +32,8 @@ const guestName = ref('');
 const includeMe = ref(true);
 const mode = ref<SplitMode>('equal');
 const assignments = ref<Record<number, string[]>>({});
+/** lines split by quantity: lineNo to who to units */
+const units = ref<Record<number, Record<string, number>>>({});
 const customText = ref<Record<string, string>>({});
 const busy = ref(false);
 const error = ref<MessageKey | null>(null);
@@ -68,8 +70,9 @@ const preview = computed(() =>
     payable: payable.value,
     mode: mode.value,
     people: people.value.map((p) => p.who),
-    lines: detail.value?.receipt.lines.map((l) => ({ lineNo: l.lineNo, total: l.total })) ?? [],
+    lines: detail.value?.receipt.lines.map((l) => ({ lineNo: l.lineNo, total: l.total, qty: l.qty })) ?? [],
     assignments: assignments.value,
+    units: units.value,
     custom: customCents.value,
   }),
 );
@@ -90,6 +93,11 @@ function removeAt(index: number) {
   const next: Record<number, string[]> = {};
   for (const [line, who] of Object.entries(assignments.value)) next[Number(line)] = who.map(shift).filter((w): w is string => w !== null);
   assignments.value = next;
+  const nextUnits: Record<number, Record<string, number>> = {};
+  for (const [line, byWho] of Object.entries(units.value)) {
+    nextUnits[Number(line)] = Object.fromEntries(Object.entries(byWho).flatMap(([w, q]) => (shift(w) ? [[shift(w)!, q]] : [])));
+  }
+  units.value = nextUnits;
   const text: Record<string, string> = {};
   for (const [w, v] of Object.entries(customText.value)) {
     const k = shift(w);
@@ -119,6 +127,24 @@ function assignEveryone(lineNo: number) {
   assignments.value = { ...assignments.value, [lineNo]: people.value.map((p) => p.who) };
 }
 
+// ---- a line with several units (5 beers) is split by quantity: how many each person had
+type Line = ReceiptDetail['receipt']['lines'][number];
+const bySplittable = (line: Line) => line.kind === 'item' && canSplitByQuantity(line.qty);
+const unitsOf = (lineNo: number, who: string) => units.value[lineNo]?.[who] ?? 0;
+const unitsLeft = (line: Line) => Number(line.qty) - Object.entries(units.value[line.lineNo] ?? {}).reduce((a, [w, q]) => a + (people.value.some((p) => p.who === w) ? q : 0), 0);
+function bump(line: Line, who: string, delta: 1 | -1) {
+  const now = unitsOf(line.lineNo, who);
+  if (delta === 1 && unitsLeft(line) <= 0) return;
+  if (delta === -1 && now <= 0) return;
+  units.value = { ...units.value, [line.lineNo]: { ...(units.value[line.lineNo] ?? {}), [who]: now + delta } };
+}
+/** every person the same number of units, the leftover units to the first people */
+function unitsEvenly(line: Line) {
+  const n = Number(line.qty);
+  const ps = people.value;
+  units.value = { ...units.value, [line.lineNo]: Object.fromEntries(ps.map((p, i) => [p.who, Math.floor(n / ps.length) + (i < n % ps.length ? 1 : 0)])) };
+}
+
 // entering custom mode starts from the equal split, so the user only edits what differs
 watch(mode, (m) => {
   if (m !== 'custom' || Object.values(customText.value).some((v) => v !== '')) return;
@@ -139,7 +165,18 @@ async function create() {
       participants: selected.value.map((p) => (p.userId ? { userId: p.userId } : { guestName: p.guestName })),
       includeMe: includeMe.value,
       ...(mode.value === 'items'
-        ? { assignments: Object.entries(assignments.value).map(([lineNo, who]) => ({ lineNo: Number(lineNo), who: who.filter((w) => people.value.some((p) => p.who === w)) })).filter((a) => a.who.length > 0) }
+        ? {
+            assignments: [
+              ...Object.entries(assignments.value)
+                .filter(([lineNo]) => !detail.value!.receipt.lines.some((l) => l.lineNo === Number(lineNo) && bySplittable(l)))
+                .map(([lineNo, who]) => ({ lineNo: Number(lineNo), who: who.filter((w) => people.value.some((p) => p.who === w)) }))
+                .filter((a) => a.who.length > 0),
+              ...detail.value.receipt.lines.filter(bySplittable).flatMap((l) => {
+                const taken = people.value.map((p) => ({ who: p.who, qty: unitsOf(l.lineNo, p.who) })).filter((u) => u.qty > 0);
+                return taken.length > 0 ? [{ lineNo: l.lineNo, who: taken.map((u) => u.who), units: taken }] : [];
+              }),
+            ],
+          }
         : {}),
       ...(mode.value === 'custom' ? { amounts: people.value.map((p) => ({ who: p.who, amount: customCents.value[p.who] ?? 0 })) } : {}),
     };
@@ -261,7 +298,22 @@ const modes: { value: SplitMode; label: MessageKey }[] = [
                 <span class="min-w-0 break-words font-medium">{{ line.description }}</span>
                 <span class="font-mono tabular-nums">{{ formatMoney(line.total, locale, detail.receipt.currency) }}</span>
               </div>
-              <div class="flex flex-wrap gap-1.5">
+              <div v-if="bySplittable(line)" class="space-y-2" :data-testid="`split-units-${line.lineNo}`">
+                <p class="text-xs text-text-secondary">{{ t('split.unitsHint', { n: line.qty }) }}</p>
+                <div v-for="p in people" :key="p.who" class="flex items-center justify-between gap-3">
+                  <span class="min-w-0 truncate text-sm">{{ p.label }}</span>
+                  <span class="flex items-center gap-2">
+                    <button type="button" class="flex size-9 items-center justify-center rounded-full border border-border text-lg disabled:opacity-40" :disabled="unitsOf(line.lineNo, p.who) <= 0" :aria-label="t('split.unitsLess', { name: p.label })" :data-testid="`split-units-less-${line.lineNo}-${p.who}`" @click="bump(line, p.who, -1)">−</button>
+                    <span class="w-6 text-center font-mono text-base tabular-nums" :data-testid="`split-units-count-${line.lineNo}-${p.who}`">{{ unitsOf(line.lineNo, p.who) }}</span>
+                    <button type="button" class="flex size-9 items-center justify-center rounded-full border border-primary bg-primary text-lg text-primary-foreground disabled:opacity-40" :disabled="unitsLeft(line) <= 0" :aria-label="t('split.unitsMore', { name: p.label })" :data-testid="`split-units-more-${line.lineNo}-${p.who}`" @click="bump(line, p.who, 1)">+</button>
+                  </span>
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                  <button type="button" class="min-h-9 rounded-full px-3 text-sm text-primary" :data-testid="`split-units-even-${line.lineNo}`" @click="unitsEvenly(line)">{{ t('split.unitsEvenly') }}</button>
+                  <span v-if="unitsLeft(line) !== 0" class="text-xs text-warning" :data-testid="`split-units-left-${line.lineNo}`">{{ t('split.unitsLeft', { n: unitsLeft(line), total: line.qty }) }}</span>
+                </div>
+              </div>
+              <div v-else class="flex flex-wrap gap-1.5">
                 <button
                   v-for="p in people"
                   :key="p.who"

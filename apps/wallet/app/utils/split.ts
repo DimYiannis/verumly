@@ -8,9 +8,11 @@ export interface PreviewInput {
   mode: SplitMode;
   /** who keys in order: 'me' (when included), then 'p0', 'p1', ... */
   people: readonly string[];
-  lines: readonly { lineNo: number; total: number }[];
+  lines: readonly { lineNo: number; total: number; qty?: string }[];
   /** lineNo to the who keys on that line */
   assignments: Readonly<Record<number, readonly string[]>>;
+  /** items mode, lines split by quantity: lineNo to who to the number of units that person takes */
+  units?: Readonly<Record<number, Readonly<Record<string, number>>>>;
   /** who to cents (custom mode) */
   custom: Readonly<Record<string, number>>;
 }
@@ -47,6 +49,16 @@ export function spread(amount: number, weights: readonly number[]): number[] {
   return base;
 }
 
+/** A whole-number quantity ("5", not "0.35"). */
+export function isWhole(qty: string | undefined): boolean {
+  return qty !== undefined && /^[1-9]\d{0,3}$/.test(qty);
+}
+
+/** A line of 2 or more whole units can be split by quantity (5 beers: 2 mine, 3 yours). */
+export function canSplitByQuantity(qty: string | undefined): boolean {
+  return isWhole(qty) && Number(qty) >= 2;
+}
+
 export function previewShares(input: PreviewInput): Preview {
   const { people, payable } = input;
   const shares: Record<string, number> = Object.fromEntries(people.map((p) => [p, 0]));
@@ -60,6 +72,19 @@ export function previewShares(input: PreviewInput): Preview {
   } else if (input.mode === 'items') {
     const base: Record<string, number> = Object.fromEntries(people.map((p) => [p, 0]));
     for (const line of input.lines) {
+      const taken = Object.entries(input.units?.[line.lineNo] ?? {}).filter(([w, q]) => w in base && q > 0);
+      if (taken.length > 0 && isWhole(line.qty)) {
+        const all = Number(line.qty);
+        const sum = taken.reduce((a, [, q]) => a + q, 0);
+        if (sum !== all) {
+          // some units have nobody yet: the line counts as open, with the value of the missing units
+          unassigned.push(line.lineNo);
+          unassignedMinor += Math.round((line.total * Math.max(0, all - sum)) / all);
+          continue;
+        }
+        spread(line.total, taken.map(([, q]) => q)).forEach((v, i) => (base[taken[i]![0]] = (base[taken[i]![0]] ?? 0) + v));
+        continue;
+      }
       const who = (input.assignments[line.lineNo] ?? []).filter((w) => w in base);
       if (who.length === 0) {
         unassigned.push(line.lineNo);
