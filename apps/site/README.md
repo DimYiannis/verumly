@@ -21,6 +21,8 @@ pnpm --filter @lr/site generate   # static output in apps/site/.output/public
 
 The buttons are always shown. Without the first two: in `pnpm dev` they point at the local apps (`http://localhost:3001`, `http://localhost:3000/dashboard`); in a production build (`generate`) they scroll to the demo section, which says the demo goes online soon. After setting the variables in Vercel, redeploy: the values are read at build time.
 
+**Who can trigger a deploy:** the project is on Vercel's free Hobby plan with a private repository, so Vercel only deploys a commit whose **author is the project owner** (@DimYiannis). A merge or push by anyone else (for example @Destrigo) is blocked with "Git author … must have access to the project on Vercel". Either the owner merges the PR, or the owner adds a small commit that touches `apps/site` afterwards. An empty commit is not enough: the project skips builds when nothing under the root directory changed ("Skipped – Not affected").
+
 ## Languages
 
 English is served at `/` and `/privacy`, Dutch at `/nl` and `/nl/privacy`; all four are prerendered. Both languages render the same components (`app/components/HomePage.vue`, `PrivacyPage.vue`), so a layout change applies to both. The language comes from the route (`useSiteLocale()` in `app/composables`): `t('key')` for texts, `localePath('/privacy')` for internal links. The header has an EN / NL switch (`LangSwitch.vue`) and each page sets `<html lang>`, `og:locale` and `hreflang` alternates (absolute URLs, so they need `NUXT_PUBLIC_SITE_URL` or Vercel's production URL).
