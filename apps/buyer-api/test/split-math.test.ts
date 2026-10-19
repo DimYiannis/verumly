@@ -93,3 +93,67 @@ describe('computeShares', () => {
     expect(() => computeShares(crf, { mode: 'custom', ...two, amounts: [{ who: 'me', amount: 1565 }] })).toThrow(/no amount/);
   });
 });
+
+describe('items split by quantity (5 beers: 2 mine, 3 Anna\'s)', () => {
+  const bar = {
+    lines: [
+      { lineNo: 1, total: 1750, qty: '5' }, // 5 beers at 3,50
+      { lineNo: 2, total: 800, qty: '1' }, // one pizza
+      { lineNo: 3, total: 333, qty: '3.5' }, // by weight: cannot be split by quantity
+    ],
+    totals: { gross: 2883, tip: 0, rounding: 0 },
+  };
+  const rest = [
+    { lineNo: 2, who: ['me'] },
+    { lineNo: 3, who: ['me', 'p0'] },
+  ];
+
+  it('the line total follows the units; the rest of the bill is as before', () => {
+    const r = computeShares(bar, { ...two, mode: 'items', assignments: [{ lineNo: 1, who: ['me', 'p0'], units: [{ who: 'me', qty: 2 }, { who: 'p0', qty: 3 }] }, ...rest] });
+    expect(r.map((s) => s.amountMinor)).toEqual([700 + 800 + 167, 1050 + 166]);
+    expect(sum(r)).toBe(payable(bar));
+    expect(r[0]!.lineUnits).toEqual([{ lineNo: 1, qty: 2 }]);
+    expect(r[1]!.lineUnits).toEqual([{ lineNo: 1, qty: 3 }]);
+    expect(r[0]!.lineNos).toEqual([1, 2, 3]);
+  });
+
+  it('unequal units give unequal cents, odd cents never get lost', () => {
+    const odd = { lines: [{ lineNo: 1, total: 1001, qty: '3' }], totals: { gross: 1001, tip: 0, rounding: 0 } };
+    const r = computeShares(odd, { ...two, mode: 'items', assignments: [{ lineNo: 1, who: ['me', 'p0'], units: [{ who: 'me', qty: 1 }, { who: 'p0', qty: 2 }] }] });
+    expect(sum(r)).toBe(1001);
+    expect(r[0]!.amountMinor).toBeLessThan(r[1]!.amountMinor);
+  });
+
+  it('tip and rounding follow the subtotals as usual', () => {
+    const tipped = { ...bar, totals: { gross: 2883, tip: 300, rounding: -3 } };
+    const r = computeShares(tipped, { ...two, mode: 'items', assignments: [{ lineNo: 1, who: ['me', 'p0'], units: [{ who: 'me', qty: 2 }, { who: 'p0', qty: 3 }] }, ...rest] });
+    expect(sum(r)).toBe(payable(tipped));
+  });
+
+  it('refuses units that do not add up to the quantity, repeat a person, or sit on a line that has no whole quantity', () => {
+    const ass = (units: Array<{ who: string; qty: number }>, lineNo = 1) => [{ lineNo, who: [...new Set(units.map((u) => u.who))], units }];
+    const run = (a: ReturnType<typeof ass>) => () => computeShares(bar, { ...two, mode: 'items', assignments: [...a, ...[{ lineNo: 1, who: ['me'] }, ...rest].filter((r) => r.lineNo !== a[0]!.lineNo)] });
+    expect(run(ass([{ who: 'me', qty: 2 }, { who: 'p0', qty: 2 }]))).toThrow(/units_mismatch|4 are assigned/);
+    expect(run(ass([{ who: 'me', qty: 3 }, { who: 'p0', qty: 3 }]))).toThrow(SplitError);
+    expect(run(ass([{ who: 'me', qty: 2 }, { who: 'me', qty: 3 }]))).toThrow(/appears twice/);
+    expect(run(ass([{ who: 'p9', qty: 5 }]))).toThrow(/unknown person/);
+    expect(run(ass([{ who: 'me', qty: 3 }, { who: 'p0', qty: 1 }], 3))).toThrow(/cannot be split by quantity/);
+  });
+
+  it('a line can still be shared equally without units, next to a line split by quantity', () => {
+    const r = computeShares(bar, { ...two, mode: 'items', assignments: [{ lineNo: 1, who: ['me', 'p0'] }, ...rest] });
+    expect(sum(r)).toBe(payable(bar));
+    expect(r[0]!.lineUnits).toEqual([]);
+  });
+});
+
+describe('line refs in storage', () => {
+  it('round-trip, and old rows (plain numbers) still read', async () => {
+    const { encodeLineRefs, decodeLineRefs } = await import('../src/split-math.ts');
+    const share = { lineNos: [1, 2, 3], lineUnits: [{ lineNo: 1, qty: 2 }] };
+    expect(encodeLineRefs(share)).toEqual([{ n: 1, q: 2 }, 2, 3]);
+    expect(decodeLineRefs(encodeLineRefs(share))).toEqual(share);
+    expect(decodeLineRefs([4, 5])).toEqual({ lineNos: [4, 5], lineUnits: [] });
+    expect(decodeLineRefs(null)).toEqual({ lineNos: [], lineUnits: [] });
+  });
+});

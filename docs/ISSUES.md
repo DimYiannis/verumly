@@ -166,6 +166,7 @@ Big issues found in the code review (2026-10-16) and still open. Tick an item wh
 
 ## Friends, shares and splits
 
+- **Done: a split by item can also be split by quantity** (5 beers, 2 mine and 3 Anna's): `assignments[].units`, same rules in `split-math.ts` and the wallet preview. Only whole quantities of 2 or more (not weighed items, not discounts); the units must add up to the quantity. A person's units are kept in the existing `split_shares.line_nos` jsonb as `{ n, q }` (no migration); old rows still read.
 - **P2: no notifications.** A friend request, a share, a new split or a settled share does not trigger a push; people see changes when they open the Friends tab.
 - **P2: invites are single use and expire after 30 days.** A general friend-invite link works once. Guest slots of a split get a fresh link on demand (the earlier one stops working).
 - **P2: privacy review.** Sharing a receipt or splitting it shows the friend its items and total. There is no per-field redaction and no "unshare"; deleting a split removes the participants' access to it, and a share cannot be withdrawn yet. Handle search tells anyone whether a handle exists.

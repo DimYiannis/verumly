@@ -9,7 +9,7 @@ import type { AppDeps } from '../context.ts';
 import { mainCurrency } from '../currency.ts';
 import { loadReceipt } from '../receipts.ts';
 import { areFriends, hasClaimed, publicUsers, userOrGhost } from '../social.ts';
-import { computeShares, payable, SplitError } from '../split-math.ts';
+import { computeShares, decodeLineRefs, encodeLineRefs, payable, SplitError } from '../split-math.ts';
 import { requireSession } from './auth.ts';
 
 const INVITE_TTL_MS = 30 * 86_400_000;
@@ -50,7 +50,7 @@ export function splitRoutes(deps: AppDeps) {
           settled: s.settledAt !== null,
           settledAt: s.settledAt?.toISOString() ?? null,
           isMe: s.userId === viewer,
-          lineNos: (s.lineNos as number[]) ?? [],
+          ...decodeLineRefs(s.lineNos),
           // the code itself is only known when it is created (only its hash is stored): see the POST responses
           inviteCode: null as string | null,
         })),
@@ -94,7 +94,7 @@ export function splitRoutes(deps: AppDeps) {
               userId: c.who === 'me' ? me : (p!.userId ?? null),
               guestName: p?.guestName ?? null,
               amountMinor: c.amountMinor,
-              lineNos: c.lineNos,
+              lineNos: encodeLineRefs(c),
               // the creator paid the bill: their own share is settled from the start
               settledAt: c.who === 'me' ? new Date() : null,
             })

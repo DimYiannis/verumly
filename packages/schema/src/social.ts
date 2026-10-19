@@ -87,7 +87,9 @@ export const splitParticipant = z
 /**
  * `who` references: 'me' (the creator) or 'p0', 'p1', ... (index into `participants`).
  * equal: every person (and the creator when `includeMe`) pays the same.
- * items: each receipt line is assigned to one or more people (`assignments`); a line with several people is split between them.
+ * items: each receipt line is assigned to one or more people (`assignments`); a line with several people is split between them
+ *   equally, or by quantity: `units` says how many of the line's units each person takes (5 beers, 2 mine and 3 Anna's). The units
+ *   must add up to the line's quantity (a whole number) and the line's total is split in proportion.
  * custom: explicit `amounts` that must add up to the payable total.
  * Tip and rounding are spread in proportion in every mode.
  */
@@ -97,7 +99,18 @@ export const splitCreateBody = z
     mode: z.enum(SPLIT_MODES),
     participants: z.array(splitParticipant).min(1).max(MAX_SPLIT_PARTICIPANTS),
     includeMe: z.boolean().default(true),
-    assignments: z.array(z.object({ lineNo: z.number().int().min(1), who: z.array(z.string().regex(/^(me|p\d{1,2})$/)).min(1).max(11) }).strict()).max(500).optional(),
+    assignments: z
+      .array(
+        z
+          .object({
+            lineNo: z.number().int().min(1),
+            who: z.array(z.string().regex(/^(me|p\d{1,2})$/)).min(1).max(11),
+            units: z.array(z.object({ who: z.string().regex(/^(me|p\d{1,2})$/), qty: z.number().int().min(1).max(9999) }).strict()).min(1).max(11).optional(),
+          })
+          .strict(),
+      )
+      .max(500)
+      .optional(),
     amounts: z.array(z.object({ who: z.string().regex(/^(me|p\d{1,2})$/), amount: z.number().int().min(0).max(100_000_000) }).strict()).max(11).optional(),
   })
   .strict();
@@ -112,6 +125,8 @@ export const splitShare = z.object({
   settledAt: z.string().nullable(),
   isMe: z.boolean(),
   lineNos: z.array(z.number().int()),
+  /** lines this person took only some units of (a split by quantity): the line and how many units */
+  lineUnits: z.array(z.object({ lineNo: z.number().int(), qty: z.number().int() })).default([]),
   /** invite code of a guest slot, shown to the creator only */
   inviteCode: z.string().nullable(),
 });

@@ -2,7 +2,8 @@ import type { SplitCreateBody } from '@lr/schema';
 
 /** The parts of a receipt the split needs (a full Crf fits). */
 export interface SplittableReceipt {
-  lines: Array<{ lineNo: number; total: number }>;
+  /** `qty` is needed only for lines split by quantity */
+  lines: Array<{ lineNo: number; total: number; qty?: string }>;
   totals: { gross: number; tip: number; rounding: number };
 }
 
@@ -55,6 +56,32 @@ export interface PersonShare {
   who: string;
   amountMinor: number;
   lineNos: number[];
+  /** lines this person took only some units of (a split by quantity) */
+  lineUnits: Array<{ lineNo: number; qty: number }>;
+}
+
+/**
+ * How a share's lines are stored in `split_shares.line_nos` (jsonb, no migration): a plain line number for a whole line or an equal
+ * share of it, `{ n, q }` for `q` units of line `n`. Older rows only have numbers.
+ */
+export type LineRef = number | { n: number; q: number };
+
+export function encodeLineRefs(share: Pick<PersonShare, 'lineNos' | 'lineUnits'>): LineRef[] {
+  const units = new Map(share.lineUnits.map((u) => [u.lineNo, u.qty]));
+  return share.lineNos.map((n) => (units.has(n) ? { n, q: units.get(n)! } : n));
+}
+
+export function decodeLineRefs(stored: unknown): Pick<PersonShare, 'lineNos' | 'lineUnits'> {
+  const lineNos: number[] = [];
+  const lineUnits: PersonShare['lineUnits'] = [];
+  for (const r of Array.isArray(stored) ? stored : []) {
+    if (typeof r === 'number') lineNos.push(r);
+    else if (typeof r === 'object' && r !== null && 'n' in r && 'q' in r && typeof r.n === 'number' && typeof r.q === 'number') {
+      lineNos.push(r.n);
+      lineUnits.push({ lineNo: r.n, qty: r.q });
+    }
+  }
+  return { lineNos, lineUnits };
 }
 
 /** What the people of a split pay in total: items plus tip plus rounding. */
@@ -79,7 +106,7 @@ export function computeShares(crf: SplittableReceipt, body: Pick<SplitCreateBody
 
   if (body.mode === 'equal') {
     const amounts = allocateEqual(due, people.length);
-    return people.map((who, i) => ({ who, amountMinor: amounts[i]!, lineNos: [] }));
+    return people.map((who, i) => ({ who, amountMinor: amounts[i]!, lineNos: [], lineUnits: [] }));
   }
 
   if (body.mode === 'custom') {
@@ -92,28 +119,47 @@ export function computeShares(crf: SplittableReceipt, body: Pick<SplitCreateBody
     for (const who of people) if (!given.has(who)) throw new SplitError('missing_amount', `no amount for ${who}`);
     const sum = [...given.values()].reduce((a, b) => a + b, 0);
     if (sum !== due) throw new SplitError('amounts_mismatch', `amounts add up to ${sum}, the receipt is ${due}`);
-    return people.map((who) => ({ who, amountMinor: given.get(who)!, lineNos: [] }));
+    return people.map((who) => ({ who, amountMinor: given.get(who)!, lineNos: [], lineUnits: [] }));
   }
 
-  // items: every line goes to the people it is assigned to, tip and rounding follow the subtotals
-  const byLine = new Map<number, string[]>();
+  // items: every line goes to the people it is assigned to (equally, or by quantity), tip and rounding follow the subtotals
+  const byLine = new Map<number, { who: string[]; units?: Array<{ who: string; qty: number }> }>();
   for (const a of body.assignments ?? []) {
     const who = [...new Set(a.who)];
     for (const w of who) if (!known.has(w)) throw new SplitError('unknown_person', `unknown person ${w}`);
-    byLine.set(a.lineNo, who);
+    for (const u of a.units ?? []) if (!known.has(u.who)) throw new SplitError('unknown_person', `unknown person ${u.who}`);
+    byLine.set(a.lineNo, { who, units: a.units });
   }
   const sub = new Map<string, number>(people.map((p) => [p, 0]));
   const lineNos = new Map<string, number[]>(people.map((p) => [p, []]));
+  const lineUnits = new Map<string, PersonShare['lineUnits']>(people.map((p) => [p, []]));
   for (const line of crf.lines) {
-    const who = byLine.get(line.lineNo);
-    if (!who) throw new SplitError('line_unassigned', `line ${line.lineNo} is not assigned to anyone`);
-    const parts = allocateEqual(line.total, who.length);
-    who.forEach((w, i) => {
+    const assigned = byLine.get(line.lineNo);
+    if (!assigned) throw new SplitError('line_unassigned', `line ${line.lineNo} is not assigned to anyone`);
+    if (assigned.units) {
+      const wanted = new Set<string>();
+      for (const u of assigned.units) {
+        if (wanted.has(u.who)) throw new SplitError('duplicate_person', `${u.who} appears twice on line ${line.lineNo}`);
+        wanted.add(u.who);
+      }
+      if (line.qty === undefined || !/^[1-9]\d{0,3}$/.test(line.qty)) throw new SplitError('units_not_whole', `line ${line.lineNo} cannot be split by quantity`);
+      const total = assigned.units.reduce((a, u) => a + u.qty, 0);
+      if (total !== Number(line.qty)) throw new SplitError('units_mismatch', `line ${line.lineNo} has ${line.qty} units, ${total} are assigned`);
+      const parts = allocateProportional(line.total, assigned.units.map((u) => u.qty));
+      assigned.units.forEach((u, i) => {
+        sub.set(u.who, sub.get(u.who)! + parts[i]!);
+        lineNos.get(u.who)!.push(line.lineNo);
+        lineUnits.get(u.who)!.push({ lineNo: line.lineNo, qty: u.qty });
+      });
+      continue;
+    }
+    const parts = allocateEqual(line.total, assigned.who.length);
+    assigned.who.forEach((w, i) => {
       sub.set(w, sub.get(w)! + parts[i]!);
       lineNos.get(w)!.push(line.lineNo);
     });
   }
   for (const lineNo of byLine.keys()) if (!crf.lines.some((l) => l.lineNo === lineNo)) throw new SplitError('unknown_line', `no line ${lineNo} on this receipt`);
   const extras = allocateProportional(crf.totals.tip + crf.totals.rounding, people.map((p) => Math.max(0, sub.get(p)!)));
-  return people.map((who, i) => ({ who, amountMinor: sub.get(who)! + extras[i]!, lineNos: lineNos.get(who)! }));
+  return people.map((who, i) => ({ who, amountMinor: sub.get(who)! + extras[i]!, lineNos: lineNos.get(who)!, lineUnits: lineUnits.get(who)! }));
 }
