@@ -84,7 +84,7 @@ async function pay() {
     <header class="flex items-center gap-3 px-1">
       <div class="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground" aria-hidden="true"><ArchiveIcon class="size-4" /></div>
       <div class="min-w-0">
-        <p class="text-base font-semibold tracking-tight">Syngrapha</p>
+        <p class="text-base font-semibold tracking-tight">Verumly</p>
         <h1 class="text-xs text-muted-foreground">{{ t('checkout.title') }}</h1>
       </div>
       <div class="ml-auto"><AppLocaleSwitch /></div>

@@ -1,6 +1,6 @@
 import * as OTPAuth from 'otpauth';
 
-export const TOTP_ISSUER = 'Syngrapha';
+export const TOTP_ISSUER = 'Verumly';
 
 function totpFor(secretBase32: string, label: string): OTPAuth.TOTP {
   return new OTPAuth.TOTP({

@@ -5,7 +5,7 @@ const { t } = useSiteLocale();
 <template>
   <div class="flex h-[560px] flex-col gap-3 bg-background p-4 text-[13px] text-foreground">
     <div class="flex items-center justify-between">
-      <span class="text-lg font-semibold tracking-[-0.035em]">Syngrapha</span>
+      <span class="text-lg font-semibold tracking-[-0.035em]">Verumly</span>
       <span class="grid size-7 place-items-center rounded-full border border-[#B3B6EE] bg-[#E6E7F8] text-[10px] font-semibold text-[#1C1F6E]">SM</span>
     </div>
     <div class="leading-tight">

@@ -1,9 +1,9 @@
 ---
 name: less-receipts
-description: Project knowledge for the Syngrapha hackathon repo (digital receipts platform for the Netherlands: merchant dashboard + POS simulator + buyer wallet PWA). Use whenever working in this repo, or when asked about receipts, the wallet, the merchant dashboard, the till simulator, the buyer/merchant API, privacy roles, demo login, or the shared design system. Read it before answering architecture or workflow questions.
+description: Project knowledge for the Verumly hackathon repo (digital receipts platform for the Netherlands: merchant dashboard + POS simulator + buyer wallet PWA). Use whenever working in this repo, or when asked about receipts, the wallet, the merchant dashboard, the till simulator, the buyer/merchant API, privacy roles, demo login, or the shared design system. Read it before answering architecture or workflow questions.
 ---
 
-# Syngrapha
+# Verumly
 
 The full, current guide is `AGENTS.md` at the repo root. Read it first; it is shared with the other agents and people on the team and is the single source of truth. This skill only tells you how to use it.
 
