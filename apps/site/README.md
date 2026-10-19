@@ -14,12 +14,12 @@ pnpm --filter @lr/site generate   # static output in apps/site/.output/public
 2. **Root Directory**: `apps/site`. Keep "Include source files outside of the Root Directory" on (the site uses `packages/ui`).
 3. Framework preset: Nuxt. `vercel.json` already sets the install and build commands (pnpm at the repo root).
 4. Optional environment variables, used for the demo buttons on the page (all are public):
-   - `NUXT_PUBLIC_WALLET_URL`: where the wallet demo is hosted
-   - `NUXT_PUBLIC_DASHBOARD_URL`: where the dashboard demo is hosted
+   - `NUXT_PUBLIC_WALLET_URL`: where the wallet demo is hosted (overrides the default below)
+   - `NUXT_PUBLIC_DASHBOARD_URL`: where the dashboard demo is hosted (overrides the default below)
    - `NUXT_PUBLIC_REPO_URL`: link to the source (also linked from the demo section's README note)
    - `NUXT_PUBLIC_SITE_URL`: the site's own address (for share previews: the `og:image` must be an absolute URL). When unset, the build uses Vercel's `VERCEL_PROJECT_PRODUCTION_URL` (prefixed with `https://`); with neither, the share image stays a relative path and previews will not show it
 
-The buttons are always shown. Without the first two: in `pnpm dev` they point at the local apps (`http://localhost:3001`, `http://localhost:3000/dashboard`); in a production build (`generate`) they scroll to the demo section, which says the demo goes online soon. After setting the variables in Vercel, redeploy: the values are read at build time.
+The buttons are always shown. The two variables above override the addresses. Without them: a Vercel production build (`VERCEL_ENV=production`) uses the hosted demo on boxd (`https://wallet-r7k2.less-receipts-demo.boxd.sh` and `https://dash-r7k2.less-receipts-demo.boxd.sh/dashboard`); `pnpm dev` points at the local apps (`http://localhost:3001`, `http://localhost:3000/dashboard`); any other build (for example a preview deployment) scrolls to the demo section, which says the demo goes online soon. After setting the variables in Vercel, redeploy: the values are read at build time.
 
 **Who can trigger a deploy:** the project is on Vercel's free Hobby plan with a private repository, so Vercel only deploys a commit whose **author is the project owner** (@DimYiannis). A merge or push by anyone else (for example @Destrigo) is blocked with "Git author … must have access to the project on Vercel". Either the owner merges the PR, or the owner adds a small commit that touches `apps/site` afterwards. An empty commit is not enough: the project skips builds when nothing under the root directory changed ("Skipped – Not affected").
 

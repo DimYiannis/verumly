@@ -7,16 +7,22 @@ import tailwindcss from '@tailwindcss/vite';
 // domain from the build environment; empty (relative image) when neither is set.
 const siteUrl = (process.env.NUXT_PUBLIC_SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '')).replace(/\/+$/, '');
 
+// The hosted demo runs on boxd (machine `less-receipts-demo`) at fixed public addresses.
+const DEMO_WALLET_URL = 'https://wallet-r7k2.less-receipts-demo.boxd.sh';
+const DEMO_DASHBOARD_URL = 'https://dash-r7k2.less-receipts-demo.boxd.sh/dashboard';
+const isVercelProduction = process.env.VERCEL_ENV === 'production';
+
 export default defineNuxtConfig({
   compatibilityDate: '2026-10-01',
   devtools: { enabled: false },
   css: ['~/assets/css/main.css'],
   vite: { plugins: [tailwindcss()] },
-  // the wallet and dashboard links on the page: set these on Vercel once those apps are hosted
+  // the wallet and dashboard links on the page: NUXT_PUBLIC_WALLET_URL / NUXT_PUBLIC_DASHBOARD_URL win; without them a Vercel
+  // production build uses the hosted demo addresses above; other builds leave them empty (dev falls back to localhost, see HomePage.vue)
   runtimeConfig: {
     public: {
-      walletUrl: process.env.NUXT_PUBLIC_WALLET_URL ?? '',
-      dashboardUrl: process.env.NUXT_PUBLIC_DASHBOARD_URL ?? '',
+      walletUrl: process.env.NUXT_PUBLIC_WALLET_URL || (isVercelProduction ? DEMO_WALLET_URL : ''),
+      dashboardUrl: process.env.NUXT_PUBLIC_DASHBOARD_URL || (isVercelProduction ? DEMO_DASHBOARD_URL : ''),
       repoUrl: process.env.NUXT_PUBLIC_REPO_URL ?? '',
       siteUrl,
     },
