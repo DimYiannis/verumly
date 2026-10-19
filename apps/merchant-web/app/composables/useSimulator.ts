@@ -96,7 +96,7 @@ function readCreds(): SimCreds | null {
  * `/sim-api` proxy. Credentials (terminal id, API key, signing key) live in localStorage — this is a demo POS.
  */
 export function useSimulator() {
-  const { t: tr } = useLocale();
+  const { t: tr, locale } = useLocale();
   const creds = ref<SimCreds | null>(null);
   const cart = ref<CartLine[]>([]);
   const current = ref<Current | null>(null);
@@ -220,6 +220,7 @@ export function useSimulator() {
     cart.value = [];
     current.value = null;
     qrSvg.value = '';
+    mailState.value = 'idle';
     localStorage.removeItem(CURRENT_KEY);
   }
 
@@ -248,6 +249,32 @@ export function useSimulator() {
     });
   }
 
+  /** The customer asked for the receipt link by e-mail. The address goes to buyer-api, which sends it and keeps nothing. */
+  const mailState = ref<'idle' | 'sending' | 'sent' | 'failed' | 'limit'>('idle');
+  async function emailReceipt(email: string) {
+    const id = current.value?.receiptId;
+    const r = id ? await store?.getReceipt(id) : undefined;
+    if (!id || !r) return;
+    mailState.value = 'sending';
+    // the receipt reaches the server a moment after it was issued (the till queues first): 409 means "not there yet", so try again for a few seconds
+    for (let attempt = 0; attempt < 12; attempt++) {
+      try {
+        await $fetch('/api/simulator/receipt-mail', { method: 'POST', body: { receiptId: id, secret: r.secret, email, locale: locale.value } });
+        mailState.value = 'sent';
+        return;
+      } catch (e) {
+        const status = typeof e === 'object' && e !== null && 'statusCode' in e ? e.statusCode : 0;
+        if (status === 429) {
+          mailState.value = 'limit';
+          return;
+        }
+        if (status !== 409 || offline.value) break;
+        await new Promise((resolve) => setTimeout(resolve, 700));
+      }
+    }
+    mailState.value = 'failed';
+  }
+
   function setOffline(value: boolean) {
     offline.value = value;
     if (!sdk) return;
@@ -255,5 +282,5 @@ export function useSimulator() {
     else sdk.startFlusher({ idleMs: 500 });
   }
 
-  return { creds, products, fiscal, cart, current, qrSvg, offline, stats, error, busy, state, total, rounding, editable, init, dispose, setupDemoTerminal, forgetTerminal, newSale, addItem, issue, voidSale, setOffline };
+  return { mailState, emailReceipt, creds, products, fiscal, cart, current, qrSvg, offline, stats, error, busy, state, total, rounding, editable, init, dispose, setupDemoTerminal, forgetTerminal, newSale, addItem, issue, voidSale, setOffline };
 }

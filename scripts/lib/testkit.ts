@@ -65,6 +65,8 @@ export interface World {
   buyerJobs: RecordedJob[];
   /** latest login code per email (the stub mailer replaces SMTP) */
   codes: Record<string, string>;
+  /** receipt links sent by e-mail ("send it to my e-mail" at the till), newest last */
+  receiptMails: Array<{ to: string; merchantName: string; url: string; locale: string }>;
   orgA: OrgFixture;
   orgB: OrgFixture;
   addOrg(opts?: { country?: string }): Promise<OrgFixture>;
@@ -95,6 +97,7 @@ export async function createWorld(opts: WorldOptions = {}): Promise<World> {
   const jobs: World['jobs'] = [];
   const buyerJobs: World['buyerJobs'] = [];
   const codes: Record<string, string> = {};
+  const receiptMails: World['receiptMails'] = [];
 
   const addOrg: World['addOrg'] = async (o = {}) => {
     const n = ++orgCounter * 7919 + Math.floor(Math.random() * 1000) * 100_003;
@@ -127,6 +130,9 @@ export async function createWorld(opts: WorldOptions = {}): Promise<World> {
     async sendCode(to, code) {
       codes[to] = code;
     },
+    async sendReceipt(to, m) {
+      receiptMails.push({ to, ...m });
+    },
   };
   const buyer = await buildBuyerApi({
     db: bh.db,
@@ -151,6 +157,7 @@ export async function createWorld(opts: WorldOptions = {}): Promise<World> {
     jobs,
     buyerJobs,
     codes,
+    receiptMails,
     orgA,
     orgB,
     addOrg,

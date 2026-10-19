@@ -24,6 +24,15 @@ async function confirmVoid() {
   await sim.voidSale();
 }
 
+const customerEmail = ref('');
+const validEmail = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail.value.trim()));
+async function sendMail() {
+  if (!validEmail.value) return;
+  await sim.emailReceipt(customerEmail.value.trim());
+  if (sim.mailState.value === 'sent') customerEmail.value = ''; // the address is not kept on this screen either
+}
+watch(() => sim.current.value?.receiptId, () => (customerEmail.value = ''));
+
 const linkCopied = ref(false);
 async function copyLink() {
   const url = sim.current.value?.qrUrl;
@@ -136,6 +145,17 @@ async function copyLink() {
             <Button type="button" variant="outline" size="sm" data-testid="sim-copy-link" @click="copyLink"><component :is="linkCopied ? CheckIcon : CopyIcon" />{{ linkCopied ? t('adm.copied') : t('adm.sim.copyLink') }}</Button>
             <Button variant="outline" size="sm" as-child><a :href="sim.current.value.qrUrl" target="_blank" rel="noopener noreferrer" data-testid="sim-open-wallet"><ExternalLinkIcon />{{ t('adm.sim.openWallet') }}</a></Button>
           </div>
+          <form class="w-full max-w-md space-y-2 px-6" data-testid="sim-email-form" @submit.prevent="sendMail">
+            <Label for="sim-email" class="text-sm font-medium">{{ t('sim.email.label') }}</Label>
+            <div class="flex gap-2">
+              <Input id="sim-email" v-model="customerEmail" type="email" autocomplete="off" :placeholder="t('sim.email.placeholder')" data-testid="sim-email-input" />
+              <Button type="submit" :disabled="!validEmail || sim.mailState.value === 'sending'" data-testid="sim-email-send">{{ t('sim.email.send') }}</Button>
+            </div>
+            <p class="text-xs text-muted-foreground">{{ t('sim.email.privacy') }}</p>
+            <p v-if="sim.mailState.value === 'sent'" role="status" class="text-sm text-success" data-testid="sim-email-sent">{{ t('sim.email.sent') }}</p>
+            <p v-else-if="sim.mailState.value === 'limit'" role="alert" class="text-sm text-danger" data-testid="sim-email-error">{{ t('sim.email.limit') }}</p>
+            <p v-else-if="sim.mailState.value === 'failed'" role="alert" class="text-sm text-danger" data-testid="sim-email-error">{{ t('sim.email.failed') }}</p>
+          </form>
         </template>
         <p v-else class="my-auto px-6 py-24 text-center text-muted-foreground" data-testid="sim-qr-placeholder">{{ t('sim.qrPlaceholder') }}</p>
       </Card>
