@@ -203,7 +203,7 @@ export function buildPdfDefinition(crf: Crf, template: ReceiptTemplate | null, o
   };
 
   return {
-    info: { title: `Receipt ${crf.merchant.name}`, producer: 'bonnen' },
+    info: { title: `Receipt ${crf.merchant.name}`, producer: 'Syngrapha' },
     pageSize: { width, height: 'auto' },
     pageMargins: [0, 0, 0, 0],
     defaultStyle: { font: pickFont(preferred, texts), fontSize: 10, color: style.text },

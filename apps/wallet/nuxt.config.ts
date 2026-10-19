@@ -40,14 +40,14 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: { lang: 'en' },
-      title: 'bonnen',
+      title: 'Syngrapha',
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
         { name: 'theme-color', content: '#3338B8' },
         // The secret is in the URL fragment, which is never sent in Referer, but keep outgoing links clean anyway.
         { name: 'referrer', content: 'no-referrer' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
-        { name: 'apple-mobile-web-app-title', content: 'bonnen' },
+        { name: 'apple-mobile-web-app-title', content: 'Syngrapha' },
       ],
       link: [{ rel: 'apple-touch-icon', href: '/apple-touch-icon.png' }],
     },
@@ -59,8 +59,8 @@ export default defineNuxtConfig({
     srcDir: '../service-worker',
     filename: 'sw.ts',
     manifest: {
-      name: 'bonnen — digital receipts',
-      short_name: 'bonnen',
+      name: 'Syngrapha — digital receipts',
+      short_name: 'Syngrapha',
       description: 'Your digital receipts, always at hand.',
       lang: 'en',
       start_url: '/',

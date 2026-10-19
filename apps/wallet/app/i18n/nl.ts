@@ -9,7 +9,7 @@ export const nl = {
   ...receipts2Nl,
   // layout
   'layout.skip': 'Naar de inhoud',
-  'layout.brand': 'bonnen',
+  'layout.brand': 'Syngrapha',
   'layout.offline': 'Offline: opgeslagen bonnen blijven leesbaar',
   'layout.mainNav': 'Hoofdmenu',
   'nav.wallet': 'Bonnen',
@@ -188,7 +188,7 @@ export const nl = {
   'consent.err.failed': 'Opslaan is niet gelukt.',
 
   // install hint
-  'install.title': 'Zet Bonnen op je beginscherm',
+  'install.title': 'Zet Syngrapha op je beginscherm',
   'install.ios1': 'Tik in Safari op ',
   'install.iosShare': 'Deel',
   'install.ios2': ' en kies ',

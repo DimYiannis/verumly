@@ -1,6 +1,6 @@
 # Setup, configuration and technical details
 
-What Less Receipts is and why: [README.md](README.md). Step-by-step demo with screenshots of each step: [RUNNING.md](RUNNING.md).
+What Syngrapha is and why: [README.md](README.md). Step-by-step demo with screenshots of each step: [RUNNING.md](RUNNING.md).
 
 ## 1. Quick start (local)
 

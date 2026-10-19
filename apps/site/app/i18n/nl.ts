@@ -3,7 +3,7 @@ import type en from './en';
 // Dutch copy of the site pages. Same keys as en.ts (the type enforces it); informal "je", terms as in the wallet and dashboard.
 const nl: Record<keyof typeof en, string> = {
   // header and navigation
-  'nav.home': "bonnen home",
+  'nav.home': "Syngrapha home",
   'nav.main': "Hoofdmenu",
   'nav.menu': "Menu",
   'nav.why': "Waarom",
@@ -21,9 +21,9 @@ const nl: Record<keyof typeof en, string> = {
   'footer.source': "Broncode",
 
   // home: SEO
-  'home.seo.title': "bonnen: elke bon bewaard op het moment dat je betaalt",
+  'home.seo.title': "Syngrapha: elke bon bewaard op het moment dat je betaalt",
   'home.seo.description': "Scan de code bij de kassa en de bon staat in je portemonnee: bewaard, gesplitst met vrienden, klaar voor je boekhouding. Privé door ontwerp: de winkel weet nooit wie je bent.",
-  'home.seo.ogTitle': "bonnen: elke bon bewaard op het moment dat je betaalt",
+  'home.seo.ogTitle': "Syngrapha: elke bon bewaard op het moment dat je betaalt",
   'home.seo.ogDescription': "Digitale bonnen die privé blijven. Bewaar ze, splits ze met vrienden, geef ze aan je boekhouder.",
 
   // home: hero
@@ -179,7 +179,7 @@ const nl: Record<keyof typeof en, string> = {
   'home.try.repoAfter': ".",
 
   // privacy page
-  'privacy.seo.title': "Zo werkt privacy: bonnen",
+  'privacy.seo.title': "Zo werkt privacy: Syngrapha",
   'privacy.seo.description': "Hoe een bon van de kassa in je portemonnee komt zonder dat de winkel te weten komt wie je bent.",
   'privacy.back': "Terug naar het begin",
   'privacy.kicker': "Privacy",
@@ -214,8 +214,8 @@ const nl: Record<keyof typeof en, string> = {
   'privacy.claim.text': "Dit is een MVP, gebouwd tijdens een hackathon. Er is geen extern beveiligingsonderzoek of juridische toetsing geweest, en de bonregels per land zijn samengesteld onderzoek, geen juridisch advies.",
 
   // error page
-  'error.notFoundTitle': "Pagina niet gevonden: bonnen",
-  'error.otherTitle': "Er ging iets mis: bonnen",
+  'error.notFoundTitle': "Pagina niet gevonden: Syngrapha",
+  'error.otherTitle': "Er ging iets mis: Syngrapha",
   'error.notFoundKicker': "404",
   'error.otherKicker': "Fout",
   'error.notFoundHeading': "Deze pagina is er niet.",
