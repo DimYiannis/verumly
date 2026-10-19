@@ -1,4 +1,4 @@
-# Syngrapha: the public website
+# Verumly: the public website
 
 A static page that explains why the product exists and how it works (`/`) and how privacy is built (`/privacy`), in English and Dutch (`/nl`, `/nl/privacy`).
 Nuxt 4 + Tailwind 4, styled with the shared tokens in `packages/ui`. No API, no database.

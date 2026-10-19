@@ -45,7 +45,7 @@ export async function attempt<T>(error: Ref<string>, fn: () => Promise<T>): Prom
   }
 }
 
-/** Euro, for what Syngrapha charges (plans, invoices): always EUR, whatever the country of the business. */
+/** Euro, for what Verumly charges (plans, invoices): always EUR, whatever the country of the business. */
 export function euro(cents: number): string {
   return formatEuro(cents);
 }

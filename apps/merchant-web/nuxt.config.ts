@@ -18,5 +18,5 @@ export default defineNuxtConfig({
   },
   // the typed $fetch route map imports the server handlers, which import dashboard-core (and so pdfmake)
   typescript: { tsConfig: { include: ['../../../packages/receipt-pdf/src/pdfmake.d.ts'] } },
-  app: { head: { title: 'Syngrapha · Merchant', htmlAttrs: { lang: 'en' } } },
+  app: { head: { title: 'Verumly · Merchant', htmlAttrs: { lang: 'en' } } },
 });

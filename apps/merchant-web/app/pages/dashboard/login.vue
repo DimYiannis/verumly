@@ -90,7 +90,7 @@ async function submitCode() {
   <div class="flex min-h-[320px] flex-[1_1_520px] flex-col justify-between gap-10 bg-[#1C1F6E] p-8 text-white md:p-14">
     <span class="flex items-center gap-3 text-[28px] font-semibold tracking-tight">
       <span class="flex size-9 items-center justify-center rounded-lg bg-white/15"><ReceiptTextIcon class="size-5" /></span>
-      <span>Syngrapha <span class="font-normal text-[#B3B6EE]">{{ t('ov.login.forBusiness') }}</span></span>
+      <span>Verumly <span class="font-normal text-[#B3B6EE]">{{ t('ov.login.forBusiness') }}</span></span>
     </span>
     <div class="flex max-w-[520px] flex-col gap-4">
       <h1 class="text-[34px] font-semibold leading-[40px] tracking-tight md:text-[44px] md:leading-[48px]">{{ t('ov.login.headline') }}</h1>

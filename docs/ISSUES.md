@@ -195,5 +195,5 @@ Big issues found in the code review (2026-10-16) and still open. Tick an item wh
 - **P2: no proration.** Upgrades and downgrades take effect at the next renewal; there is no immediate upgrade with a prorated charge or credit.
 - **P2: no dunning e-mails.** A failed renewal shows a dashboard banner only; nobody is e-mailed before the plan stops after 7 days, and there are no receipts of payment by e-mail.
 - **P2: EU reverse charge is not handled.** Every invoice charges Dutch BTW 21%, also for a business in another EU country with a valid VAT id.
-- **P2: invoices lack legal fields.** The PDF is a demo invoice: no seller address, KvK and BTW-id of Syngrapha, no buyer address, no credit notes; failed attempts also take an invoice number. Not a tax invoice.
+- **P2: invoices lack legal fields.** The PDF is a demo invoice: no seller address, KvK and BTW-id of Verumly, no buyer address, no credit notes; failed attempts also take an invoice number. Not a tax invoice.
 - **P3: limits are checked when adding, not afterwards.** Moving from Business to Starter keeps existing extra locations and terminals; only new ones are refused.

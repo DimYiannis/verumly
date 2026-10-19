@@ -2,7 +2,7 @@
 // Texts inside the mini screens (Frag*.vue) live in frag.en.ts / frag.nl.ts.
 export default {
   // header and navigation
-  'nav.home': "Syngrapha home",
+  'nav.home': "Verumly home",
   'nav.main': "Main",
   'nav.menu': "Menu",
   'nav.why': "Why",
@@ -20,9 +20,9 @@ export default {
   'footer.source': "Source",
 
   // home: SEO
-  'home.seo.title': "Syngrapha: every receipt, saved the moment you pay",
+  'home.seo.title': "Verumly: every receipt, saved the moment you pay",
   'home.seo.description': "Scan the code at the till and the receipt lands in your wallet: kept, split with friends, ready for your books. Private by design: the shop never learns who you are.",
-  'home.seo.ogTitle': "Syngrapha: every receipt, saved the moment you pay",
+  'home.seo.ogTitle': "Verumly: every receipt, saved the moment you pay",
   'home.seo.ogDescription': "Digital receipts that stay private. Keep them, split them with friends, hand them to your accountant.",
 
   // home: hero
@@ -178,7 +178,7 @@ export default {
   'home.try.repoAfter': ".",
 
   // privacy page
-  'privacy.seo.title': "How privacy works: Syngrapha",
+  'privacy.seo.title': "How privacy works: Verumly",
   'privacy.seo.description': "How a receipt travels from the till to your wallet without the shop learning who you are.",
   'privacy.back': "Back to the start",
   'privacy.kicker': "Privacy",
@@ -213,8 +213,8 @@ export default {
   'privacy.claim.text': "This is an MVP built at a hackathon. It has not had an external security audit or a legal review, and the country-by-country receipt rules are compiled research, not legal advice.",
 
   // error page
-  'error.notFoundTitle': "Page not found: Syngrapha",
-  'error.otherTitle': "Something went wrong: Syngrapha",
+  'error.notFoundTitle': "Page not found: Verumly",
+  'error.otherTitle': "Something went wrong: Verumly",
   'error.notFoundKicker': "404",
   'error.otherKicker': "Error",
   'error.notFoundHeading': "This page is not here.",

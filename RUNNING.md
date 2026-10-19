@@ -1,4 +1,4 @@
-# How to run and demo Syngrapha
+# How to run and demo Verumly
 
 This guide covers starting the stack, then clicking through the demo:
 

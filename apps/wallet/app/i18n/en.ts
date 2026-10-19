@@ -10,7 +10,7 @@ export const en: Record<MessageKey, string> = {
   ...receipts2En,
   // layout
   'layout.skip': 'Skip to content',
-  'layout.brand': 'Syngrapha',
+  'layout.brand': 'Verumly',
   'layout.offline': 'Offline: saved receipts stay readable',
   'layout.mainNav': 'Main menu',
   'nav.wallet': 'Receipts',
@@ -189,7 +189,7 @@ export const en: Record<MessageKey, string> = {
   'consent.err.failed': 'Could not save.',
 
   // install hint
-  'install.title': 'Add Syngrapha to your home screen',
+  'install.title': 'Add Verumly to your home screen',
   'install.ios1': 'In Safari, tap ',
   'install.iosShare': 'Share',
   'install.ios2': ' and choose ',

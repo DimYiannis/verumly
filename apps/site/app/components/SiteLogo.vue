@@ -9,6 +9,6 @@ defineProps<{ light?: boolean }>();
       <path d="M10 7h12v19l-3-2-3 2-3-2-3 2z" fill="none" :stroke="light ? '#3338B8' : '#ffffff'" stroke-width="1.8" stroke-linejoin="round" />
       <path d="M13 12.5h6M13 16.5h6" :stroke="light ? '#3338B8' : '#ffffff'" stroke-width="1.8" stroke-linecap="round" />
     </svg>
-    <span class="text-2xl font-semibold tracking-[-0.035em]">Syngrapha</span>
+    <span class="text-2xl font-semibold tracking-[-0.035em]">Verumly</span>
   </span>
 </template>

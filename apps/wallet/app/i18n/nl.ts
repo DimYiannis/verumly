@@ -9,7 +9,7 @@ export const nl = {
   ...receipts2Nl,
   // layout
   'layout.skip': 'Naar de inhoud',
-  'layout.brand': 'Syngrapha',
+  'layout.brand': 'Verumly',
   'layout.offline': 'Offline: opgeslagen bonnen blijven leesbaar',
   'layout.mainNav': 'Hoofdmenu',
   'nav.wallet': 'Bonnen',
@@ -188,7 +188,7 @@ export const nl = {
   'consent.err.failed': 'Opslaan is niet gelukt.',
 
   // install hint
-  'install.title': 'Zet Syngrapha op je beginscherm',
+  'install.title': 'Zet Verumly op je beginscherm',
   'install.ios1': 'Tik in Safari op ',
   'install.iosShare': 'Deel',
   'install.ios2': ' en kies ',
