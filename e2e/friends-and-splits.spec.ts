@@ -77,6 +77,10 @@ test('two buyers: become friends, split a saved receipt, settle, balances follow
     await sam.goto(`${URLS.wallet}/receipts/${receipt.receiptId}/split`);
     await sam.getByTestId('split-participant-0').click();
     await expect(sam.getByTestId('split-create')).toBeEnabled();
+    // the mode switch holds its selected button: the container must be at least as tall as the button (it was 32px for a 36px button)
+    const bar = await sam.getByRole('tablist').boundingBox();
+    const active = await sam.locator('[data-testid^="split-mode-"][data-state="active"]').boundingBox();
+    expect(bar && active && bar.height >= active.height + 2, `tab bar ${bar?.height}px, button ${active?.height}px`).toBe(true);
     await shot(sam, 'split-form');
     await sam.getByTestId('split-create').click();
     await sam.waitForURL(/\/splits\//);
