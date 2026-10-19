@@ -1,6 +1,6 @@
 # Name options
 
-Working name so far: "bonnen" (placeholder). Domains were checked on 2026-10-18 **by DNS only**: "free" means the domain has no name servers, not that the registry says it is available. Nothing here was checked for trademarks, GitHub, npm or the app stores. Check the registrar and the trademark databases before buying or committing to a name.
+**Chosen: Syngrapha** (2026-10-19). The Latin word for a written agreement signed by both parties. The old working name was "bonnen" (placeholder). No conflict was found on the web, npm, PyPI or in a GitHub search, but the official trademark search (EUIPO, BOIP; classes 9, 36, 42) has not been done yet; the .com is taken (io, app, eu, nl looked free by DNS). Domains were checked on 2026-10-18 **by DNS only**: "free" means the domain has no name servers, not that the registry says it is available. Nothing here was checked for trademarks, GitHub, npm or the app stores. Check the registrar and the trademark databases before buying or committing to a name.
 
 ## What a receipt is (the idea behind the names)
 

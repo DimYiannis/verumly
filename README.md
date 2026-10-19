@@ -1,6 +1,6 @@
-# Less Receipts: the receipt, without the paper
+# Syngrapha: the receipt, without the paper
 
-Every purchase still ends with a strip of thermal paper that nobody wants to keep and everybody needs later. Less Receipts replaces it with a digital receipt the buyer saves with one scan, while the shop learns nothing about who they are. A photo turns old paper receipts into the same tidy digital records.
+Every purchase still ends with a strip of thermal paper that nobody wants to keep and everybody needs later. Syngrapha replaces it with a digital receipt the buyer saves with one scan, while the shop learns nothing about who they are. A photo turns old paper receipts into the same tidy digital records.
 
 > Want to run it or change it? See **[SETUP.md](SETUP.md)** (setup, configuration, architecture) and **[RUNNING.md](RUNNING.md)** (step-by-step demo).
 

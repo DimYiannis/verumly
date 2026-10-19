@@ -1,4 +1,4 @@
-# How to run and demo Less Receipts
+# How to run and demo Syngrapha
 
 This guide covers starting the stack, then clicking through the demo:
 
