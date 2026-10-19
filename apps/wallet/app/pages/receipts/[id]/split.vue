@@ -246,7 +246,7 @@ const modes: { value: SplitMode; label: MessageKey }[] = [
       <!-- mode -->
       <section class="space-y-3">
         <Tabs v-model="mode">
-          <TabsList class="grid h-12 w-full grid-cols-3 rounded-[10px] border border-border bg-card p-1">
+          <TabsList class="group-data-[orientation=horizontal]/tabs:h-12 grid h-12 w-full grid-cols-3 rounded-[10px] border border-border bg-card p-1">
             <TabsTrigger v-for="m in modes" :key="m.value" :value="m.value" :data-testid="`split-mode-${m.value}`" class="min-h-9 rounded-[7px] text-sm data-[state=active]:bg-primary data-[state=active]:font-semibold data-[state=active]:text-primary-foreground">{{ t(m.label) }}</TabsTrigger>
           </TabsList>
         </Tabs>
