@@ -13,6 +13,8 @@ Digital receipts platform for the Netherlands (hackathon MVP). Merchants send ev
 
 **No buyer identifier on the merchant side, ever.** Receipts are stored under the merchant only. The only person to receipt link is `buyer.claims`. Four Postgres roles (`merchant_api`, `dashboard`, `buyer_api`, `worker`) with row-level security by `org_id` enforce it. `pnpm test:privacy` proves it. Do not add a query, column, log line or response that lets merchant-side code reach `buyer.*`. The receipt secret lives in the URL fragment, only its SHA-256 is stored, and it must never reach a log or a Referer.
 
+**One narrow exception, in transit only: "send it to my e-mail".** At the till the customer can type an address to get the receipt link by mail (`POST /v1/receipts/mail` on buyer-api, reached from the dashboard simulator through `/api/simulator/receipt-mail`). The address is used once to send the mail: no table, no log, no audit row, and the merchant side never stores it. Needs the receipt secret, 3 mails per receipt per hour. `apps/buyer-api/test/receipt-mail.test.ts` scans every text column and the logs for the address. A real SMTP provider is needed outside the local Mailpit.
+
 ## Map
 
 ```

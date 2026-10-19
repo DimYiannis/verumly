@@ -13,5 +13,24 @@ export function smtpMailer(opts: { host: string; port: number; from: string }): 
         text: `Your login code is ${code}. It is valid for 10 minutes.`,
       });
     },
+    async sendReceipt(to, m) {
+      const nl = m.locale === 'nl';
+      await transport.sendMail({
+        from: opts.from,
+        to,
+        subject: nl ? `Je bon van ${m.merchantName}` : `Your receipt from ${m.merchantName}`,
+        text: nl
+          ? `Hier is je bon van ${m.merchantName}:
+
+${m.url}
+
+Bewaar hem in je wallet om hem altijd bij de hand te hebben. Iedereen met deze link kan de bon openen, deel hem dus niet. De winkel heeft je e-mailadres niet bewaard, en wij ook niet.`
+          : `Here is your receipt from ${m.merchantName}:
+
+${m.url}
+
+Save it in your wallet to keep it at hand. Anyone with this link can open the receipt, so do not share it. The shop did not keep your e-mail address, and neither did we.`,
+      });
+    },
   };
 }

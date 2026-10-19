@@ -4,6 +4,8 @@ import type { Db, PgBoss } from '@lr/db';
 
 export interface Mailer {
   sendCode(to: string, code: string): Promise<void>;
+  /** the link to a receipt, for the customer who asked at the till to get it by e-mail; the address is never kept */
+  sendReceipt(to: string, mail: { merchantName: string; url: string; locale: 'en' | 'nl' }): Promise<void>;
 }
 
 export interface AppDeps {

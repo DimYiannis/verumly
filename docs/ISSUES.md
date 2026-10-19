@@ -127,6 +127,7 @@ Big issues found in the code review (2026-10-16) and still open. Tick an item wh
   - monitoring and alerts
   - one VM is a single point of failure
 - [ ] **Email provider** for login codes (Mailpit is local only).
+- [ ] **"Send it to my e-mail" at the till** (receipt link by mail) uses the same SMTP settings: a real provider is needed for it to reach inboxes in the hosted demo. Terminal vendors need a client for `POST /v1/receipts/mail` (the simulator goes through its own server proxy); the SDK has no method for it yet. The mail provider is a processor of the address (DPA), even though nothing is stored.
 - [ ] **GPU host** for Qianfan-OCR (Modal, a Hugging Face endpoint or similar).
 - [ ] **DPAs** with Supabase, boxd, the email provider and the GPU host.
 

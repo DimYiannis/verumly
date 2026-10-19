@@ -51,4 +51,10 @@ export type ReceiptPreview = z.infer<typeof receiptPreview>;
 /** Buyer API DTOs */
 export const emailStartBody = z.object({ email: z.string().email().max(200) }).strict();
 export const emailVerifyBody = z.object({ email: z.string().email().max(200), code: z.string().regex(/^\d{6}$/) }).strict();
+/**
+ * "Send me this receipt by e-mail" from the till's customer screen. The address is only passed through: buyer-api sends the link
+ * and keeps nothing (no table, no log), and the merchant side never stores it.
+ */
+export const receiptMailBody = resolveBody.extend({ email: z.string().email().max(200), locale: z.enum(['en', 'nl']).default('en') }).strict();
+export type ReceiptMailBody = z.infer<typeof receiptMailBody>;
 export const claimBody = resolveBody.extend({ source: z.enum(['qr', 'link']).default('qr') });

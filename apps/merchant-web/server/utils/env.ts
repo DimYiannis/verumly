@@ -9,6 +9,8 @@ const envSchema = dbEnvSchema.extend(s3EnvSchema.shape).extend({
   NODE_ENV: z.string().default('development'),
   DASHBOARD_ENCRYPTION_KEY: z.string().optional(),
   MERCHANT_API_URL: z.url().default('http://127.0.0.1:4001'),
+  /** where the till's "send it to my e-mail" is forwarded (buyer-api, the customer side) */
+  BUYER_API_URL: z.url().default('http://127.0.0.1:4002'),
   RECEIPT_HOST: z.url().default('http://localhost:3001'),
   DASHBOARD_COOKIE_SECURE: z.enum(['true', 'false']).optional(),
   /** login / TOTP attempts per client IP per 5 minutes */
